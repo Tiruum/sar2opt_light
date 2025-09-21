@@ -1,6 +1,5 @@
-# configs/config.yaml
 data:
-  data_dir: "./data"
+  data_dir: "./data/labeled"
   batch_size: 8
   image_size: 256
   num_workers: 10
@@ -38,9 +37,9 @@ system:
   benchmark: false
   use_amp: false
   max_epochs: 200
-  checkpoints_dir: "./checkpoints"
-  log_dir: "./logs"
-  output_dir: "./output"
+  checkpoints_dir: "./checkpoints/pix2pix/"
+  output_dir: "./output/pix2pix/"
   limit_train_batches: 1.0
   limit_val_batches: 1.0
   accumulate_grad_batches: 1
+  tb_version: 'pix2pix'

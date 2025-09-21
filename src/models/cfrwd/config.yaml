@@ -1,0 +1,45 @@
+# configs/config.yaml
+data:
+  data_dir:
+    labeled: "./data/labeled"
+    sen12: "./data/sen12"
+  batch_size: 32
+  image_size: 256
+  num_workers: 10
+  train_val_split_ratio: 0.8
+  prefetch_factor: 1
+  persistent_workers: true
+  seed: 42
+
+model:
+  ngf: 64
+  ndf: 64
+
+optimizer:
+  lr_g: 0.0001
+  lr_d: 0.0004
+  beta1: 0.5
+  beta2: 0.999
+
+scheduler:
+  eta_min: 1e-6
+
+loss:
+  l1_weight: 100
+  gan_weight: 1
+  fm_weight: 10
+
+system:
+  device: "cuda"
+  precision: 32
+  deterministic: false
+  benchmark: false
+  use_amp: false
+  max_epochs: 100
+  checkpoints_dir: "checkpoints/cfrwd/"
+  image_freq: 10 # 0 to disable
+  output_dir: "./output/cfrwd/"
+  limit_train_batches: 0.3
+  limit_val_batches: 0.3
+  accumulate_grad_batches: 1 # Automatic gradient accumulation is not supported for manual optimization
+  tb_version: 'cfrwd-disc-better-fm'

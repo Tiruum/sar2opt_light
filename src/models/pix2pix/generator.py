@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from src.models.attention import SelfAttention, CBAM
+from src.models.pix2pix.attention import SelfAttention, CBAM
 
 class UNetResidualBlock(nn.Module):
     """Residual block with optional CBAM and Self-Attention."""

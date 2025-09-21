@@ -2,8 +2,8 @@
 
 import torch
 import torch.nn as nn
-from src.utils.config_loader import load_config
-cfg = load_config('configs/config.yaml')
+from omegaconf import OmegaConf
+cfg = OmegaConf.load('src/models/pix2pix/config.yaml')
 
 class GANLoss(nn.Module):
     def __init__(self, use_lsgan=True):

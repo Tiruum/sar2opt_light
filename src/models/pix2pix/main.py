@@ -4,8 +4,8 @@ import gc
 import torch
 import pytorch_lightning as pl
 from torch.amp import autocast
-from src.models.spade_generator import UNetGenerator
-from src.utils.factory import build_models, build_optimizers, build_criterions, build_lr_schedulers
+from src.models.pix2pix.spade_generator import UNetGenerator
+from src.models.pix2pix.factory import build_models, build_optimizers, build_criterions, build_lr_schedulers
 from src.utils.visualize import visualize_batch
 from torchmetrics.image import PeakSignalNoiseRatio, StructuralSimilarityIndexMeasure
 
@@ -148,10 +148,10 @@ from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
 from pytorch_lightning.loggers import TensorBoardLogger
 
-from src.data.datamodule import SAR2OPTDataModule
+from src.data.labeled.datamodule import SAR2OPTDataModule
 import os
-from src.utils.config_loader import load_config
-cfg = load_config("configs/config.yaml")
+from omegaconf import OmegaConf
+cfg = OmegaConf.load("src/models/pix2pix/config.yaml")
 
 if __name__ == "__main__":
     pl.seed_everything(42, workers=True)
@@ -173,9 +173,9 @@ if __name__ == "__main__":
 
     model = SAR2OPTGANLightningModule(cfg)
 
-    logger = TensorBoardLogger(save_dir=cfg.system.output_dir, name="sar2opt_gan")
+    logger = TensorBoardLogger(save_dir=cfg.system.output_dir, name="pix2pix")
     checkpoint_callback = ModelCheckpoint(
-        dirpath=cfg.system.checkpoints_dir,
+        dirpath=f"{cfg.system.checkpoints_dir}/{cfg.system.tb_version}",
         filename="epoch{epoch:03d}-{val_l1:.4f}",
         monitor="val_l1",
         mode="min",

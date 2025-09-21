@@ -2,7 +2,7 @@
 
 import torch
 import torch.nn as nn
-from src.models.attention import SelfAttention
+from src.models.pix2pix.attention import SelfAttention
 
 class NLayerDiscriminator(nn.Module):
     """N-слойный дискриминатор с использованием спектральной нормализации и самовнимания."""

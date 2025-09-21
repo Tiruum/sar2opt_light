@@ -1,11 +1,11 @@
 from typing import Literal
 import torch.optim as optim
-from src.models.generator import UNetGenerator
-from src.models.multiscale_discriminator import MultiscaleDiscriminator
-from src.models.losses import GANLoss, L1Loss
+from src.models.pix2pix.generator import UNetGenerator
+from src.models.pix2pix.multiscale_discriminator import MultiscaleDiscriminator
+from src.models.pix2pix.losses import GANLoss, L1Loss
 import torch.nn as nn
-from src.utils.config_loader import load_config
-cfg = load_config('configs/config.yaml')
+from omegaconf import OmegaConf
+cfg = OmegaConf.load('src/models/pix2pix/config.yaml')
 
 
 def build_models(

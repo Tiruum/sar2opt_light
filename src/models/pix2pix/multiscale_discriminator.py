@@ -3,7 +3,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from src.models.discriminator import NLayerDiscriminator
+from src.models.pix2pix.discriminator import NLayerDiscriminator
 
 class MultiscaleDiscriminator(nn.Module):
     """Многомасштабный дискриминатор"""
