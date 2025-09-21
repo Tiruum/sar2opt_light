@@ -25,7 +25,7 @@ scheduler:
   eta_min: 1e-6
 
 loss:
-  l1_weight: 100
+  l1_weight: 0
   gan_weight: 1
   fm_weight: 10
 
@@ -35,11 +35,11 @@ system:
   deterministic: false
   benchmark: false
   use_amp: false
-  max_epochs: 100
+  max_epochs: 50
   checkpoints_dir: "checkpoints/cfrwd/"
   image_freq: 10 # 0 to disable
   output_dir: "./output/cfrwd/"
-  limit_train_batches: 0.3
-  limit_val_batches: 0.3
+  limit_train_batches: 0.1
+  limit_val_batches: 0.1
   accumulate_grad_batches: 1 # Automatic gradient accumulation is not supported for manual optimization
-  tb_version: 'cfrwd-disc-better-fm'
+  tb_version: 'cfrwd-1'

@@ -60,11 +60,11 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
             d_fake, _ = self.netD(real_sar, fake_opt, real_opt)
             d_real, _ = self.netD(real_sar, real_opt, real_opt)
 
-            num_scales = len(d_real)  # Typically 2 for large and small branches
+            num_scales = len(d_real)
             d_loss = 0.0
             for real_out, fake_out in zip(d_real, d_fake):
-                real_loss = self.criterions['GAN'](real_out, target_is_real=False)  # Target 0 for real
-                fake_loss = self.criterions['GAN'](fake_out, target_is_real=True)   # Target 1 for fake
+                real_loss = self.criterions['GAN'](real_out, target_is_real=True)
+                fake_loss = self.criterions['GAN'](fake_out, target_is_real=False)
                 d_loss += (real_loss + fake_loss) / 2
             d_loss /= num_scales
 
@@ -87,9 +87,7 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
             
             g_loss = (
                 loss_gan * self.loss_weights['gan'] +
-
                 loss_fm * self.loss_weights['fm'] +
-
                 loss_l1 * self.loss_weights['l1']
             )
 
@@ -145,8 +143,8 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
         if (self.cfg.system.image_freq != 0):
             if (self.current_epoch + 1) % self.cfg.system.image_freq == 0:
                 fake_opt = self.netG(self.fixed_sar)
-                os.makedirs(os.path.join(self.cfg.system.output_dir, 'images'), exist_ok=True)
-                path = f"{self.cfg.system.output_dir}/images/epoch_{self.current_epoch+1}.png"
+                os.makedirs(os.path.join(self.cfg.system.output_dir, 'images', self.cfg.system.tb_version), exist_ok=True)
+                path = f"{self.cfg.system.output_dir}/images/{self.cfg.system.tb_version}/epoch_{self.current_epoch+1}.png"
                 visualize_batch(
                     self.fixed_sar.cpu().detach(),
                     fake_opt.cpu().detach(),
