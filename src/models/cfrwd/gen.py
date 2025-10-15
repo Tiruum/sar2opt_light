@@ -3,71 +3,45 @@ import torch.nn as nn
 import math
 
 class ResBlock(nn.Module):
-    """ Enhanced Residual Block with modern GAN best practices """
-    def __init__(self, channels, use_spectral_norm=True):
+    """ Остаточный блок из ResNet """
+    def __init__(self, channels):
         super(ResBlock, self).__init__()
-        
-        conv_layer = lambda in_c, out_c, k, s, p: nn.utils.spectral_norm(
-            nn.Conv2d(in_c, out_c, kernel_size=k, stride=s, padding=p)
-        ) if use_spectral_norm else nn.Conv2d(in_c, out_c, kernel_size=k, stride=s, padding=p)
         
         self.block = nn.Sequential(
             nn.ReflectionPad2d(1),
-            conv_layer(channels, channels, kernel_size=3, stride=1, padding=0),
+            nn.Conv2d(channels, channels, kernel_size=3, stride=1, padding=0),
             nn.BatchNorm2d(channels),
-            nn.LeakyReLU(0.2, inplace=True),
+            nn.ReLU(inplace=True),
             nn.ReflectionPad2d(1),
-            conv_layer(channels, channels, kernel_size=3, stride=1, padding=0),
+            nn.Conv2d(channels, channels, kernel_size=3, stride=1, padding=0),
             nn.BatchNorm2d(channels)
         )
         
-        # Scaling factor for better gradient flow
-        self.scale = nn.Parameter(torch.ones(1))
-        
     def forward(self, x):
-        return x + self.scale * self.block(x) # Scaled residual connection: x + λ*F(x)
+        return x + self.block(x) # Остаточное соединение: x + F(x)
 
 class ConvBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size=3, stride=2, use_spectral_norm=True, dropout_rate=0.0):
+    def __init__(self, in_channels, out_channels, kernel_size=3, stride=2):
         super(ConvBlock, self).__init__()
 
-        conv_layer = lambda in_c, out_c, k, s: nn.utils.spectral_norm(
-            nn.Conv2d(in_c, out_c, kernel_size=k, stride=s, padding=0)
-        ) if use_spectral_norm else nn.Conv2d(in_c, out_c, kernel_size=k, stride=s, padding=0)
-        
-        layers = [
-            nn.ReflectionPad2d(1),
-            conv_layer(in_channels, out_channels, kernel_size, stride),
+        self.conv_block = nn.Sequential(
+            nn.ReflectionPad2d(1), # Вообще по статье ReflectionPad используется один раз в начале, а затем, видимо, в Conv2d padding=1
+            nn.Conv2d(in_channels, out_channels, kernel_size, stride),
             nn.BatchNorm2d(out_channels),
-            nn.LeakyReLU(0.2, inplace=True)
-        ]
-        
-        if dropout_rate > 0:
-            layers.append(nn.Dropout2d(dropout_rate))
-            
-        self.conv_block = nn.Sequential(*layers)
+            nn.ReLU(inplace=True)
+        )
 
     def forward(self, x):
         return self.conv_block(x)
     
 class TConvBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size=4, stride=2, padding=1, use_spectral_norm=True, dropout_rate=0.0):
+    def __init__(self, in_channels, out_channels, kernel_size=4, stride=2, padding=1):
         super(TConvBlock, self).__init__()
-        
-        tconv_layer = lambda in_c, out_c, k, s, p: nn.utils.spectral_norm(
-            nn.ConvTranspose2d(in_c, out_c, kernel_size=k, stride=s, padding=p)
-        ) if use_spectral_norm else nn.ConvTranspose2d(in_c, out_c, kernel_size=k, stride=s, padding=p)
-        
-        layers = [
-            tconv_layer(in_channels, out_channels, kernel_size, stride, padding),
+        self.t_conv_block = nn.Sequential(
+            nn.ConvTranspose2d(in_channels, out_channels, kernel_size, stride, padding),
             nn.BatchNorm2d(out_channels),
-            nn.LeakyReLU(0.2, inplace=True)
-        ]
-        
-        if dropout_rate > 0:
-            layers.append(nn.Dropout2d(dropout_rate))
-            
-        self.t_conv_block = nn.Sequential(*layers)
+            nn.ReLU(inplace=True)
+        )
         
     def forward(self, x):
         return self.t_conv_block(x)
