@@ -1,41 +1,27 @@
 import torch
 import torch.nn as nn
 
-# class ConvBlock(nn.Module):
-#     def __init__(self, in_channels, out_channels, kernel_size=3, stride=2):
-#         super(ConvBlock, self).__init__()
-
-#         self.conv_block = nn.Sequential(
-#             nn.ReflectionPad2d(1), # Вообще по статье ReflectionPad используется один раз в начале, а затем, видимо, в Conv2d padding=1
-#             nn.Conv2d(in_channels, out_channels, kernel_size, stride),
-#             nn.BatchNorm2d(out_channels),
-#             nn.ReLU(inplace=True)
-#         )
-
-#     def forward(self, x):
-#         return self.conv_block(x)
-
 class CFRWDPatchDisBranch(nn.Module):
-    def __init__(self, input_channels=4, condition_channels=3, ndf=64, return_features=True):
+    def __init__(self, in_channels=4, condition_channels=3, ndf=64, return_features=True):
         super(CFRWDPatchDisBranch, self).__init__()
         self.return_features = return_features
 
         # Определение слоёв (пример на основе типичной PatchGAN структуры, как в статье)
         # Здесь 4 conv-блока + финальный conv, признаки извлекаем после каждого LeakyReLU (кроме первого, если без нормы)
         self.main = nn.Sequential(
-            nn.Conv2d(input_channels + condition_channels, ndf, kernel_size=4, stride=2, padding=1),
+            nn.Conv2d(in_channels + condition_channels, ndf, kernel_size=4, stride=2, padding=1),
             nn.LeakyReLU(0.2, inplace=True),  # После этого можно извлекать feat1
             
             nn.Conv2d(ndf, ndf * 2, kernel_size=4, stride=2, padding=1),
-            nn.InstanceNorm2d(ndf * 2),
+            nn.BatchNorm2d(ndf * 2),
             nn.LeakyReLU(0.2, inplace=True),  # feat2
             
             nn.Conv2d(ndf * 2, ndf * 4, kernel_size=4, stride=2, padding=1),
-            nn.InstanceNorm2d(ndf * 4),
+            nn.BatchNorm2d(ndf * 4),
             nn.LeakyReLU(0.2, inplace=True),  # feat3
             
             nn.Conv2d(ndf * 4, ndf * 8, kernel_size=4, stride=2, padding=1),
-            nn.InstanceNorm2d(ndf * 8),
+            nn.BatchNorm2d(ndf * 8),
             nn.LeakyReLU(0.2, inplace=True),  # feat4
             
             nn.Conv2d(ndf * 8, 1, kernel_size=4, stride=1, padding=1)  # Финальный output
@@ -56,28 +42,35 @@ class CFRWDPatchDisBranch(nn.Module):
         return x  # Только output
 
 class CFRWDPatchDis(nn.Module):
-    def __init__(self, input_channels=4, condition_channels=3, ndf=64, return_features=True):
+    def __init__(self, in_channels=4, condition_channels=3, ndf=64, return_features=True):
         super(CFRWDPatchDis, self).__init__()
+        self.in_channels = in_channels
         self.return_features = return_features
         # Large-scale branch
-        self.large_scale_branch = CFRWDPatchDisBranch(input_channels, condition_channels, ndf, return_features)
+        self.large_scale_branch = CFRWDPatchDisBranch(in_channels, condition_channels, ndf, return_features)
         # Downsample for small-scale branch
         self.downsample = nn.AvgPool2d(kernel_size=3, stride=2, padding=1)
         # Small-scale branch
-        self.small_scale_branch = CFRWDPatchDisBranch(input_channels, condition_channels, ndf, return_features)
-    
-    def forward(self, sar, fake_optical, real_optical):
-        input_img = torch.cat((sar, fake_optical), dim=1)
-        
+        self.small_scale_branch = CFRWDPatchDisBranch(in_channels, condition_channels, ndf, return_features)
+
+    def forward(self, sar=None, fake_opt=None, real_opt=None):
+        if not ((self.in_channels == 6 and sar is None)
+            or (self.in_channels == 9 and sar is not None)):
+            raise ValueError("Каналы входного изображения не соответствуют переданным данным.")
+        if sar is not None:
+            input_img = torch.cat((sar, fake_opt), dim=1)
+        else:
+            input_img = fake_opt
+
         # Large-scale branch output
         if self.return_features:
-            large_output, large_features = self.large_scale_branch(input_img, real_optical)
+            large_output, large_features = self.large_scale_branch(input_img, real_opt)
         else:
-            large_output = self.large_scale_branch(input_img, real_optical)
+            large_output = self.large_scale_branch(input_img, real_opt)
         
         # Small-scale branch output
         small_input = self.downsample(input_img)
-        small_condition = self.downsample(real_optical)
+        small_condition = self.downsample(real_opt)
         if self.return_features:
             small_output, small_features = self.small_scale_branch(small_input, small_condition)
         else:
@@ -99,11 +92,19 @@ if __name__ == "__main__":
     sar = torch.randn(batch_size, 1, height, width)  # SAR image (1 channel)
     fake_optical = torch.randn(batch_size, 3, height, width)  # Generated optical image (3 channels)
     real_optical = torch.randn(batch_size, 3, height, width)  # Real optical image (3 channels, as condition)
-    
-    discriminator = CFRWDPatchDis(input_channels=4, condition_channels=3, return_features=False)
-    output, features = discriminator(sar, fake_optical, real_optical)
+
+    discriminator_4ch = CFRWDPatchDis(in_channels=4, condition_channels=3, ndf=64, return_features=True)
+    output, features = discriminator_4ch(sar, fake_optical, real_optical)
     large_output, small_output = output
     
+    print(f"Large scale output shape: {large_output.shape}")  # Expected: [batch_size, 1, height/16, width/16]
+    print(f"Small scale output shape: {small_output.shape}")  # Expected: [batch_size, 1, height/32, width/32]
+    print(f"Number of feature maps extracted: {len(features)}")  # Expected: 8 (4 from each branch)
+
+    discriminator_3ch = CFRWDPatchDis(in_channels=3, condition_channels=3, ndf=64, return_features=True)
+    output, features = discriminator_3ch(fake_opt=fake_optical, real_opt=real_optical)
+    arge_output, small_output = output
+
     print(f"Large scale output shape: {large_output.shape}")  # Expected: [batch_size, 1, height/16, width/16]
     print(f"Small scale output shape: {small_output.shape}")  # Expected: [batch_size, 1, height/32, width/32]
     print(f"Number of feature maps extracted: {len(features)}")  # Expected: 8 (4 from each branch)

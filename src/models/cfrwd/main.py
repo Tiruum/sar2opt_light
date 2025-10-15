@@ -56,15 +56,15 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
         # Discriminator step
         with autocast(device_type=self.device.type, enabled=self.trainer.precision == 16):
             fake_opt = self.netG(real_sar).detach()
-            
-            d_fake, _ = self.netD(real_sar, fake_opt, real_opt)
-            d_real, _ = self.netD(real_sar, real_opt, real_opt)
+
+            d_fake, _ = self.netD(sar=real_sar if cfg.model.dis.in_channels == 6 else None, fake_opt=fake_opt, real_opt=real_opt)
+            d_real, _ = self.netD(sar=real_sar if cfg.model.dis.in_channels == 6 else None, fake_opt=real_opt, real_opt=real_opt)
 
             num_scales = len(d_real)
             d_loss = 0.0
             for real_out, fake_out in zip(d_real, d_fake):
-                real_loss = self.criterions['GAN'](real_out, target_is_real=True)
-                fake_loss = self.criterions['GAN'](fake_out, target_is_real=False)
+                real_loss = self.criterions['GAN'](real_out, target_is_real=False, real_label_smooth=0.9, fake_label_smooth=0.1)
+                fake_loss = self.criterions['GAN'](fake_out, target_is_real=True, real_label_smooth=0.9, fake_label_smooth=0.1)
                 d_loss += (real_loss + fake_loss) / 2
             d_loss /= num_scales
 
@@ -74,10 +74,9 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
         # Generator step
         with autocast(device_type=self.device.type, enabled=self.trainer.precision == 16):
             fake_opt = self.netG(real_sar)
-            # fake_pair = torch.cat([real_sar, fake_opt], dim=1)
             
-            d_fake, fake_feats = self.netD(real_sar, fake_opt, real_opt)
-            _, real_feats = self.netD(real_sar, real_opt, real_opt)
+            d_fake, fake_feats = self.netD(sar=real_sar if cfg.model.dis.in_ch == 4 else None, fake_opt=fake_opt, real_opt=real_opt)
+            _, real_feats = self.netD(sar=real_sar if cfg.model.dis.in_ch == 4 else None, fake_opt=fake_opt, real_opt=real_opt)
             loss_gan = sum(self.criterions['GAN'](pf, True) for pf in d_fake)
             loss_fm = self.criterions['FM'](
                 [feat.detach() for feat in real_feats],
@@ -97,6 +96,8 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
         self.accumulation_count += 1
 
         if self.accumulation_count % self.accumulation_steps == 0:
+            torch.nn.utils.clip_grad_norm_(self.netG.parameters(), max_norm=0.5)
+            
             opt_d.step()
             opt_d.zero_grad(set_to_none=True)
             opt_g.step()
@@ -165,6 +166,17 @@ from src.data.sen12.datamodule import SEN12Datamodule
 import os
 cfg = OmegaConf.load("src/models/cfrwd/config.yaml")
 
+def cleanup():
+    """Функция для освобождения оперативной памяти и кэша."""
+    global model, dm
+    if 'model' in globals():
+        del model
+    if 'dm' in globals():
+        del dm
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+
 if __name__ == "__main__":
     pl.seed_everything(42, workers=True)
     torch.set_float32_matmul_precision('high')
@@ -181,6 +193,7 @@ if __name__ == "__main__":
         prefetch_factor=cfg.data.prefetch_factor,
         train_val_split_ratio=cfg.data.train_val_split_ratio,
         seed=cfg.data.seed,
+        sar_channels=cfg.data.sar_channels
     )
 
     model = SAR2OPTGANLightningModule(cfg)
@@ -208,4 +221,16 @@ if __name__ == "__main__":
         deterministic=cfg.system.deterministic
     )
 
-    trainer.fit(model, datamodule=dm)
+    try:
+        print("Начинаем обучение...")
+        trainer.fit(model, datamodule=dm)
+    except KeyboardInterrupt:
+        print("Обучение прервано пользователем. Выполняем очистку...")
+        cleanup()
+        raise  # Перевыбрасываем исключение
+    except Exception as e:
+        print(f"Произошла ошибка: {e}. Выполняем очистку...")
+        cleanup()
+        raise  # Перевыбрасываем исключение
+    finally:
+        cleanup()

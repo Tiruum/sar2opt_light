@@ -60,4 +60,4 @@ class FeatureMatchingLoss(nn.Module):
             # Normalization: 1/(C W H) * sum |diff| == mean(|diff|) since L1 mean is sum/N
             diff_loss = self.l1_loss(feat_real[i], feat_fake[i])
             total_loss += diff_loss
-        return total_loss / len(feat_real)  # Average over layers, or sum if preferred
+        return total_loss # Average over layers, or sum if preferred

@@ -36,6 +36,7 @@ def main():
         prefetch_factor=getattr(cfg.data, "prefetch_factor", 2),
         train_val_split_ratio=cfg.data.train_val_split_ratio,
         seed=cfg.data.seed,
+        sar_channels=cfg.data.sar_channels
     )
 
     # 5) LightningModule

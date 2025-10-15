@@ -3,45 +3,71 @@ import torch.nn as nn
 import math
 
 class ResBlock(nn.Module):
-    """ Остаточный блок из ResNet """
-    def __init__(self, channels):
+    """ Enhanced Residual Block with modern GAN best practices """
+    def __init__(self, channels, use_spectral_norm=True):
         super(ResBlock, self).__init__()
+        
+        conv_layer = lambda in_c, out_c, k, s, p: nn.utils.spectral_norm(
+            nn.Conv2d(in_c, out_c, kernel_size=k, stride=s, padding=p)
+        ) if use_spectral_norm else nn.Conv2d(in_c, out_c, kernel_size=k, stride=s, padding=p)
         
         self.block = nn.Sequential(
             nn.ReflectionPad2d(1),
-            nn.Conv2d(channels, channels, kernel_size=3, stride=1, padding=0),
+            conv_layer(channels, channels, kernel_size=3, stride=1, padding=0),
             nn.BatchNorm2d(channels),
-            nn.ReLU(inplace=True),
+            nn.LeakyReLU(0.2, inplace=True),
             nn.ReflectionPad2d(1),
-            nn.Conv2d(channels, channels, kernel_size=3, stride=1, padding=0),
+            conv_layer(channels, channels, kernel_size=3, stride=1, padding=0),
             nn.BatchNorm2d(channels)
         )
         
+        # Scaling factor for better gradient flow
+        self.scale = nn.Parameter(torch.ones(1))
+        
     def forward(self, x):
-        return x + self.block(x) # Остаточное соединение: x + F(x)
+        return x + self.scale * self.block(x) # Scaled residual connection: x + λ*F(x)
 
 class ConvBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size=3, stride=2):
+    def __init__(self, in_channels, out_channels, kernel_size=3, stride=2, use_spectral_norm=True, dropout_rate=0.0):
         super(ConvBlock, self).__init__()
 
-        self.conv_block = nn.Sequential(
-            nn.ReflectionPad2d(1), # Вообще по статье ReflectionPad используется один раз в начале, а затем, видимо, в Conv2d padding=1
-            nn.Conv2d(in_channels, out_channels, kernel_size, stride),
+        conv_layer = lambda in_c, out_c, k, s: nn.utils.spectral_norm(
+            nn.Conv2d(in_c, out_c, kernel_size=k, stride=s, padding=0)
+        ) if use_spectral_norm else nn.Conv2d(in_c, out_c, kernel_size=k, stride=s, padding=0)
+        
+        layers = [
+            nn.ReflectionPad2d(1),
+            conv_layer(in_channels, out_channels, kernel_size, stride),
             nn.BatchNorm2d(out_channels),
-            nn.ReLU(inplace=True)
-        )
+            nn.LeakyReLU(0.2, inplace=True)
+        ]
+        
+        if dropout_rate > 0:
+            layers.append(nn.Dropout2d(dropout_rate))
+            
+        self.conv_block = nn.Sequential(*layers)
 
     def forward(self, x):
         return self.conv_block(x)
     
 class TConvBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size=4, stride=2, padding=1):
+    def __init__(self, in_channels, out_channels, kernel_size=4, stride=2, padding=1, use_spectral_norm=True, dropout_rate=0.0):
         super(TConvBlock, self).__init__()
-        self.t_conv_block = nn.Sequential(
-            nn.ConvTranspose2d(in_channels, out_channels, kernel_size, stride, padding),
+        
+        tconv_layer = lambda in_c, out_c, k, s, p: nn.utils.spectral_norm(
+            nn.ConvTranspose2d(in_c, out_c, kernel_size=k, stride=s, padding=p)
+        ) if use_spectral_norm else nn.ConvTranspose2d(in_c, out_c, kernel_size=k, stride=s, padding=p)
+        
+        layers = [
+            tconv_layer(in_channels, out_channels, kernel_size, stride, padding),
             nn.BatchNorm2d(out_channels),
-            nn.ReLU(inplace=True)
-        )
+            nn.LeakyReLU(0.2, inplace=True)
+        ]
+        
+        if dropout_rate > 0:
+            layers.append(nn.Dropout2d(dropout_rate))
+            
+        self.t_conv_block = nn.Sequential(*layers)
         
     def forward(self, x):
         return self.t_conv_block(x)
@@ -191,7 +217,7 @@ class CFRBlock(nn.Module):
         return d
     
 class CFRBranch(nn.Module):
-    def __init__(self, in_channel=1, image_size=256, debug=False):
+    def __init__(self, in_channels=1, image_size=256, debug=False):
         super(CFRBranch, self).__init__()
         self.debug = debug
         self.image_size = image_size
@@ -201,13 +227,13 @@ class CFRBranch(nn.Module):
             print('\nCFR BRANCH INIT DEBUG')
             print(f'Image size: {self.image_size}, num_down: {self.num_down}, base_channels: {self.base_channels}')
 
-        in_ch = [in_channel] + [2** (i+6) for i in range(self.num_down)]  # 1→64→128→...→base_ch
+        in_channels = [in_channels] + [2** (i+6) for i in range(self.num_down)]  # 1→64→128→...→base_ch
         out_ch = [2** (i+6) for i in range(self.num_down)]  # 64→128→...→base_ch
         conv_layers = []
-        for ic, oc in zip(in_ch, out_ch):
+        for ic, oc in zip(in_channels, out_ch):
             conv_layers.append(ConvBlock(ic, oc))
 
-        if self.debug: print('Conv:\t\t', ' -> '.join(map(str, in_ch)))
+        if self.debug: print('Conv:\t\t', ' -> '.join(map(str, in_channels)))
         self.conv = nn.Sequential(*conv_layers)
 
         self.CFR = CFRBlock(self.base_channels, debug)
@@ -283,9 +309,9 @@ class HaarDown(nn.Module):
         return ll, lh, hl, hh
 
 class DWTBlock(nn.Module):
-    def __init__(self):
+    def __init__(self, in_channels=1):
         super(DWTBlock, self).__init__()
-        self.dwt = HaarDown(normalize=True)
+        self.dwt = HaarDown(normalize=True, in_channels=in_channels)
 
     def forward(self, x):
         ll1, lh1, hl1, hh1 = self.dwt(x)
@@ -411,21 +437,24 @@ class HFCFUpconvBlock(nn.Module):
         return self.upconv_block(x)
     
 class HFCFBranch(nn.Module):
-    def __init__(self, hfcf_concat_type='cat'):
+    def __init__(self, in_channels=1, hfcf_concat_type='cat'):
         super(HFCFBranch, self).__init__()
-        self.dwt = DWTBlock()
+        self.dwt = DWTBlock(in_channels=in_channels)
 
-        self.HFCF_prep11 = HFCFPreprocess(in_channels=1, out_channels=32)
-        self.HFCF_prep12 = HFCFPreprocess(in_channels=1, out_channels=32)
-        self.HFCF_prep21 = HFCFPreprocess(in_channels=3, out_channels=32)
-        self.HFCF_prep22 = HFCFPreprocess(in_channels=3, out_channels=32)
-        self.HFCF_prep31 = HFCFPreprocess(in_channels=3, out_channels=32)
-        self.HFCF_prep32 = HFCFPreprocess(in_channels=3, out_channels=32)
+        self.HFCF_prep11 = HFCFPreprocess(in_channels=in_channels, out_channels=32)
+        self.HFCF_prep12 = HFCFPreprocess(in_channels=in_channels, out_channels=32)
+        self.HFCF_prep21 = HFCFPreprocess(in_channels=in_channels*3, out_channels=32)
+        self.HFCF_prep22 = HFCFPreprocess(in_channels=in_channels*3, out_channels=32)
+        self.HFCF_prep31 = HFCFPreprocess(in_channels=in_channels*3, out_channels=32)
+        self.HFCF_prep32 = HFCFPreprocess(in_channels=in_channels*3, out_channels=32)
 
         self.hfcf_concat_type = hfcf_concat_type
 
     def forward(self, x):
         g1, g2, g3 = self.dwt(x)
+
+        print('DWT shapes:')
+        print('g1.shape', g1.shape, 'g2.shape', g2.shape, 'g3.shape', g3.shape)
 
         g1_p1_2_be_concat = self.HFCF_prep11(g1).to(g1.device)
         g1_p2 = self.HFCF_prep12(g1).to(g1.device)
@@ -466,10 +495,10 @@ class HFCFBranch(nn.Module):
         return out
     
 class CFRWDGenerator(nn.Module):
-    def __init__(self, image_size=256, hfcf_concat_type='cat', debug=False):
+    def __init__(self, in_channels=1, image_size=256, hfcf_concat_type='cat', debug=False):
         super(CFRWDGenerator, self).__init__()
-        self.cfr_branch = CFRBranch(image_size=image_size, debug=debug)
-        self.hfcf_branch = HFCFBranch(hfcf_concat_type=hfcf_concat_type)
+        self.cfr_branch = CFRBranch(in_channels=in_channels, image_size=image_size, debug=debug)
+        self.hfcf_branch = HFCFBranch(in_channels=in_channels, hfcf_concat_type=hfcf_concat_type)
         self.fuse_cfr_hfcf = nn.Conv2d(6, 3, kernel_size=1, stride=1, padding=0)
         self.alpha_logit = nn.Parameter(torch.tensor(0.5))
 
@@ -505,20 +534,25 @@ import cv2
 import numpy as np
 if __name__ == "__main__":
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    input_array = cv2.imread('C:/Users/tiruu/Desktop/sar2opt_light/data/sen12/agri/s1/ROIs1868_summer_s1_59_p2.png', cv2.IMREAD_COLOR)  # Fix path
+    input_array = cv2.imread('C:/Users/tiruu/Desktop/sar2opt_light/data/sen12/agri/s1/ROIs1868_summer_s1_59_p2.png', cv2.IMREAD_COLOR)
     if input_array is None:
-        input_tensor = torch.randn(1, 1, 256, 256).to(device)  # Dummy if no image
+        # Создаем случайный тензор с 3 каналами и размером 256x256
+        input_tensor = torch.randn(1, 3, 256, 256).to(device)  # Форма: [1, 3, 256, 256]
     else:
+        # Конвертируем BGR в RGB и изменяем размер до 256x256
         input_array = cv2.cvtColor(input_array, cv2.COLOR_BGR2RGB)
+        input_array = cv2.resize(input_array, (256, 256))  # Приводим к размеру 256x256
+        
+        # Преобразуем в тензор и нормализуем
         input_tensor = torch.from_numpy(input_array).float().permute(2, 0, 1) / 255.0
-        input_tensor = input_tensor.mean(dim=0, keepdim=True).unsqueeze(0).to(device)
+        input_tensor = input_tensor.unsqueeze(0).to(device)  # Добавляем batch-размер -> [1, 3, 256, 256]
 
-    gen = CFRWDGenerator(image_size=256, hfcf_concat_type='cat').to(device)
+    gen = CFRWDGenerator(in_channels=3, image_size=256, hfcf_concat_type='cat', debug=True).to(device)
     out = gen(input_tensor)
 
     import matplotlib.pyplot as plt
     plt.subplot(1, 2, 1)
-    plt.imshow(input_tensor.squeeze().cpu().numpy(), cmap='gray')
+    plt.imshow(input_tensor.squeeze().permute(1, 2, 0).detach().cpu().numpy())
     plt.title('Input SAR Image')
     plt.axis('off')
     plt.subplot(1, 2, 2)
