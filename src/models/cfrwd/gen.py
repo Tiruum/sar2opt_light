@@ -1,6 +1,9 @@
 import torch
 import torch.nn as nn
 import math
+from src.utils.logger import Logger
+
+logger = Logger(name="CFRWD", cfg_path='src/models/cfrwd/config.yaml')
 
 class ResBlock(nn.Module):
     """ Остаточный блок из ResNet """
@@ -59,9 +62,8 @@ class FinalTConvBlock(nn.Module):
         return self.final_t_conv_block(x)
 
 class CFRBlock(nn.Module):
-    def __init__(self, channels, debug=False):
+    def __init__(self, channels):
         super(CFRBlock, self).__init__()
-        self.debug = debug
 
         # a1 = B C W H          p1 = B C/4 W H
         # a2 = B C W/2 H/2      p2 = B C/2 W/2 H/2
@@ -134,7 +136,7 @@ class CFRBlock(nn.Module):
         up = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
         down = nn.AvgPool2d(kernel_size=2, stride=2)
 
-        if self.debug: print('Input shape:', x.shape)
+        logger.debug('Input shape:', x.shape)
 
         a1 = x
         a2 = down(a1)
@@ -143,10 +145,9 @@ class CFRBlock(nn.Module):
         p1 = self.n11(a1)
         p2 = self.n12(a2)
 
-        if self.debug:
-            print('\nStage 1')
-            print('a1 shape:', a1.shape, '\t\tp1 shape:', p1.shape)
-            print('a2 shape:', a2.shape, '\t\tp2 shape:', p2.shape)
+        logger.debug('Stage 1')
+        logger.debug(f'a1 shape: {a1.shape}, p1 shape: {p1.shape}')
+        logger.debug(f'a2 shape: {a2.shape}, p2 shape: {p2.shape}')
 
         # Cross-fusion 1
         b1 = self.fuse1_to2_1(torch.cat([p1, up(p2)], dim=1))
@@ -158,11 +159,10 @@ class CFRBlock(nn.Module):
         q2 = self.n22(b2)
         q3 = self.n23(b3)
 
-        if self.debug:
-            print('\nStage 2')
-            print('b1 shape:', b1.shape, '\t\tq1 shape:', q1.shape)
-            print('b2 shape:', b2.shape, '\t\tq2 shape:', q2.shape)
-            print('b3 shape:', b3.shape, '\t\tq3 shape:', q3.shape)
+        logger.debug('Stage 2')
+        logger.debug(f'b1 shape: {b1.shape}, q1 shape: {q1.shape}')
+        logger.debug(f'b2 shape: {b2.shape}, q2 shape: {q2.shape}')
+        logger.debug(f'b3 shape: {b3.shape}, q3 shape: {q3.shape}')
 
         # Cross-fusion 2
         c1 = self.fuse2_to3_1(torch.cat([q1, up(q2), up(up(q3))], dim=1))
@@ -176,30 +176,27 @@ class CFRBlock(nn.Module):
         k3 = self.n33(c3)
         k4 = self.n34(c4)
 
-        if self.debug:
-            print('\nStage 3')
-            print('c1 shape:', c1.shape, '\t\tk1 shape:', k1.shape)
-            print('c2 shape:', c2.shape, '\t\tk2 shape:', k2.shape)
-            print('c3 shape:', c3.shape, '\t\tk3 shape:', k3.shape)
-            print('c4 shape:', c4.shape, '\t\tk4 shape:', k4.shape)
+        logger.debug('Stage 3')
+        logger.debug(f'c1 shape: {c1.shape}, k1 shape: {k1.shape}')
+        logger.debug(f'c2 shape: {c2.shape}, k2 shape: {k2.shape}')
+        logger.debug(f'c3 shape: {c3.shape}, k3 shape: {k3.shape}')
+        logger.debug(f'c4 shape: {c4.shape}, k4 shape: {k4.shape}')
 
         # Final fusion
         d = self.fuse3_to4(torch.cat([down(k1), k2, up(k3), up(up(k4))], dim=1))
-        if self.debug: print('Output shape:', d.shape)
+        logger.debug(f'Output shape: {d.shape}')
         # d = up(d)
 
         return d
     
 class CFRBranch(nn.Module):
-    def __init__(self, in_channels=1, image_size=256, debug=False):
+    def __init__(self, in_channels=1, image_size=256):
         super(CFRBranch, self).__init__()
-        self.debug = debug
         self.image_size = image_size
         self.num_down = int(math.log2(self.image_size) - 4)
         self.base_channels = self.image_size * 2
-        if self.debug:
-            print('\nCFR BRANCH INIT DEBUG')
-            print(f'Image size: {self.image_size}, num_down: {self.num_down}, base_channels: {self.base_channels}')
+        logger.debug('CFR BRANCH INIT DEBUG')
+        logger.debug(f'Image size: {self.image_size}, num_down: {self.num_down}, base_channels: {self.base_channels}')
 
         in_channels = [in_channels] + [2** (i+6) for i in range(self.num_down)]  # 1→64→128→...→base_ch
         out_ch = [2** (i+6) for i in range(self.num_down)]  # 64→128→...→base_ch
@@ -207,11 +204,11 @@ class CFRBranch(nn.Module):
         for ic, oc in zip(in_channels, out_ch):
             conv_layers.append(ConvBlock(ic, oc))
 
-        if self.debug: print('Conv:\t\t', ' -> '.join(map(str, in_channels)))
+        logger.debug('Conv:\t\t', ' -> '.join(map(str, in_channels)))
         self.conv = nn.Sequential(*conv_layers)
 
-        self.CFR = CFRBlock(self.base_channels, debug)
-        if self.debug: print(f'CFRBlock:\t{self.base_channels} -> {self.base_channels // 4}')
+        self.CFR = CFRBlock(self.base_channels)
+        logger.debug(f'CFRBlock:\t{self.base_channels} -> {self.base_channels // 4}')
 
         # self.conv = nn.Sequential(
         #     ConvBlock(in_channel, 64),
@@ -237,18 +234,18 @@ class CFRBranch(nn.Module):
 
         up_layers.append(TConvBlock(dec_out_ch_list[-1], 16))  # Extra to 16, adjust if needed
         up_layers.append(FinalTConvBlock(16, 3))
-        if self.debug: print('Upconv:\t\t', ' -> '.join(map(str, dec_out_ch_list + [16, 3])))
+        logger.debug('Upconv:\t\t', ' -> '.join(map(str, dec_out_ch_list + [16, 3])))
         self.upconv = nn.Sequential(*up_layers)
 
     def forward(self, x):
-        if self.debug: print('\nCFR BRANCH FORWARD DEBUG')
-        if self.debug: print('CFRBranch Input shape:', x.shape)
+        logger.debug('CFR BRANCH FORWARD DEBUG')
+        logger.debug('CFRBranch Input shape:', x.shape)
         x = self.conv(x)
-        if self.debug: print('After Conv shape:', x.shape)
+        logger.debug('After Conv shape:', x.shape)
         x = self.CFR(x)
-        if self.debug: print('After CFR shape:', x.shape)
+        logger.debug('After CFR shape:', x.shape)
         x = self.upconv(x)
-        if self.debug: print('CFRBranch Output shape:', x.shape)
+        logger.debug('CFRBranch Output shape:', x.shape)
         return x
 
 class HaarDown(nn.Module):
@@ -427,8 +424,8 @@ class HFCFBranch(nn.Module):
     def forward(self, x):
         g1, g2, g3 = self.dwt(x)
 
-        print('DWT shapes:')
-        print('g1.shape', g1.shape, 'g2.shape', g2.shape, 'g3.shape', g3.shape)
+        logger.debug('DWT shapes:')
+        logger.debug(f'g1.shape: {g1.shape}, g2.shape: {g2.shape}, g3.shape: {g3.shape}')
 
         g1_p1_2_be_concat = self.HFCF_prep11(g1).to(g1.device)
         g1_p2 = self.HFCF_prep12(g1).to(g1.device)
@@ -469,9 +466,9 @@ class HFCFBranch(nn.Module):
         return out
     
 class CFRWDGenerator(nn.Module):
-    def __init__(self, in_channels=1, image_size=256, hfcf_concat_type='cat', debug=False):
+    def __init__(self, in_channels=1, image_size=256, hfcf_concat_type='cat'):
         super(CFRWDGenerator, self).__init__()
-        self.cfr_branch = CFRBranch(in_channels=in_channels, image_size=image_size, debug=debug)
+        self.cfr_branch = CFRBranch(in_channels=in_channels, image_size=image_size)
         self.hfcf_branch = HFCFBranch(in_channels=in_channels, hfcf_concat_type=hfcf_concat_type)
         self.fuse_cfr_hfcf = nn.Conv2d(6, 3, kernel_size=1, stride=1, padding=0)
         self.alpha_logit = nn.Parameter(torch.tensor(0.5))
@@ -492,7 +489,8 @@ class CFRWDGenerator(nn.Module):
                 if m.bias is not None:
                     nn.init.constant_(m.bias, 0)
 
-        print('Weights initialized.')
+        logger.info("Веса инициализированы (nn.Conv2d, nn.ConvTranspose2d = fan_out, nn.BatchNorm2d = fan_in).")
+
 
     def forward(self, x):
         cfr_out = self.cfr_branch(x)

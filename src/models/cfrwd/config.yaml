@@ -19,7 +19,8 @@ model:
     in_channels: 3
   dis:
     ndf: 64
-    in_channels: 6 # 3 for only optical input to discriminator, 4 for SAR+optical input IF SAR has 1 channel, 6 if SAR has 3 channels
+    in_channels: 6 # in_channels должен быть равен real_opt_channels + fake_opt_channels (3 + 3 = 6)
+    condition_channels: 3 # Если используется condition (real opt сравнивается не только с fake opt, но и с sar), то condition_channels должен быть равен sar_channels
 
 optimizer:
   lr_g: 0.00005
@@ -48,4 +49,5 @@ system:
   limit_train_batches: 0.1
   limit_val_batches: 0.1
   accumulate_grad_batches: 1 # Automatic gradient accumulation is not supported for manual optimization
-  tb_version: 'cfrwd-7'
+  tb_version: 'cfrwd-9'
+  debug: false

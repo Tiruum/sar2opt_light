@@ -16,7 +16,7 @@ def build_models():
     """
 
     netG = CFRWDGenerator(in_channels=cfg.model.gen.in_channels, image_size=cfg.data.image_size, hfcf_concat_type='cat')
-    netD = CFRWDPatchDis(in_channels=cfg.model.dis.in_channels, condition_channels=3, ndf=cfg.model.dis.ndf, return_features=True)
+    netD = CFRWDPatchDis(in_channels=cfg.model.dis.in_channels, condition_channels=cfg.model.dis.condition_channels, ndf=cfg.model.dis.ndf, return_features=True)
 
     return netG, netD
 

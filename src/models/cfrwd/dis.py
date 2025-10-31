@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 
 class CFRWDPatchDisBranch(nn.Module):
-    def __init__(self, in_channels=4, condition_channels=3, ndf=64, return_features=True):
+    def __init__(self, in_channels=6, condition_channels=3, ndf=64, return_features=True):
         super(CFRWDPatchDisBranch, self).__init__()
         self.return_features = return_features
 
@@ -29,7 +29,7 @@ class CFRWDPatchDisBranch(nn.Module):
     
     def forward(self, x, condition):
         features = []
-        # Concatenate input (SAR + optical) with condition (real optical) along channel dimension
+        # Concatenate input (fake optical + real optical) with condition (sar) along channel dimension
         x = torch.cat((x, condition), dim=1)
         # Проходим через sequential, но извлекаем признаки только после активаций (LeakyReLU)
         for i, layer in enumerate(self.main):
@@ -42,9 +42,10 @@ class CFRWDPatchDisBranch(nn.Module):
         return x  # Только output
 
 class CFRWDPatchDis(nn.Module):
-    def __init__(self, in_channels=4, condition_channels=3, ndf=64, return_features=True):
+    def __init__(self, in_channels=6, condition_channels=3, ndf=64, return_features=True):
         super(CFRWDPatchDis, self).__init__()
         self.in_channels = in_channels
+        self.condition_channels = condition_channels
         self.return_features = return_features
         # Large-scale branch
         self.large_scale_branch = CFRWDPatchDisBranch(in_channels, condition_channels, ndf, return_features)
@@ -54,13 +55,19 @@ class CFRWDPatchDis(nn.Module):
         self.small_scale_branch = CFRWDPatchDisBranch(in_channels, condition_channels, ndf, return_features)
 
     def forward(self, sar=None, fake_opt=None, real_opt=None):
-        if not ((self.in_channels == 6 and sar is None)
-            or (self.in_channels == 9 and sar is not None)):
-            raise ValueError("Каналы входного изображения не соответствуют переданным данным.")
+        if fake_opt is None or real_opt is None:
+            raise ValueError("Для дискриминатора требуется как минимум fake_opt и real_opt.")
+
+        inputs = []
         if sar is not None:
-            input_img = torch.cat((sar, fake_opt), dim=1)
-        else:
-            input_img = fake_opt
+            inputs.append(sar)
+        inputs.append(fake_opt)
+        input_img = torch.cat(inputs, dim=1)
+
+        if input_img.shape[1] != self.in_channels:
+            raise ValueError(
+                f"Ожидается {self.in_channels} каналов на входе дискриминатора, получено {input_img.shape[1]}"
+            )
 
         # Large-scale branch output
         if self.return_features:

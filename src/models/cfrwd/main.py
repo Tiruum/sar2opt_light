@@ -57,8 +57,8 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
         with autocast(device_type=self.device.type, enabled=self.trainer.precision == 16):
             fake_opt = self.netG(real_sar).detach()
 
-            d_fake, _ = self.netD(sar=real_sar if cfg.model.dis.in_channels == 6 else None, fake_opt=fake_opt, real_opt=real_opt)
-            d_real, _ = self.netD(sar=real_sar if cfg.model.dis.in_channels == 6 else None, fake_opt=real_opt, real_opt=real_opt)
+            d_fake, _ = self.netD(sar=real_sar if cfg.model.dis.condition_channels != 0 else None, fake_opt=fake_opt, real_opt=real_opt)
+            d_real, _ = self.netD(sar=real_sar if cfg.model.dis.condition_channels != 0 else None, fake_opt=real_opt, real_opt=real_opt)
 
             num_scales = len(d_real)
             d_loss = 0.0
@@ -75,8 +75,8 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
         with autocast(device_type=self.device.type, enabled=self.trainer.precision == 16):
             fake_opt = self.netG(real_sar)
             
-            d_fake, fake_feats = self.netD(sar=real_sar if cfg.model.dis.in_ch == 4 else None, fake_opt=fake_opt, real_opt=real_opt)
-            _, real_feats = self.netD(sar=real_sar if cfg.model.dis.in_ch == 4 else None, fake_opt=fake_opt, real_opt=real_opt)
+            d_fake, fake_feats = self.netD(sar=real_sar if cfg.model.dis.condition_channels != 0 else None, fake_opt=fake_opt, real_opt=real_opt)
+            _, real_feats = self.netD(sar=real_sar if cfg.model.dis.condition_channels != 0 else None, fake_opt=fake_opt, real_opt=real_opt)
             loss_gan = sum(self.criterions['GAN'](pf, True) for pf in d_fake)
             loss_fm = self.criterions['FM'](
                 [feat.detach() for feat in real_feats],
@@ -164,6 +164,8 @@ from pytorch_lightning.loggers import TensorBoardLogger
 
 from src.data.sen12.datamodule import SEN12Datamodule
 import os
+from src.utils.logger import Logger
+terminal_logger = Logger(name="CFRWD main.py", cfg_path='src/models/cfrwd/config.yaml')
 cfg = OmegaConf.load("src/models/cfrwd/config.yaml")
 
 def cleanup():
@@ -222,14 +224,14 @@ if __name__ == "__main__":
     )
 
     try:
-        print("Начинаем обучение...")
+        terminal_logger.info("Начинаем обучение...")
         trainer.fit(model, datamodule=dm)
     except KeyboardInterrupt:
-        print("Обучение прервано пользователем. Выполняем очистку...")
+        terminal_logger.warning("Обучение прервано пользователем. Выполняем очистку...")
         cleanup()
         raise  # Перевыбрасываем исключение
     except Exception as e:
-        print(f"Произошла ошибка: {e}. Выполняем очистку...")
+        terminal_logger.error(f"Произошла ошибка: {e}. Выполняем очистку...")
         cleanup()
         raise  # Перевыбрасываем исключение
     finally:

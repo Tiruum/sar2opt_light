@@ -13,6 +13,8 @@ from pytorch_lightning.loggers import TensorBoardLogger
 from src.models.cfrwd.main import SAR2OPTGANLightningModule
 from src.data.sen12.datamodule import SEN12Datamodule
 
+os.environ["NO_ALBUMENTATIONS_UPDATE"] = "1"  # disable albumentations update
+
 def main():
     # 1) Загрузить и валидировать конфиг
     cfg = OmegaConf.load('src/models/cfrwd/config.yaml')
