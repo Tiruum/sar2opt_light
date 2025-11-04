@@ -8,6 +8,7 @@ from pytorch_lightning import Trainer, seed_everything
 from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
 from pytorch_lightning.profilers import SimpleProfiler
 from pytorch_lightning.loggers import TensorBoardLogger
+import gc
 
 
 from src.models.cfrwd.main import SAR2OPTGANLightningModule
@@ -86,5 +87,26 @@ def main():
     # 8) Запуск обучения
     trainer.fit(model, datamodule=dm)
 
+def cleanup():
+    """Функция для освобождения оперативной памяти и кэша."""
+    global model, dm
+    if 'model' in globals():
+        del model
+    if 'dm' in globals():
+        del dm
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+
 if __name__ == "__main__":
-    main()
+    from src.utils.logger import Logger
+    terminal_logger = Logger(name="CFRWD", cfg_path='src/models/cfrwd/config.yaml')
+    try:
+        terminal_logger.info("Начинаем обучение...")
+        main()
+    except Exception as e:
+        terminal_logger.error(f"Произошла ошибка: {e}. Выполняем очистку...")
+        cleanup()
+        raise  # Перевыбрасываем исключение
+    finally:
+        cleanup()
