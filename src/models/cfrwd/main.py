@@ -63,8 +63,8 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
             num_scales = len(d_real)
             d_loss = 0.0
             for real_out, fake_out in zip(d_real, d_fake):
-                real_loss = self.criterions['GAN'](real_out, target_is_real=False, real_label_smooth=0.9, fake_label_smooth=0.1)
-                fake_loss = self.criterions['GAN'](fake_out, target_is_real=True, real_label_smooth=0.9, fake_label_smooth=0.1)
+                real_loss = self.criterions['GAN'](real_out, target_is_real=True, real_label_smooth=0.9, fake_label_smooth=0.1)
+                fake_loss = self.criterions['GAN'](fake_out, target_is_real=False, real_label_smooth=0.9, fake_label_smooth=0.1)
                 d_loss += (real_loss + fake_loss) / 2
             d_loss /= num_scales
 
@@ -76,7 +76,7 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
             fake_opt = self.netG(real_sar)
             
             d_fake, fake_feats = self.netD(sar=real_sar if cfg.model.dis.condition_channels != 0 else None, fake_opt=fake_opt, real_opt=real_opt)
-            _, real_feats = self.netD(sar=real_sar if cfg.model.dis.condition_channels != 0 else None, fake_opt=fake_opt, real_opt=real_opt)
+            _, real_feats = self.netD(sar=real_sar if cfg.model.dis.condition_channels != 0 else None, fake_opt=real_opt, real_opt=real_opt)
             loss_gan = sum(self.criterions['GAN'](pf, True) for pf in d_fake)
             loss_fm = self.criterions['FM'](
                 [feat.detach() for feat in real_feats],

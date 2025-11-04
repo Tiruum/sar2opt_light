@@ -21,6 +21,7 @@ class Logger:
         self.name = name
         self.stream = stream
         self.cfg = OmegaConf.load(cfg_path)
+        self.logged_lines = set()
         # Определяем корень проекта (папку, содержащую src)
         self.project_root = self._find_project_root()
 
@@ -55,7 +56,7 @@ class Logger:
         finally:
             del frame
 
-    def _log(self, level: str, message: str, show_lineno: bool = False):
+    def _log(self, level: str, message: str, show_lineno: bool = False, once: bool = False):
         now = datetime.datetime.now().strftime("%H:%M:%S %d-%m-%Y ")
         lvl = self.LEVELS.get(level, self.LEVELS['info'])
         
@@ -70,7 +71,13 @@ class Logger:
                 parts.append(Style.BRIGHT + f"[{self.name} {filename}:{lineno}]")
             else:
                 parts.append(Style.BRIGHT + f"[{self.name}]")
-                
+        
+        if once:
+            filename, lineno = self._get_caller_info()
+            unique_id = (filename, lineno, message)
+            if unique_id in self.logged_lines:
+                return
+            self.logged_lines.add(unique_id)
         parts.append(Style.NORMAL + str(message))
         text = " ".join(parts) + Style.RESET_ALL
         print(text, file=self.stream, flush=True)

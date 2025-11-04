@@ -49,5 +49,5 @@ system:
   limit_train_batches: 0.1
   limit_val_batches: 0.1
   accumulate_grad_batches: 1 # Automatic gradient accumulation is not supported for manual optimization
-  tb_version: 'cfrwd-9'
-  debug: false
+  tb_version: 'cfrwd-11'
+  debug: true

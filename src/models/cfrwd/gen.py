@@ -9,7 +9,7 @@ class ResBlock(nn.Module):
     """ Остаточный блок из ResNet """
     def __init__(self, channels):
         super(ResBlock, self).__init__()
-        logger.info('Res Block INIT')
+        logger.debug('Res Block INIT')
         
         self.block = nn.Sequential(
             nn.ReflectionPad2d(1),
@@ -26,7 +26,7 @@ class ResBlock(nn.Module):
 
 class ConvBlock(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size=3, stride=2):
-        logger.info('Conv Block INIT')
+        logger.debug('Conv Block INIT')
         super(ConvBlock, self).__init__()
 
         self.conv_block = nn.Sequential(
@@ -42,7 +42,7 @@ class ConvBlock(nn.Module):
 class TConvBlock(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size=4, stride=2, padding=1):
         super(TConvBlock, self).__init__()
-        logger.info('TConv Block INIT')
+        logger.debug('TConv Block INIT')
         self.t_conv_block = nn.Sequential(
             nn.ConvTranspose2d(in_channels, out_channels, kernel_size, stride, padding),
             nn.BatchNorm2d(out_channels),
@@ -55,7 +55,7 @@ class TConvBlock(nn.Module):
 class FinalTConvBlock(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size=3):
         super(FinalTConvBlock, self).__init__()
-        logger.info('Final TConv Block INIT')
+        logger.debug('Final TConv Block INIT')
         self.final_t_conv_block = nn.Sequential(
             nn.ReflectionPad2d(1),
             nn.Conv2d(in_channels, out_channels, kernel_size, padding=0),
@@ -68,7 +68,7 @@ class FinalTConvBlock(nn.Module):
 class CFRBlock(nn.Module):
     def __init__(self, channels):
         super(CFRBlock, self).__init__()
-        logger.info('CFR Block INIT')
+        logger.debug('CFR Block INIT')
 
         # a1 = B C W H          p1 = B C/4 W H
         # a2 = B C W/2 H/2      p2 = B C/2 W/2 H/2
@@ -141,7 +141,7 @@ class CFRBlock(nn.Module):
         up = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
         down = nn.AvgPool2d(kernel_size=2, stride=2)
 
-        logger.debug('Input shape:', x.shape)
+        logger.debug(f'Input shape: {x.shape}', once=True)
 
         a1 = x
         a2 = down(a1)
@@ -150,9 +150,9 @@ class CFRBlock(nn.Module):
         p1 = self.n11(a1)
         p2 = self.n12(a2)
 
-        logger.debug('Stage 1')
-        logger.debug(f'a1 shape: {a1.shape}, p1 shape: {p1.shape}')
-        logger.debug(f'a2 shape: {a2.shape}, p2 shape: {p2.shape}')
+        logger.debug('Stage 1', once=True)
+        logger.debug(f'a1 shape: {a1.shape}, p1 shape: {p1.shape}', once=True)
+        logger.debug(f'a2 shape: {a2.shape}, p2 shape: {p2.shape}', once=True)
 
         # Cross-fusion 1
         b1 = self.fuse1_to2_1(torch.cat([p1, up(p2)], dim=1))
@@ -164,10 +164,10 @@ class CFRBlock(nn.Module):
         q2 = self.n22(b2)
         q3 = self.n23(b3)
 
-        logger.debug('Stage 2')
-        logger.debug(f'b1 shape: {b1.shape}, q1 shape: {q1.shape}')
-        logger.debug(f'b2 shape: {b2.shape}, q2 shape: {q2.shape}')
-        logger.debug(f'b3 shape: {b3.shape}, q3 shape: {q3.shape}')
+        logger.debug('Stage 2', once=True)
+        logger.debug(f'b1 shape: {b1.shape}, q1 shape: {q1.shape}', once=True)
+        logger.debug(f'b2 shape: {b2.shape}, q2 shape: {q2.shape}', once=True)
+        logger.debug(f'b3 shape: {b3.shape}, q3 shape: {q3.shape}', once=True)
 
         # Cross-fusion 2
         c1 = self.fuse2_to3_1(torch.cat([q1, up(q2), up(up(q3))], dim=1))
@@ -181,15 +181,15 @@ class CFRBlock(nn.Module):
         k3 = self.n33(c3)
         k4 = self.n34(c4)
 
-        logger.debug('Stage 3')
-        logger.debug(f'c1 shape: {c1.shape}, k1 shape: {k1.shape}')
-        logger.debug(f'c2 shape: {c2.shape}, k2 shape: {k2.shape}')
-        logger.debug(f'c3 shape: {c3.shape}, k3 shape: {k3.shape}')
-        logger.debug(f'c4 shape: {c4.shape}, k4 shape: {k4.shape}')
+        logger.debug('Stage 3', once=True)
+        logger.debug(f'c1 shape: {c1.shape}, k1 shape: {k1.shape}', once=True)
+        logger.debug(f'c2 shape: {c2.shape}, k2 shape: {k2.shape}', once=True)
+        logger.debug(f'c3 shape: {c3.shape}, k3 shape: {k3.shape}', once=True)
+        logger.debug(f'c4 shape: {c4.shape}, k4 shape: {k4.shape}', once=True)
 
         # Final fusion
         d = self.fuse3_to4(torch.cat([down(k1), k2, up(k3), up(up(k4))], dim=1))
-        logger.debug(f'Output shape: {d.shape}')
+        logger.debug(f'Output shape: {d.shape}', once=True)
         # d = up(d)
 
         return d
@@ -197,7 +197,7 @@ class CFRBlock(nn.Module):
 class CFRBranch(nn.Module):
     def __init__(self, in_channels=1, image_size=256):
         super(CFRBranch, self).__init__()
-        logger.info('CFR BRANCH INIT')
+        logger.debug('CFR BRANCH INIT')
         self.image_size = image_size
         self.num_down = int(math.log2(self.image_size) - 4)
         self.base_channels = self.image_size * 2
@@ -244,20 +244,20 @@ class CFRBranch(nn.Module):
         self.upconv = nn.Sequential(*up_layers)
 
     def forward(self, x):
-        logger.debug('CFR BRANCH FORWARD DEBUG')
-        logger.debug('CFRBranch Input shape:', x.shape)
+        logger.debug('CFR BRANCH FORWARD DEBUG', once=True)
+        logger.debug(f'CFRBranch Input shape: {x.shape}', once=True)
         x = self.conv(x)
-        logger.debug('After Conv shape:', x.shape)
+        logger.debug(f'After Conv shape: {x.shape}', once=True)
         x = self.CFR(x)
-        logger.debug('After CFR shape:', x.shape)
+        logger.debug(f'After CFR shape: {x.shape}', once=True)
         x = self.upconv(x)
-        logger.debug('CFRBranch Output shape:', x.shape)
+        logger.debug(f'CFRBranch Output shape: {x.shape}', once=True)
         return x
 
 class HaarDown(nn.Module):
     def __init__(self, in_channels=1, normalize=True):
         super(HaarDown, self).__init__()
-        logger.info('Haar Down INIT')
+        logger.debug('Haar Down INIT')
         base = 0.5 if not normalize else 1 / math.sqrt(2)
         
         # Low-pass filter (average)
@@ -289,7 +289,7 @@ class HaarDown(nn.Module):
 class DWTBlock(nn.Module):
     def __init__(self, in_channels=1):
         super(DWTBlock, self).__init__()
-        logger.info('DWT Block INIT')
+        logger.debug('DWT Block INIT')
         self.dwt = HaarDown(normalize=True, in_channels=in_channels)
 
     def forward(self, x):
@@ -308,7 +308,7 @@ class HFCFPreprocess(nn.Module):
     """Высокочастотный блок обработки и фильтрации"""
     def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, padding=1):
         super(HFCFPreprocess, self).__init__()
-        logger.info('HFCF Preprocess INIT')
+        logger.debug('HFCF Preprocess INIT')
         self.block = nn.Sequential(
             nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding),
             nn.BatchNorm2d(out_channels),
@@ -322,7 +322,7 @@ class HFCFPreprocess(nn.Module):
 class YellowBlock(nn.Module):
     def __init__(self, in_channels, out_channels):
         super(YellowBlock, self).__init__()
-        logger.info('YellowBlock INIT')
+        logger.debug('YellowBlock INIT')
         self.yellow_block = nn.Sequential(
             nn.Conv2d(in_channels, in_channels, kernel_size=3, stride=1, padding=1),
             nn.BatchNorm2d(in_channels),
@@ -343,7 +343,7 @@ class YellowBlock(nn.Module):
 class BlueBlock(nn.Module):
     def __init__(self, channels):
         super(BlueBlock, self).__init__()
-        logger.info('BlueBlock INIT')
+        logger.debug('BlueBlock INIT')
         self.blue_block = nn.Sequential(
             nn.Conv2d(channels, channels, kernel_size=3, stride=1, padding=1),
             nn.BatchNorm2d(channels),
@@ -360,7 +360,7 @@ class BlueBlock(nn.Module):
 class RedBlock(nn.Module):
     def __init__(self, in_channels, out_channels):
         super(RedBlock, self).__init__()
-        logger.info('RedBlock INIT')
+        logger.debug('RedBlock INIT')
         self.red_block = nn.Sequential(
             nn.Conv2d(in_channels, in_channels, kernel_size=3, stride=1, padding=1),
             nn.BatchNorm2d(in_channels),
@@ -376,7 +376,7 @@ class RedBlock(nn.Module):
 class UpperBranch(nn.Module):
     def __init__(self, channels):
         super(UpperBranch, self).__init__()
-        logger.info('UpperBranch INIT')
+        logger.debug('UpperBranch INIT')
         self.yellow_block1 = YellowBlock(channels, channels*2)
         self.blue_block1 = BlueBlock(channels*2)
         self.blue_block2 = BlueBlock(channels*2)
@@ -396,7 +396,7 @@ class UpperBranch(nn.Module):
 class LowerBranch(nn.Module):
     def __init__(self, channels):
         super(LowerBranch, self).__init__()
-        logger.info('LowerBranch INIT')
+        logger.debug('LowerBranch INIT')
         self.red_block1 = RedBlock(channels, channels*2)
         self.red_block2 = RedBlock(channels*2, channels*4)
 
@@ -408,7 +408,7 @@ class LowerBranch(nn.Module):
 class HFCFUpconvBlock(nn.Module):
     def __init__(self, in_channels, out_channels):
         super(HFCFUpconvBlock, self).__init__()
-        logger.info('HFCF Upconv INIT')
+        logger.debug('HFCF Upconv INIT')
         self.upconv_block = nn.Sequential(
             ConvBlock(in_channels, in_channels, stride=1),
             TConvBlock(in_channels, in_channels // 2),
@@ -425,7 +425,7 @@ class HFCFUpconvBlock(nn.Module):
 class HFCFBranch(nn.Module):
     def __init__(self, in_channels=1, hfcf_concat_type='cat'):
         super(HFCFBranch, self).__init__()
-        logger.info('HFCF BRANCH INIT')
+        logger.debug('HFCF BRANCH INIT')
         self.dwt = DWTBlock(in_channels=in_channels)
 
         self.HFCF_prep11 = HFCFPreprocess(in_channels=in_channels, out_channels=32)
@@ -459,8 +459,8 @@ class HFCFBranch(nn.Module):
     def forward(self, x):
         g1, g2, g3 = self.dwt(x)
 
-        logger.debug('DWT shapes:')
-        logger.debug(f'g1.shape: {g1.shape}, g2.shape: {g2.shape}, g3.shape: {g3.shape}')
+        logger.debug('DWT shapes:', once=True)
+        logger.debug(f'g1.shape: {g1.shape}, g2.shape: {g2.shape}, g3.shape: {g3.shape}', once=True)
 
         g1_p1_2_be_concat = self.HFCF_prep11(g1).to(g1.device)
         g1_p2 = self.HFCF_prep12(g1).to(g1.device)
@@ -505,7 +505,21 @@ class CFRWDGenerator(nn.Module):
         self._initialize_weights()
 
     def _initialize_weights(self):
+        hfcf_wavelet_convs = set()
+        if hasattr(self.hfcf_branch, "dwt"):
+            dwt_block = self.hfcf_branch.dwt
+            if hasattr(dwt_block, "dwt"):
+                haar_down = dwt_block.dwt
+                for attr in ("low", "high_h", "high_v", "high_d"):
+                    module = getattr(haar_down, attr, None)
+                    if module is not None:
+                        hfcf_wavelet_convs.add(module)
+                        for param in module.parameters():
+                            param.requires_grad = False
+
         for m in self.modules():
+            if m in hfcf_wavelet_convs:
+                continue
             if isinstance(m, nn.Conv2d):
                 nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
                 if m.bias is not None:
@@ -518,7 +532,7 @@ class CFRWDGenerator(nn.Module):
                 if m.bias is not None:
                     nn.init.constant_(m.bias, 0)
 
-        logger.info("Веса инициализированы (nn.Conv2d, nn.ConvTranspose2d = fan_out, nn.BatchNorm2d = fan_in).")
+        logger.info("Веса инициализированы (wavelet-конволюции сохранены, остальные Conv/ConvTranspose = fan_out, BatchNorm = 1/0).")
 
 
     def forward(self, x):
