@@ -9,6 +9,7 @@ class ResBlock(nn.Module):
     """ Остаточный блок из ResNet """
     def __init__(self, channels):
         super(ResBlock, self).__init__()
+        logger.info('Res Block INIT')
         
         self.block = nn.Sequential(
             nn.ReflectionPad2d(1),
@@ -25,6 +26,7 @@ class ResBlock(nn.Module):
 
 class ConvBlock(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size=3, stride=2):
+        logger.info('Conv Block INIT')
         super(ConvBlock, self).__init__()
 
         self.conv_block = nn.Sequential(
@@ -40,6 +42,7 @@ class ConvBlock(nn.Module):
 class TConvBlock(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size=4, stride=2, padding=1):
         super(TConvBlock, self).__init__()
+        logger.info('TConv Block INIT')
         self.t_conv_block = nn.Sequential(
             nn.ConvTranspose2d(in_channels, out_channels, kernel_size, stride, padding),
             nn.BatchNorm2d(out_channels),
@@ -52,6 +55,7 @@ class TConvBlock(nn.Module):
 class FinalTConvBlock(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size=3):
         super(FinalTConvBlock, self).__init__()
+        logger.info('Final TConv Block INIT')
         self.final_t_conv_block = nn.Sequential(
             nn.ReflectionPad2d(1),
             nn.Conv2d(in_channels, out_channels, kernel_size, padding=0),
@@ -64,6 +68,7 @@ class FinalTConvBlock(nn.Module):
 class CFRBlock(nn.Module):
     def __init__(self, channels):
         super(CFRBlock, self).__init__()
+        logger.info('CFR Block INIT')
 
         # a1 = B C W H          p1 = B C/4 W H
         # a2 = B C W/2 H/2      p2 = B C/2 W/2 H/2
@@ -192,6 +197,7 @@ class CFRBlock(nn.Module):
 class CFRBranch(nn.Module):
     def __init__(self, in_channels=1, image_size=256):
         super(CFRBranch, self).__init__()
+        logger.info('CFR BRANCH INIT')
         self.image_size = image_size
         self.num_down = int(math.log2(self.image_size) - 4)
         self.base_channels = self.image_size * 2
@@ -251,6 +257,7 @@ class CFRBranch(nn.Module):
 class HaarDown(nn.Module):
     def __init__(self, in_channels=1, normalize=True):
         super(HaarDown, self).__init__()
+        logger.info('Haar Down INIT')
         base = 0.5 if not normalize else 1 / math.sqrt(2)
         
         # Low-pass filter (average)
@@ -282,6 +289,7 @@ class HaarDown(nn.Module):
 class DWTBlock(nn.Module):
     def __init__(self, in_channels=1):
         super(DWTBlock, self).__init__()
+        logger.info('DWT Block INIT')
         self.dwt = HaarDown(normalize=True, in_channels=in_channels)
 
     def forward(self, x):
@@ -300,6 +308,7 @@ class HFCFPreprocess(nn.Module):
     """Высокочастотный блок обработки и фильтрации"""
     def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, padding=1):
         super(HFCFPreprocess, self).__init__()
+        logger.info('HFCF Preprocess INIT')
         self.block = nn.Sequential(
             nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding),
             nn.BatchNorm2d(out_channels),
@@ -313,6 +322,7 @@ class HFCFPreprocess(nn.Module):
 class YellowBlock(nn.Module):
     def __init__(self, in_channels, out_channels):
         super(YellowBlock, self).__init__()
+        logger.info('YellowBlock INIT')
         self.yellow_block = nn.Sequential(
             nn.Conv2d(in_channels, in_channels, kernel_size=3, stride=1, padding=1),
             nn.BatchNorm2d(in_channels),
@@ -333,6 +343,7 @@ class YellowBlock(nn.Module):
 class BlueBlock(nn.Module):
     def __init__(self, channels):
         super(BlueBlock, self).__init__()
+        logger.info('BlueBlock INIT')
         self.blue_block = nn.Sequential(
             nn.Conv2d(channels, channels, kernel_size=3, stride=1, padding=1),
             nn.BatchNorm2d(channels),
@@ -349,6 +360,7 @@ class BlueBlock(nn.Module):
 class RedBlock(nn.Module):
     def __init__(self, in_channels, out_channels):
         super(RedBlock, self).__init__()
+        logger.info('RedBlock INIT')
         self.red_block = nn.Sequential(
             nn.Conv2d(in_channels, in_channels, kernel_size=3, stride=1, padding=1),
             nn.BatchNorm2d(in_channels),
@@ -364,6 +376,7 @@ class RedBlock(nn.Module):
 class UpperBranch(nn.Module):
     def __init__(self, channels):
         super(UpperBranch, self).__init__()
+        logger.info('UpperBranch INIT')
         self.yellow_block1 = YellowBlock(channels, channels*2)
         self.blue_block1 = BlueBlock(channels*2)
         self.blue_block2 = BlueBlock(channels*2)
@@ -383,6 +396,7 @@ class UpperBranch(nn.Module):
 class LowerBranch(nn.Module):
     def __init__(self, channels):
         super(LowerBranch, self).__init__()
+        logger.info('LowerBranch INIT')
         self.red_block1 = RedBlock(channels, channels*2)
         self.red_block2 = RedBlock(channels*2, channels*4)
 
@@ -394,6 +408,7 @@ class LowerBranch(nn.Module):
 class HFCFUpconvBlock(nn.Module):
     def __init__(self, in_channels, out_channels):
         super(HFCFUpconvBlock, self).__init__()
+        logger.info('HFCF Upconv INIT')
         self.upconv_block = nn.Sequential(
             ConvBlock(in_channels, in_channels, stride=1),
             TConvBlock(in_channels, in_channels // 2),
@@ -410,6 +425,7 @@ class HFCFUpconvBlock(nn.Module):
 class HFCFBranch(nn.Module):
     def __init__(self, in_channels=1, hfcf_concat_type='cat'):
         super(HFCFBranch, self).__init__()
+        logger.info('HFCF BRANCH INIT')
         self.dwt = DWTBlock(in_channels=in_channels)
 
         self.HFCF_prep11 = HFCFPreprocess(in_channels=in_channels, out_channels=32)
@@ -420,6 +436,25 @@ class HFCFBranch(nn.Module):
         self.HFCF_prep32 = HFCFPreprocess(in_channels=in_channels*3, out_channels=32)
 
         self.hfcf_concat_type = hfcf_concat_type
+
+        p1_channels = 32 if hfcf_concat_type == 'plus' else 64
+        p2_channels = 32
+
+        self.upper_branches = nn.ModuleList([
+            UpperBranch(channels=p1_channels),
+            UpperBranch(channels=p1_channels),
+            UpperBranch(channels=p1_channels),
+        ])
+        self.lower_branches = nn.ModuleList([
+            LowerBranch(channels=p2_channels),
+            LowerBranch(channels=p2_channels),
+            LowerBranch(channels=p2_channels),
+        ])
+
+        total_in_channels = 4 * (
+            3 * p1_channels + 3 * p2_channels
+        )
+        self.hfcf_upconv = HFCFUpconvBlock(in_channels=total_in_channels, out_channels=3)
 
     def forward(self, x):
         g1, g2, g3 = self.dwt(x)
@@ -447,13 +482,8 @@ class HFCFBranch(nn.Module):
             g2_p1 = torch.cat([g2_p1_2_be_concat, g2_p2], dim=1)
             g3_p1 = torch.cat([g3_p1_2_be_concat, g3_p2], dim=1)
 
-        upper_branch1 = UpperBranch(channels=g1_p1.shape[1]).to(g1_p1.device)
-        upper_branch2 = UpperBranch(channels=g2_p1.shape[1]).to(g2_p1.device)
-        upper_branch3 = UpperBranch(channels=g3_p1.shape[1]).to(g3_p1.device)
-
-        lower_branch1 = LowerBranch(channels=g1_p2.shape[1]).to(g1_p2.device)
-        lower_branch2 = LowerBranch(channels=g2_p2.shape[1]).to(g2_p2.device)
-        lower_branch3 = LowerBranch(channels=g3_p2.shape[1]).to(g3_p2.device)
+        upper_branch1, upper_branch2, upper_branch3 = self.upper_branches
+        lower_branch1, lower_branch2, lower_branch3 = self.lower_branches
 
         out1 = torch.cat([upper_branch1(g1_p1), lower_branch1(g1_p2)], dim=1)
         out2 = torch.cat([upper_branch2(g2_p1), lower_branch2(g2_p2)], dim=1)
@@ -461,8 +491,7 @@ class HFCFBranch(nn.Module):
 
         out = torch.cat([out1, out2, out3], dim=1)
 
-        hfcf_upconv = HFCFUpconvBlock(in_channels=out.shape[1], out_channels=3).to(x.device)
-        out = hfcf_upconv(out)
+        out = self.hfcf_upconv(out)
         return out
     
 class CFRWDGenerator(nn.Module):
