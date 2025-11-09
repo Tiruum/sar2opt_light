@@ -14,11 +14,11 @@ class ResBlock(nn.Module):
         self.block = nn.Sequential(
             nn.ReflectionPad2d(1),
             nn.Conv2d(channels, channels, kernel_size=3, stride=1, padding=0),
-            nn.BatchNorm2d(channels),
+            nn.InstanceNorm2d(channels, affine=True),
             nn.ReLU(inplace=True),
             nn.ReflectionPad2d(1),
             nn.Conv2d(channels, channels, kernel_size=3, stride=1, padding=0),
-            nn.BatchNorm2d(channels)
+            nn.InstanceNorm2d(channels, affine=True)
         )
         
     def forward(self, x):
@@ -32,7 +32,7 @@ class ConvBlock(nn.Module):
         self.conv_block = nn.Sequential(
             nn.ReflectionPad2d(1), # Вообще по статье ReflectionPad используется один раз в начале, а затем, видимо, в Conv2d padding=1
             nn.Conv2d(in_channels, out_channels, kernel_size, stride),
-            nn.BatchNorm2d(out_channels),
+            nn.InstanceNorm2d(out_channels, affine=True),
             nn.ReLU(inplace=True)
         )
 
@@ -45,7 +45,7 @@ class TConvBlock(nn.Module):
         logger.debug('TConv Block INIT')
         self.t_conv_block = nn.Sequential(
             nn.ConvTranspose2d(in_channels, out_channels, kernel_size, stride, padding),
-            nn.BatchNorm2d(out_channels),
+            nn.InstanceNorm2d(out_channels, affine=True),
             nn.ReLU(inplace=True)
         )
         
@@ -311,7 +311,7 @@ class HFCFPreprocess(nn.Module):
         logger.debug('HFCF Preprocess INIT')
         self.block = nn.Sequential(
             nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding),
-            nn.BatchNorm2d(out_channels),
+            nn.InstanceNorm2d(out_channels, affine=True),
             nn.ReLU(inplace=True),
             nn.MaxPool2d(kernel_size=2, stride=2)
         )
@@ -325,16 +325,16 @@ class YellowBlock(nn.Module):
         logger.debug('YellowBlock INIT')
         self.yellow_block = nn.Sequential(
             nn.Conv2d(in_channels, in_channels, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm2d(in_channels),
+            nn.InstanceNorm2d(in_channels, affine=True),
             nn.Conv2d(in_channels, in_channels, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm2d(in_channels),
+            nn.InstanceNorm2d(in_channels, affine=True),
             nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=2, padding=1),
-            nn.BatchNorm2d(out_channels),
+            nn.InstanceNorm2d(out_channels, affine=True),
             nn.ReLU(inplace=True)
         )
         self.skip_connection = nn.Sequential(
             nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=2, padding=0),
-            nn.BatchNorm2d(out_channels)
+            nn.InstanceNorm2d(out_channels, affine=True)
         )
     
     def forward(self, x):
@@ -346,11 +346,11 @@ class BlueBlock(nn.Module):
         logger.debug('BlueBlock INIT')
         self.blue_block = nn.Sequential(
             nn.Conv2d(channels, channels, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm2d(channels),
+            nn.InstanceNorm2d(channels, affine=True),
             nn.Conv2d(channels, channels, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm2d(channels),
+            nn.InstanceNorm2d(channels, affine=True),
             nn.Conv2d(channels, channels, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm2d(channels),
+            nn.InstanceNorm2d(channels, affine=True),
             nn.ReLU(inplace=True)
         )
     
@@ -363,11 +363,11 @@ class RedBlock(nn.Module):
         logger.debug('RedBlock INIT')
         self.red_block = nn.Sequential(
             nn.Conv2d(in_channels, in_channels, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm2d(in_channels),
+            nn.InstanceNorm2d(in_channels, affine=True),
             nn.ReLU(inplace=True),
-            nn.BatchNorm2d(in_channels),
+            nn.InstanceNorm2d(in_channels, affine=True),
             nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=2, padding=1),
-            nn.BatchNorm2d(out_channels),
+            nn.InstanceNorm2d(out_channels, affine=True),
         )
     
     def forward(self, x):
@@ -499,8 +499,11 @@ class CFRWDGenerator(nn.Module):
         super(CFRWDGenerator, self).__init__()
         self.cfr_branch = CFRBranch(in_channels=in_channels, image_size=image_size)
         self.hfcf_branch = HFCFBranch(in_channels=in_channels, hfcf_concat_type=hfcf_concat_type)
-        self.fuse_cfr_hfcf = nn.Conv2d(6, 3, kernel_size=1, stride=1, padding=0)
-        self.alpha_logit = nn.Parameter(torch.tensor(0.5))
+        self.fusion_gate = nn.Conv2d(6, 3, kernel_size=1, stride=1, padding=0)
+        self.fuse_cfr_hfcf = nn.Sequential(
+            nn.Conv2d(3, 3, kernel_size=1, stride=1, padding=0),
+            nn.Tanh()
+        )
 
         self._initialize_weights()
 
@@ -524,7 +527,7 @@ class CFRWDGenerator(nn.Module):
                 nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
                 if m.bias is not None:
                     nn.init.constant_(m.bias, 0)
-            elif isinstance(m, nn.BatchNorm2d):
+            elif isinstance(m, (nn.BatchNorm2d, nn.InstanceNorm2d)):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
             elif isinstance(m, nn.ConvTranspose2d):
@@ -532,15 +535,16 @@ class CFRWDGenerator(nn.Module):
                 if m.bias is not None:
                     nn.init.constant_(m.bias, 0)
 
-        logger.info("Веса инициализированы (wavelet-конволюции сохранены, остальные Conv/ConvTranspose = fan_out, BatchNorm = 1/0).")
+        logger.info("Веса инициализированы (wavelet-конволюции сохранены, остальные Conv/ConvTranspose = fan_out, нормализации = 1/0).")
 
 
     def forward(self, x):
         cfr_out = self.cfr_branch(x)
         hfcf_out = self.hfcf_branch(x)
-        alpha_val = torch.sigmoid(self.alpha_logit)
-        out = torch.cat([alpha_val * cfr_out, (1 - alpha_val) * hfcf_out], dim=1)
-        out = self.fuse_cfr_hfcf(out)
+        fusion_input = torch.cat([cfr_out, hfcf_out], dim=1)
+        fusion_weights = torch.sigmoid(self.fusion_gate(fusion_input))
+        fused = fusion_weights * cfr_out + (1 - fusion_weights) * hfcf_out
+        out = self.fuse_cfr_hfcf(fused)
         return out
 
 
