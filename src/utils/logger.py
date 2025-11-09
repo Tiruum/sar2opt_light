@@ -82,14 +82,14 @@ class Logger:
         text = " ".join(parts) + Style.RESET_ALL
         print(text, file=self.stream, flush=True)
 
-    def debug(self, message: str, show_lineno: bool = True, show: bool = None):
+    def debug(self, message: str, show_lineno: bool = True, show: bool = None, once: bool = False):
         if show is None:
             try:
                 show = self.cfg.system.debug
             except Exception:
                 show = False
         if show:
-            self._log('debug', message, show_lineno)
+            self._log('debug', message, show_lineno, once)
 
     def info(self, message: str, show_lineno: bool = False):
         self._log('info', message, show_lineno)
