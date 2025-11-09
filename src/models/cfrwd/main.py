@@ -1,6 +1,7 @@
 # src/models/lightning/gan_module.py
 
 import gc
+import os
 import torch.nn as nn
 import torch
 import pytorch_lightning as pl
@@ -33,11 +34,8 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
         
         self.fixed_sar = None
         self.fixed_opt = None
-        
-        self.automatic_optimization = False
 
-        self.accumulation_steps = self.cfg.system.accumulate_grad_batches
-        self.accumulation_count = 0
+        self.automatic_optimization = False
 
     def forward(self, x):
         return self.netG(x)
@@ -52,13 +50,14 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         real_sar, real_opt = batch
         opt_d, opt_g = self.optimizers()
-        
+
         # Discriminator step
+        opt_d.zero_grad(set_to_none=True)
         with autocast(device_type=self.device.type, enabled=self.trainer.precision == 16):
             fake_opt = self.netG(real_sar).detach()
 
-            d_fake, _ = self.netD(sar=real_sar if cfg.model.dis.condition_channels != 0 else None, fake_opt=fake_opt, real_opt=real_opt)
-            d_real, _ = self.netD(sar=real_sar if cfg.model.dis.condition_channels != 0 else None, fake_opt=real_opt, real_opt=real_opt)
+            d_fake, _ = self.netD(fake_opt=fake_opt, real_opt=real_opt)
+            d_real, _ = self.netD(fake_opt=real_opt, real_opt=real_opt)
 
             num_scales = len(d_real)
             d_loss = 0.0
@@ -68,41 +67,31 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
                 d_loss += (real_loss + fake_loss) / 2
             d_loss /= num_scales
 
-        normalized_d_loss = d_loss / self.accumulation_steps
-        self.manual_backward(normalized_d_loss)
+        self.manual_backward(d_loss)
+        opt_d.step()
 
         # Generator step
+        opt_g.zero_grad(set_to_none=True)
         with autocast(device_type=self.device.type, enabled=self.trainer.precision == 16):
             fake_opt = self.netG(real_sar)
-            
-            d_fake, fake_feats = self.netD(sar=real_sar if cfg.model.dis.condition_channels != 0 else None, fake_opt=fake_opt, real_opt=real_opt)
-            _, real_feats = self.netD(sar=real_sar if cfg.model.dis.condition_channels != 0 else None, fake_opt=real_opt, real_opt=real_opt)
+
+            d_fake, fake_feats = self.netD(fake_opt=fake_opt, real_opt=real_opt)
+            _, real_feats = self.netD(fake_opt=real_opt, real_opt=real_opt)
             loss_gan = sum(self.criterions['GAN'](pf, True) for pf in d_fake)
             loss_fm = self.criterions['FM'](
                 [feat.detach() for feat in real_feats],
                 [feat for feat in fake_feats]
             )
             loss_l1 = self.criterions['L1'](fake_opt, real_opt)
-            
+
             g_loss = (
                 loss_gan * self.loss_weights['gan'] +
                 loss_fm * self.loss_weights['fm'] +
                 loss_l1 * self.loss_weights['l1']
             )
 
-        normalized_g_loss = g_loss / self.accumulation_steps
-        self.manual_backward(normalized_g_loss)
-        
-        self.accumulation_count += 1
-
-        if self.accumulation_count % self.accumulation_steps == 0:
-            torch.nn.utils.clip_grad_norm_(self.netG.parameters(), max_norm=0.5)
-            
-            opt_d.step()
-            opt_d.zero_grad(set_to_none=True)
-            opt_g.step()
-            opt_g.zero_grad(set_to_none=True)
-            self.accumulation_count = 0
+        self.manual_backward(g_loss)
+        opt_g.step()
 
         self.log('train_g_loss', g_loss, prog_bar=True, on_step=False, on_epoch=True)
         self.log_dict({
@@ -144,8 +133,8 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
         if (self.cfg.system.image_freq != 0):
             if (self.current_epoch + 1) % self.cfg.system.image_freq == 0:
                 fake_opt = self.netG(self.fixed_sar)
-                os.makedirs(os.path.join(self.cfg.system.output_dir, 'images', self.cfg.system.tb_version), exist_ok=True)
-                path = f"{self.cfg.system.output_dir}/images/{self.cfg.system.tb_version}/epoch_{self.current_epoch+1}.png"
+                os.makedirs(os.path.join(self.cfg.system.images_dir, self.cfg.system.tb_version), exist_ok=True)
+                path = f"{self.cfg.system.images_dir}/{self.cfg.system.tb_version}/epoch_{self.current_epoch+1}.png"
                 visualize_batch(
                     self.fixed_sar.cpu().detach(),
                     fake_opt.cpu().detach(),
@@ -154,16 +143,12 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
                     title=f"Epoch {self.current_epoch+1}"
                 )
 
-    def on_train_epoch_start(self):
-        self.accumulation_count = 0
-
 
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
 from pytorch_lightning.loggers import TensorBoardLogger
 
 from src.data.sen12.datamodule import SEN12Datamodule
-import os
 from src.utils.logger import Logger
 terminal_logger = Logger(name="CFRWD main.py", cfg_path='src/models/cfrwd/config.yaml')
 cfg = OmegaConf.load("src/models/cfrwd/config.yaml")

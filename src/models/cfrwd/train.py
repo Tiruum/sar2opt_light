@@ -29,6 +29,7 @@ def main():
     # 3) Создаем папки для логов и чекпоинтов
     os.makedirs(cfg.system.output_dir, exist_ok=True)
     os.makedirs(cfg.system.checkpoints_dir, exist_ok=True)
+    os.makedirs(cfg.system.profiler_dir, exist_ok=True)
 
     # 4) DataModule
     dm = SEN12Datamodule(
@@ -46,8 +47,8 @@ def main():
     # 5) LightningModule
     model = SAR2OPTGANLightningModule(cfg)
     if (cfg.model.log_summary):
-        os.makedirs(os.path.join(cfg.system.output_dir, 'summary'), exist_ok=True)
-        with open(f"{cfg.system.output_dir}summary/{cfg.system.tb_version}.txt", "w") as f:
+        os.makedirs(os.path.join(cfg.system.summary_dir), exist_ok=True)
+        with open(f"{cfg.system.summary_dir}/{cfg.system.tb_version}.txt", "w") as f:
             f.write(str(ModelSummary(model, max_depth=-1)))
     # model = torch.compile(model)
 
@@ -70,7 +71,7 @@ def main():
     # 7) Trainer
     trainer = Trainer(
         logger=tb_logger,
-        profiler=SimpleProfiler(dirpath=cfg.system.output_dir, filename="profiler"),
+        profiler=SimpleProfiler(dirpath=cfg.system.profiler_dir, filename=cfg.system.tb_version),
 
         callbacks=[checkpoints, lr_monitor],
         accelerator=cfg.system.device,
@@ -104,8 +105,9 @@ def cleanup():
         torch.cuda.empty_cache()
 
 if __name__ == "__main__":
+    cfg = OmegaConf.load('src/models/cfrwd/config.yaml')
     from src.utils.logger import Logger
-    terminal_logger = Logger(name="CFRWD", cfg_path='src/models/cfrwd/config.yaml')
+    terminal_logger = Logger(name=str(cfg.system.tb_version).upper(), cfg_path='src/models/cfrwd/config.yaml')
     try:
         terminal_logger.info("Начинаем обучение...")
         main()
