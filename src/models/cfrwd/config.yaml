@@ -21,6 +21,7 @@ model:
     ndf: 64
     in_channels: 6 # in_channels должен быть равен real_opt_channels + fake_opt_channels (3 + 3 = 6)
     condition_channels: 3 # Если используется condition (real opt сравнивается не только с fake opt, но и с sar), то condition_channels должен быть равен sar_channels
+  log_summary: true
 
 optimizer:
   lr_g: 0.00005

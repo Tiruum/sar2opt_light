@@ -8,6 +8,7 @@ from pytorch_lightning import Trainer, seed_everything
 from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
 from pytorch_lightning.profilers import SimpleProfiler
 from pytorch_lightning.loggers import TensorBoardLogger
+from pytorch_lightning.utilities.model_summary import ModelSummary
 import gc
 
 
@@ -44,6 +45,10 @@ def main():
 
     # 5) LightningModule
     model = SAR2OPTGANLightningModule(cfg)
+    if (cfg.model.log_summary):
+        os.makedirs(os.path.join(cfg.system.output_dir, 'summary'), exist_ok=True)
+        with open(f"{cfg.system.output_dir}summary/{cfg.system.tb_version}.txt", "w") as f:
+            f.write(str(ModelSummary(model, max_depth=-1)))
     # model = torch.compile(model)
 
     # 6) Logger и Callbacks

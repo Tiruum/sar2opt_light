@@ -16,14 +16,16 @@ class GANLoss(nn.Module):
 
     def get_target_tensor(self, prediction, target_is_real, real_label_smooth=1.0, fake_label_smooth=0.0):
         if target_is_real:
-            return torch.ones(prediction.shape)
+            return torch.full_like(prediction, real_label_smooth)
         else:
-            return torch.zeros(prediction.shape)
+            return torch.full_like(prediction, fake_label_smooth)
 
     def forward(self, prediction, target_is_real, real_label_smooth=1.0, fake_label_smooth=0.0):
         target_tensor = self.get_target_tensor(
-            prediction, 
-            target_is_real
+            prediction,
+            target_is_real,
+            real_label_smooth=real_label_smooth,
+            fake_label_smooth=fake_label_smooth
         ).to(cfg.system.device)
         return self.loss(prediction, target_tensor)
 
