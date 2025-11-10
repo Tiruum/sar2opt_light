@@ -45,7 +45,6 @@ class CFRWDPatchDisBranch(nn.Module):
             return out, features
         return out
 
-
 class CFRWDPatchDis(nn.Module):
     """Двухмасштабный PatchGAN-дискриминатор для пар (fake_opt, real_opt)."""
 

@@ -2,7 +2,6 @@
 
 import torch
 import torch.nn as nn
-import numpy as np
 from omegaconf import OmegaConf
 cfg = OmegaConf.load('src/models/cfrwd/config.yaml')
 
@@ -26,7 +25,7 @@ class GANLoss(nn.Module):
             target_is_real,
             real_label_smooth=real_label_smooth,
             fake_label_smooth=fake_label_smooth
-        ).to(cfg.system.device)
+        ).to(prediction.device)
         return self.loss(prediction, target_tensor)
 
 class L1Loss(nn.Module):
@@ -46,7 +45,6 @@ class FeatureMatchingLoss(nn.Module):
     """
     def __init__(self):  # M+1, adjust based on discriminator layers
         super(FeatureMatchingLoss, self).__init__()
-        self.feat_layers = 8
         self.l1_loss = nn.L1Loss(reduction='mean')  # Mean L1 per layer
 
     def forward(self, feat_real, feat_fake):
@@ -58,8 +56,9 @@ class FeatureMatchingLoss(nn.Module):
             raise ValueError(f"Длина feat_real ({len(feat_real)}) не совпадает с длиной feat_fake ({len(feat_fake)})")
 
         total_loss = 0.0
-        for i in range(len(feat_real)):
+        num_layers = len(feat_real)
+        for i in range(num_layers):
             # Normalization: 1/(C W H) * sum |diff| == mean(|diff|) since L1 mean is sum/N
             diff_loss = self.l1_loss(feat_real[i], feat_fake[i])
             total_loss += diff_loss
-        return total_loss # Average over layers, or sum if preferred
+        return total_loss

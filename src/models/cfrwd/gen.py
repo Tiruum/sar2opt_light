@@ -210,7 +210,7 @@ class CFRBranch(nn.Module):
         for ic, oc in zip(in_channels, out_ch):
             conv_layers.append(ConvBlock(ic, oc))
 
-        logger.debug('Conv:\t\t', ' -> '.join(map(str, in_channels)))
+        logger.debug(f"Conv:\t\t{' -> '.join(map(str, in_channels))}")
         self.conv = nn.Sequential(*conv_layers)
 
         self.CFR = CFRBlock(self.base_channels)
@@ -240,7 +240,7 @@ class CFRBranch(nn.Module):
 
         up_layers.append(TConvBlock(dec_out_ch_list[-1], 16))  # Extra to 16, adjust if needed
         up_layers.append(FinalTConvBlock(16, 3))
-        logger.debug('Upconv:\t\t', ' -> '.join(map(str, dec_out_ch_list + [16, 3])))
+        logger.debug(f"Upconv:\t\t{' -> '.join(map(str, dec_out_ch_list + [16, 3]))}")
         self.upconv = nn.Sequential(*up_layers)
 
     def forward(self, x):
@@ -499,7 +499,8 @@ class CFRWDGenerator(nn.Module):
         super(CFRWDGenerator, self).__init__()
         self.cfr_branch = CFRBranch(in_channels=in_channels, image_size=image_size)
         self.hfcf_branch = HFCFBranch(in_channels=in_channels, hfcf_concat_type=hfcf_concat_type)
-        self.fusion_gate = nn.Conv2d(6, 3, kernel_size=1, stride=1, padding=0)
+        # Learnable fusion coefficient initialized to 1.0 as described in the paper
+        self.fusion_coeff = nn.Parameter(torch.tensor(1.0))
         self.fuse_cfr_hfcf = nn.Sequential(
             nn.Conv2d(3, 3, kernel_size=1, stride=1, padding=0),
             nn.Tanh()
@@ -541,16 +542,14 @@ class CFRWDGenerator(nn.Module):
     def forward(self, x):
         cfr_out = self.cfr_branch(x)
         hfcf_out = self.hfcf_branch(x)
-        fusion_input = torch.cat([cfr_out, hfcf_out], dim=1)
-        fusion_weights = torch.sigmoid(self.fusion_gate(fusion_input))
-        fused = fusion_weights * cfr_out + (1 - fusion_weights) * hfcf_out
+        fusion_weight = self.fusion_coeff
+        fused = fusion_weight * cfr_out + (1 - fusion_weight) * hfcf_out
         out = self.fuse_cfr_hfcf(fused)
         return out
 
 
 import matplotlib.pyplot as plt
 import cv2
-import numpy as np
 if __name__ == "__main__":
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     input_array = cv2.imread('C:/Users/tiruu/Desktop/sar2opt_light/data/sen12/agri/s1/ROIs1868_summer_s1_59_p2.png', cv2.IMREAD_COLOR)
@@ -566,10 +565,9 @@ if __name__ == "__main__":
         input_tensor = torch.from_numpy(input_array).float().permute(2, 0, 1) / 255.0
         input_tensor = input_tensor.unsqueeze(0).to(device)  # Добавляем batch-размер -> [1, 3, 256, 256]
 
-    gen = CFRWDGenerator(in_channels=3, image_size=256, hfcf_concat_type='cat', debug=True).to(device)
+    gen = CFRWDGenerator(in_channels=3, image_size=256, hfcf_concat_type='cat').to(device)
     out = gen(input_tensor)
 
-    import matplotlib.pyplot as plt
     plt.subplot(1, 2, 1)
     plt.imshow(input_tensor.squeeze().permute(1, 2, 0).detach().cpu().numpy())
     plt.title('Input SAR Image')
