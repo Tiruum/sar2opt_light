@@ -67,6 +67,9 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
                 d_loss += (real_loss + fake_loss) / 2
             d_loss /= num_scales
 
+            real_means = torch.stack([real_out.detach().mean() for real_out in d_real])
+            fake_means = torch.stack([fake_out.detach().mean() for fake_out in d_fake])
+
         self.manual_backward(d_loss)
         opt_d.step()
 
@@ -98,6 +101,8 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
             'train_loss_fm': loss_fm,
             'train_loss_gan': loss_gan,
             'train_loss_d': d_loss,
+            'd_real_mean': real_means.mean(),
+            'd_fake_mean': fake_means.mean(),
         }, prog_bar=False, on_step=False, on_epoch=True)
     
     def validation_step(self, batch, batch_idx):

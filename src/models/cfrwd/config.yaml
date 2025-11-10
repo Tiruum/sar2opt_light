@@ -19,12 +19,12 @@ model:
     in_channels: 3
   dis:
     ndf: 64
-    in_channels: 6 # in_channels должен быть равен real_opt_channels + fake_opt_channels (3 + 3 = 6)
+    in_channels: 6 # concatenated fake/real optical images (3 + 3)
   log_summary: true
 
 optimizer:
-  lr_g: 0.00005
-  lr_d: 0.0004
+  lr_g: 2e-4
+  lr_d: 2e-4
   beta1: 0.5
   beta2: 0.999
 
@@ -51,5 +51,5 @@ system:
   summary_dir: "./output/cfrwd/summary"
   limit_train_batches: 0.1
   limit_val_batches: 0.1
-  tb_version: 'cfrwd-12'
+  tb_version: 'cfrwd-14'
   debug: true
