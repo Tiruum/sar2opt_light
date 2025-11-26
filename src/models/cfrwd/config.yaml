@@ -11,7 +11,7 @@ data:
   persistent_workers: true
   use_train_common_transform: false
   seed: 42
-  sar_channels: 3
+  sar_channels: 1
 
 model:
   gen:
