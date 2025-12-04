@@ -256,35 +256,45 @@ class CFRBranch(nn.Module):
         return x
 
 class HaarDown(nn.Module):
-    """Haar wavelet decomposition using convolutional layers (non-learnable)."""
+    """
+    Прямое вейвлет-преобразование (DWT, Haar)
+    """
     def __init__(self, in_channels=1, normalize=True):
         super(HaarDown, self).__init__()
-        base = 0.5 if not normalize else 1 / math.sqrt(2)
-
-        self.low = nn.Conv2d(in_channels, in_channels, kernel_size=2, stride=2, bias=False, groups=in_channels)
-        self.low.weight.data.fill_(base)
-
-        self.high_h = nn.Conv2d(in_channels, in_channels, kernel_size=2, stride=2, bias=False, groups=in_channels)
-        pattern_h = torch.tensor([[[[base, base], [-base, -base]]]])
-        self.high_h.weight.data = pattern_h.repeat(in_channels, 1, 1, 1)
-
-        self.high_v = nn.Conv2d(in_channels, in_channels, kernel_size=2, stride=2, bias=False, groups=in_channels)
-        pattern_v = torch.tensor([[[[base, -base], [base, -base]]]])
-        self.high_v.weight.data = pattern_v.repeat(in_channels, 1, 1, 1)
-
-        self.high_d = nn.Conv2d(in_channels, in_channels, kernel_size=2, stride=2, bias=False, groups=in_channels)
-        pattern_d = torch.tensor([[[[base, -base], [-base, base]]]])
-        self.high_d.weight.data = pattern_d.repeat(in_channels, 1, 1, 1)
-
-        for param in self.parameters():
-            param.requires_grad = False
-
+        self.scale = 0.5 if not normalize else 1 / math.sqrt(2)
+        self.register_buffer('haar_weights', torch.tensor([
+             [ 1.0,  1.0,  1.0,  1.0], # LL
+             [-1.0,  1.0, -1.0,  1.0], # LH
+             [-1.0, -1.0,  1.0,  1.0], # HL
+             [ 1.0, -1.0, -1.0,  1.0]  # HH
+        ], dtype=torch.float32) * self.scale)
+        
     def forward(self, x):
-        ll = self.low(x)
-        lh = self.high_h(x)
-        hl = self.high_v(x)
-        hh = self.high_d(x)
-        return ll, lh, hl, hh
+        B, C, H, W = x.shape
+        x_reshaped = torch.nn.functional.pixel_unshuffle(x, 2)
+        x_reshaped = x_reshaped.view(B, C, 4, H // 2, W // 2)
+        weights = self.haar_weights.to(x.device)
+        out = torch.einsum('bcihw, oi -> bcohw', x_reshaped, weights)
+        return out[:, :, 0], out[:, :, 1], out[:, :, 2], out[:, :, 3]
+    
+class HaarUp(nn.Module):
+    def __init__(self, in_channels=1):
+        super(HaarUp, self).__init__()
+        # Обратная матрица Haar (transposed)
+        self.register_buffer('inv_weights', torch.tensor([
+             [ 1.0, -1.0, -1.0,  1.0],
+             [ 1.0,  1.0, -1.0, -1.0],
+             [ 1.0, -1.0,  1.0, -1.0],
+             [ 1.0,  1.0,  1.0,  1.0]
+        ], dtype=torch.float32))
+        
+    def forward(self, LL, LH, HL, HH):
+        stack = torch.stack([LL, LH, HL, HH], dim=2)
+        weights = self.inv_weights.to(LL.device)
+        out_pixels = torch.einsum('bcihw, oi -> bcohw', stack, weights)
+        B, C, _, H, W = out_pixels.shape
+        out_pixels = out_pixels.view(B, C * 4, H, W)
+        return torch.nn.functional.pixel_shuffle(out_pixels, 2)
 
 class DWTBlock(nn.Module):
     def __init__(self, in_channels=1):
@@ -463,39 +473,22 @@ class HFCFUpconvBlock(nn.Module):
         return self.upconv_block(x)
     
 class HFCFBranch(nn.Module):
-    def __init__(self, in_channels=1, hfcf_concat_type='cat'):
+    def __init__(self, in_channels=1):
         super(HFCFBranch, self).__init__()
         logger.debug('HFCF BRANCH INIT')
         self.dwt = DWTBlock(in_channels=in_channels)
 
-        self.HFCF_prep11 = HFCFPreprocess(in_channels=in_channels, out_channels=32)
-        self.HFCF_prep12 = HFCFPreprocess(in_channels=in_channels, out_channels=32)
-        self.HFCF_prep21 = HFCFPreprocess(in_channels=in_channels*3, out_channels=32)
-        self.HFCF_prep22 = HFCFPreprocess(in_channels=in_channels*3, out_channels=32)
-        self.HFCF_prep31 = HFCFPreprocess(in_channels=in_channels*3, out_channels=32)
-        self.HFCF_prep32 = HFCFPreprocess(in_channels=in_channels*3, out_channels=32)
+        self.HFCF_g2_prep = HFCFPreprocess(in_channels=in_channels*3, out_channels=32)
+        self.HFCF_g3_prep = HFCFPreprocess(in_channels=in_channels*3, out_channels=32)
 
-        self.HFCF_prep_upper = HFCFPreprocess(in_channels=in_channels*3, out_channels=32)
-        self.HFCF_prep_lower = HFCFPreprocess(in_channels=in_channels*3, out_channels=32)
-
-        self.hfcf_concat_type = hfcf_concat_type
-
-        p1_channels = 32 if hfcf_concat_type == 'plus' else 64
         p2_channels = 32
+        p3_channels = 32
 
-        self.upper_branches = nn.ModuleList([
-            UpperBranch(channels=p1_channels),
-            UpperBranch(channels=p1_channels),
-            UpperBranch(channels=p1_channels),
-        ])
-        self.lower_branches = nn.ModuleList([
-            LowerBranch(channels=p2_channels),
-            LowerBranch(channels=p2_channels),
-            LowerBranch(channels=p2_channels),
-        ])
+        self.upper_branch = UpperBranch(channels=p2_channels)
+        self.lower_branch = LowerBranch(channels=p3_channels)
 
         total_in_channels = 4 * (
-            3 * p1_channels + 3 * p2_channels
+            3 * p2_channels + 3 * p3_channels
         )
         self.hfcf_upconv = HFCFUpconvBlock(in_channels=total_in_channels, out_channels=3)
 
@@ -505,43 +498,27 @@ class HFCFBranch(nn.Module):
         logger.debug('DWT shapes:', once=True)
         logger.debug(f'g1.shape: {g1.shape}, g2.shape: {g2.shape}, g3.shape: {g3.shape}', once=True)
 
-        g1_p1_2_be_concat = self.HFCF_prep11(g1).to(g1.device)
-        g1_p2 = self.HFCF_prep12(g1).to(g1.device)
-        g2_p1_2_be_concat = self.HFCF_prep21(g2).to(g2.device)
-        g2_p2 = self.HFCF_prep22(g2).to(g2.device)
-        g3_p1_2_be_concat = self.HFCF_prep31(g3).to(g3.device)
-        g3_p2 = self.HFCF_prep32(g3).to(g3.device)
+        hfcf_g2 = self.HFCF_g2_prep(g2).to(g2.device)
+        hfcf_g3 = self.HFCF_g3_prep(g3).to(g3.device)
 
-        if (g3_p1_2_be_concat.shape[2] == 64 and g3_p2.shape[2] == 64):
-            g3_p1_2_be_concat = nn.MaxPool2d(kernel_size=2, stride=2)(g3_p1_2_be_concat)
-            g3_p2 = nn.MaxPool2d(kernel_size=2, stride=2)(g3_p2)
+        print(f'hfcf_g2.shape: {hfcf_g2.shape}')
+        print(f'hfcf_g3.shape: {hfcf_g3.shape}')
+        hfcf_g2 = torch.cat([hfcf_g2, hfcf_g3], dim=1)
+        print(f'hfcf_g2.shape: {hfcf_g2.shape}')
 
-        if self.hfcf_concat_type == 'plus':
-            g1_p1 = g1_p1_2_be_concat + g1_p2
-            g2_p1 = g2_p1_2_be_concat + g2_p2
-            g3_p1 = g3_p1_2_be_concat + g3_p2
-        elif self.hfcf_concat_type == 'cat':
-            g1_p1 = torch.cat([g1_p1_2_be_concat, g1_p2], dim=1)
-            g2_p1 = torch.cat([g2_p1_2_be_concat, g2_p2], dim=1)
-            g3_p1 = torch.cat([g3_p1_2_be_concat, g3_p2], dim=1)
+        upper_branch = self.upper_branch
+        lower_branch = self.lower_branch
 
-        upper_branch1, upper_branch2, upper_branch3 = self.upper_branches
-        lower_branch1, lower_branch2, lower_branch3 = self.lower_branches
-
-        out1 = torch.cat([upper_branch1(g1_p1), lower_branch1(g1_p2)], dim=1)
-        out2 = torch.cat([upper_branch2(g2_p1), lower_branch2(g2_p2)], dim=1)
-        out3 = torch.cat([upper_branch3(g3_p1), lower_branch3(g3_p2)], dim=1)
-
-        out = torch.cat([out1, out2, out3], dim=1)
+        out = torch.cat([upper_branch(hfcf_g2), lower_branch(hfcf_g3)], dim=1)
 
         out = self.hfcf_upconv(out)
         return out
     
 class CFRWDGenerator(nn.Module):
-    def __init__(self, in_channels=1, hfcf_concat_type='cat'):
+    def __init__(self, in_channels=1):
         super(CFRWDGenerator, self).__init__()
         self.cfr_branch = CFRBranch(in_channels=in_channels)
-        self.hfcf_branch = HFCFBranch(in_channels=in_channels, hfcf_concat_type=hfcf_concat_type)
+        self.hfcf_branch = HFCFBranch(in_channels=in_channels)
         # Learnable fusion coefficient initialized to 1.0 as described in the paper
         self.fusion_coeff = nn.Parameter(torch.tensor(1.0))
         self.fuse_cfr_hfcf = nn.Sequential(
@@ -609,7 +586,7 @@ if __name__ == "__main__":
         input_tensor = torch.from_numpy(input_array).float().permute(2, 0, 1) / 255.0
         input_tensor = input_tensor.unsqueeze(0).to(device)  # Добавляем batch-размер -> [1, 3, 256, 256]
 
-    gen = CFRWDGenerator(in_channels=3, hfcf_concat_type='cat').to(device)
+    gen = CFRWDGenerator(in_channels=3).to(device)
     out = gen(input_tensor)
 
     plt.subplot(1, 2, 1)
