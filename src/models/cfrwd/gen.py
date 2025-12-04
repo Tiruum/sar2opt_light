@@ -310,7 +310,12 @@ class DWTBlock(nn.Module):
         return g1, g2, g3
 
 class HFCFPreprocess(nn.Module):
-    """Высокочастотный блок обработки и фильтрации"""
+    """
+    High-frequency component preprocessing block.
+    According to Figure 5 in CFRWD paper: Conv -> BN -> ReLU -> MaxPool
+    
+    This block prepares high-frequency wavelet components for HFCF processing.
+    """
     def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, padding=1):
         super(HFCFPreprocess, self).__init__()
         logger.debug('HFCF Preprocess INIT')
@@ -424,94 +429,225 @@ class RedBlock(nn.Module):
 
     
 class UpperBranch(nn.Module):
+    """
+    Upper branch for HFCF structure using ResNet101-style blocks (Bottleneck).
+    Processes high-frequency components from level 2 (LH2, HL2, HH2).
+    
+    Architecture from Figure 5: Yellow -> Blue -> Blue -> Yellow -> Blue -> Blue
+    - Yellow blocks (Bottleneck): 3 convolutions with channel expansion and downsample
+    - Blue blocks (Bottleneck): 3 convolutions maintaining channels
+    
+    Note: The blocks process features while changing channel dimensions but
+    potentially changing spatial resolution. The final upsampling happens later.
+    """
     def __init__(self, channels):
         super(UpperBranch, self).__init__()
         logger.debug('UpperBranch INIT')
-        self.yellow_block1 = YellowBlock(channels, channels*2)
-        self.blue_block1 = BlueBlock(channels*2)
-        self.blue_block2 = BlueBlock(channels*2)
-        self.yellow_block2 = YellowBlock(channels*2, channels*4)
-        self.blue_block3 = BlueBlock(channels*4)
-        self.blue_block4 = BlueBlock(channels*4)
+        logger.debug(f'UpperBranch input channels: {channels}')
+        
+        # According to ResNet101 architecture (used in CFRWD paper):
+        # Bottleneck blocks expand channels and may downsample
+        self.yellow_block1 = YellowBlock(channels, channels*2)      # 32 -> 64, spatial /2
+        self.blue_block1 = BlueBlock(channels*2)                    # 64 -> 64, maintain
+        self.blue_block2 = BlueBlock(channels*2)                    # 64 -> 64, maintain
+        self.yellow_block2 = YellowBlock(channels*2, channels*4)    # 64 -> 128, spatial /2
+        self.blue_block3 = BlueBlock(channels*4)                    # 128 -> 128, maintain
+        self.blue_block4 = BlueBlock(channels*4)                    # 128 -> 128, maintain
+        
+        logger.debug(f'UpperBranch output channels: {channels*4}')
 
     def forward(self, x):
-        x1 = self.yellow_block1(x)
-        x2 = self.blue_block1(x1)
-        x3 = self.blue_block2(x2)
-        x4 = self.yellow_block2(x3)
-        x5 = self.blue_block3(x4)
-        out = self.blue_block4(x5)
+        x1 = self.yellow_block1(x)  # B x 32 x H x W -> B x 64 x H/2 x W/2
+        x2 = self.blue_block1(x1)   # B x 64 x H/2 x W/2 (maintain)
+        x3 = self.blue_block2(x2)   # B x 64 x H/2 x W/2 (maintain)
+        x4 = self.yellow_block2(x3) # B x 64 x H/2 x W/2 -> B x 128 x H/4 x W/4
+        x5 = self.blue_block3(x4)   # B x 128 x H/4 x W/4 (maintain)
+        out = self.blue_block4(x5)  # B x 128 x H/4 x W/4 (maintain)
         return out
     
 class LowerBranch(nn.Module):
+    """
+    Lower branch for HFCF structure using ResNet18-style blocks (BasicBlock).
+    Processes high-frequency components from level 1 (LH1, HL1, HH1).
+    
+    Architecture from Figure 5: Red -> Red
+    - Red blocks (BasicBlock): 2 convolutions maintaining channels and resolution
+    
+    This branch preserves spatial information from higher resolution components.
+    """
     def __init__(self, channels):
         super(LowerBranch, self).__init__()
         logger.debug('LowerBranch INIT')
-        self.red_block1 = RedBlock(channels)
-        self.red_block2 = RedBlock(channels)
+        logger.debug(f'LowerBranch channels: {channels}')
+        
+        # BasicBlock from ResNet18 - maintains channels and resolution
+        self.red_block1 = RedBlock(channels)  # Maintain channels
+        self.red_block2 = RedBlock(channels)  # Maintain channels
 
     def forward(self, x):
-        x1 = self.red_block1(x) 
-        out = self.red_block2(x1)
+        x1 = self.red_block1(x)   # B x 32 x H x W (maintain)
+        out = self.red_block2(x1) # B x 32 x H x W (maintain)
         return out
     
 class HFCFUpconvBlock(nn.Module):
     def __init__(self, in_channels, out_channels):
         super(HFCFUpconvBlock, self).__init__()
         logger.debug('HFCF Upconv INIT')
+        logger.debug(f'HFCF Upconv: in_channels={in_channels}, out_channels={out_channels}')
+        
+        # Input: B x 160 x 8 x 8 (W/32 x H/32)
+        # Need 5 upsampling steps to reach W x H (256 x 256)
+        # 8 -> 16 -> 32 -> 64 -> 128 -> 256
+        
         self.upconv_block = nn.Sequential(
-            ConvBlock(in_channels, in_channels, stride=1),
-            TConvBlock(in_channels, in_channels // 2),
-            TConvBlock(in_channels // 2, in_channels // 4),
-            TConvBlock(in_channels // 4, in_channels // 8),
-            TConvBlock(in_channels // 8, in_channels // 16),
-            TConvBlock(in_channels // 16, out_channels),
-            FinalTConvBlock(out_channels, 3)
+            # First process features
+            # B x 160 x 8 x 8 -> B x 128 x 8 x 8
+            ConvBlock(in_channels, 128, stride=1),
+            
+            # Upsample 1: B x 128 x 8 x 8 -> B x 128 x 16 x 16
+            TConvBlock(128, 128),
+            
+            # Upsample 2: B x 128 x 16 x 16 -> B x 64 x 32 x 32
+            TConvBlock(128, 64),
+            
+            # Upsample 3: B x 64 x 32 x 32 -> B x 32 x 64 x 64
+            TConvBlock(64, 32),
+            
+            # Upsample 4: B x 32 x 64 x 64 -> B x 16 x 128 x 128
+            TConvBlock(32, 16),
+            
+            # Upsample 5: B x 16 x 128 x 128 -> B x 8 x 256 x 256
+            TConvBlock(16, 8),
+            
+            # Final convolution to output 3 channels (RGB)
+            # B x 8 x 256 x 256 -> B x 3 x 256 x 256
+            FinalTConvBlock(8, 3)
         )
     
     def forward(self, x):
         return self.upconv_block(x)
     
 class HFCFBranch(nn.Module):
+    """
+    High-Frequency Coding and Filtering (HFCF) Branch for CFRWD-GAN.
+    
+    This branch implements the wavelet decomposition pathway described in the CFRWD paper.
+    It processes SAR images through discrete wavelet transform (DWT) to separate frequency
+    components, then applies specialized filtering to reduce speckle noise while preserving
+    high-frequency details.
+    
+    Architecture:
+    1. DWT: Decomposes input into 7 wavelet components (2-level Haar decomposition)
+       - g1 (LL2): Low frequency approximation
+       - g2 (LH2, HL2, HH2): High frequency details from level 2
+       - g3 (LH1, HL1, HH1): High frequency details from level 1
+    
+    2. HFCF Structure (as per Figure 5 in paper):
+       - Upper Branch: Processes g2 with ResNet101-style blocks (Yellow + Blue)
+       - Lower Branch: Processes g3 with ResNet18-style blocks (Red)
+    
+    3. Fusion & Reconstruction: Concatenates branch outputs and upsamples to original resolution
+    
+    Args:
+        in_channels (int): Number of input channels (typically 1 for SAR images)
+    
+    Input shape: (B, in_channels, H, W)
+    Output shape: (B, 3, H, W) - RGB optical image
+    """
     def __init__(self, in_channels=1):
         super(HFCFBranch, self).__init__()
         logger.debug('HFCF BRANCH INIT')
         self.dwt = DWTBlock(in_channels=in_channels)
 
+        # Preprocessing for g2 (high-frequency components from level 2)
+        # g2 has 3 channels (LH2, HL2, HH2) at resolution W/4 x H/4
         self.HFCF_g2_prep = HFCFPreprocess(in_channels=in_channels*3, out_channels=32)
+        
+        # Preprocessing for g3 (high-frequency components from level 1)
+        # g3 has 3 channels (LH1, HL1, HH1) at resolution W/2 x H/2
         self.HFCF_g3_prep = HFCFPreprocess(in_channels=in_channels*3, out_channels=32)
 
         p2_channels = 32
         p3_channels = 32
 
+        # Upper branch processes g2 with ResNet101-style blocks
         self.upper_branch = UpperBranch(channels=p2_channels)
+        
+        # Lower branch processes g3 with ResNet18-style blocks
         self.lower_branch = LowerBranch(channels=p3_channels)
 
-        total_in_channels = 4 * (
-            3 * p2_channels + 3 * p3_channels
+        # Calculate output channels after branches
+        # Upper branch: 32 -> 64 -> 128 (final output is 128)
+        # Lower branch: 32 -> 32 (final output is 32)
+        upper_out_channels = p2_channels * 4  # 32 * 4 = 128
+        lower_out_channels = p3_channels      # 32
+        
+        # After processing with YellowBlocks (stride=2 twice):
+        # - upper_out: from g2 at 64x64 -> prep 32x32 -> yellow1 16x16 -> yellow2 8x8
+        # - lower_out: from g3 at 128x128 -> prep 64x64 -> no downsample in red blocks -> 64x64
+        # We need to align them to the same spatial resolution (8x8) before concatenation
+        
+        # Downsample lower branch output to match upper branch resolution
+        # Need to downsample from 64x64 to 8x8 (÷8 = 3 pooling layers of 2x2)
+        self.align_lower = nn.Sequential(
+            nn.AvgPool2d(kernel_size=2, stride=2),  # 64 -> 32
+            nn.AvgPool2d(kernel_size=2, stride=2),  # 32 -> 16
+            nn.AvgPool2d(kernel_size=2, stride=2),  # 16 -> 8
         )
+        
+        total_in_channels = upper_out_channels + lower_out_channels  # 160
+        
         self.hfcf_upconv = HFCFUpconvBlock(in_channels=total_in_channels, out_channels=3)
 
     def forward(self, x):
+        # Apply 2-level wavelet decomposition
+        # Input: B x 1 x 256 x 256
+        # g1: B x 1 x 64 x 64 (LL2 - low frequency)
+        # g2: B x 3 x 64 x 64 (LH2, HL2, HH2 - high frequency level 2)
+        # g3: B x 3 x 128 x 128 (LH1, HL1, HH1 - high frequency level 1)
         g1, g2, g3 = self.dwt(x)
 
         logger.debug('DWT shapes:', once=True)
         logger.debug(f'g1.shape: {g1.shape}, g2.shape: {g2.shape}, g3.shape: {g3.shape}', once=True)
 
-        hfcf_g2 = self.HFCF_g2_prep(g2).to(g2.device)
-        hfcf_g3 = self.HFCF_g3_prep(g3).to(g3.device)
+        # Preprocess g2 (high-frequency level 2) for upper branch
+        # g2: B x 3 x 64 x 64 -> B x 32 x 32 x 32 (after conv and maxpool ÷2)
+        hfcf_g2 = self.HFCF_g2_prep(g2)
+        logger.debug(f'After g2 preprocess: {hfcf_g2.shape}', once=True)
+        
+        # Preprocess g3 (high-frequency level 1) for lower branch
+        # g3: B x 3 x 128 x 128 -> B x 32 x 64 x 64 (after conv and maxpool ÷2)
+        hfcf_g3 = self.HFCF_g3_prep(g3)
+        logger.debug(f'After g3 preprocess: {hfcf_g3.shape}', once=True)
 
-        print(f'hfcf_g2.shape: {hfcf_g2.shape}')
-        print(f'hfcf_g3.shape: {hfcf_g3.shape}')
-        hfcf_g2 = torch.cat([hfcf_g2, hfcf_g3], dim=1)
-        print(f'hfcf_g2.shape: {hfcf_g2.shape}')
+        # Process through upper branch (ResNet101-style with downsampling)
+        # hfcf_g2: B x 32 x 32 x 32 
+        #   -> Yellow1: B x 64 x 16 x 16 (stride=2)
+        #   -> Yellow2: B x 128 x 8 x 8 (stride=2)
+        # Final: B x 128 x 8 x 8
+        upper_out = self.upper_branch(hfcf_g2)
+        logger.debug(f'Upper branch output: {upper_out.shape}', once=True)
+        
+        # Process through lower branch (ResNet18-style, no downsampling)
+        # hfcf_g3: B x 32 x 64 x 64 -> B x 32 x 64 x 64 (maintain resolution)
+        lower_out = self.lower_branch(hfcf_g3)
+        logger.debug(f'Lower branch output: {lower_out.shape}', once=True)
+        
+        # Align spatial dimensions: downsample lower_out to match upper_out
+        # B x 32 x 64 x 64 -> B x 32 x 8 x 8 (3 pooling layers: ÷2, ÷2, ÷2)
+        lower_out_aligned = self.align_lower(lower_out)
+        logger.debug(f'Lower branch output aligned: {lower_out_aligned.shape}', once=True)
 
-        upper_branch = self.upper_branch
-        lower_branch = self.lower_branch
+        # Concatenate outputs from both branches at the same spatial resolution
+        # B x 128 x 8 x 8 + B x 32 x 8 x 8 -> B x 160 x 8 x 8
+        out = torch.cat([upper_out, lower_out_aligned], dim=1)
+        logger.debug(f'Concatenated output: {out.shape}', once=True)
 
-        out = torch.cat([upper_branch(hfcf_g2), lower_branch(hfcf_g3)], dim=1)
-
+        # Apply upconvolution to reconstruct image
+        # B x 160 x 8 x 8 -> B x 3 x 256 x 256 (5 upsampling steps: ×2^5 = ×32)
         out = self.hfcf_upconv(out)
+        logger.debug(f'HFCF final output: {out.shape}', once=True)
+        
         return out
     
 class CFRWDGenerator(nn.Module):
