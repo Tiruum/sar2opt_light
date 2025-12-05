@@ -43,8 +43,7 @@ class TConvBlock(nn.Module):
         super(TConvBlock, self).__init__()
         logger.debug('TConv Block INIT')
         self.t_conv_block = nn.Sequential(
-            nn.ReflectionPad2d(1),
-            nn.ConvTranspose2d(in_channels, out_channels, kernel_size, stride, bias=False),
+            nn.ConvTranspose2d(in_channels, out_channels, kernel_size, stride, padding=1, bias=False),
             nn.InstanceNorm2d(out_channels, affine=True),
             nn.ReLU(inplace=True)
         )
