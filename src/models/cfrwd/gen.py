@@ -312,8 +312,9 @@ class DWTBlock(nn.Module):
 class HFCFPreprocess(nn.Module):
     """
     High-frequency component preprocessing block.
-    According to Figure 5 in CFRWD paper: Conv -> BN -> ReLU -> MaxPool
+    According to Figure 5 in CFRWD paper: Conv -> Norm -> ReLU -> MaxPool
     
+    Note: We use InstanceNorm2d instead of BatchNorm for better style transfer performance.
     This block prepares high-frequency wavelet components for HFCF processing.
     """
     def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, padding=1):
@@ -496,8 +497,8 @@ class HFCFUpconvBlock(nn.Module):
         logger.debug(f'HFCF Upconv: in_channels={in_channels}, out_channels={out_channels}')
         
         # Input: B x 160 x 8 x 8 (W/32 x H/32)
-        # Need 5 upsampling steps to reach W x H (256 x 256)
-        # 8 -> 16 -> 32 -> 64 -> 128 -> 256
+        # Need 5 upsampling steps (each ×2) to reach W x H (256 x 256)
+        # Spatial dimensions: 8×8 → 16×16 → 32×32 → 64×64 → 128×128 → 256×256
         
         self.upconv_block = nn.Sequential(
             # First process features

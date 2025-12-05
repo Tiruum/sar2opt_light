@@ -2,6 +2,18 @@
 
 ## Quick Start
 
+### System Requirements
+
+**Minimum GPU Memory**: 
+- Training (batch_size=1): ~4-6 GB VRAM
+- Inference: ~2-3 GB VRAM
+- CPU only: Possible but very slow (~100x slower)
+
+**Recommended**:
+- GPU: NVIDIA RTX 2080 Ti or better (11+ GB VRAM)
+- RAM: 16 GB system memory
+- Storage: 50+ GB for datasets
+
 ### Basic Usage
 
 ```python
