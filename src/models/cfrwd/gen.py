@@ -566,11 +566,11 @@ class HFCFBranch(nn.Module):
         self.dwt = DWTBlock(in_channels=in_channels)
 
         # Preprocessing for g2 (high-frequency components from level 2)
-        # g2 has 3 channels (LH2, HL2, HH2) at resolution W/4 x H/4
+        # g2 has 3 channels (LH2, HL2, HH2) at resolution W/4 x H/4 (64x64 for 256x256 input)
         self.HFCF_g2_prep = HFCFPreprocess(in_channels=in_channels*3, out_channels=32)
         
         # Preprocessing for g3 (high-frequency components from level 1)
-        # g3 has 3 channels (LH1, HL1, HH1) at resolution W/2 x H/2
+        # g3 has 3 channels (LH1, HL1, HH1) at resolution W/2 x H/2 (128x128 for 256x256 input)
         self.HFCF_g3_prep = HFCFPreprocess(in_channels=in_channels*3, out_channels=32)
 
         p2_channels = 32
@@ -588,9 +588,9 @@ class HFCFBranch(nn.Module):
         upper_out_channels = p2_channels * 4  # 32 * 4 = 128
         lower_out_channels = p3_channels      # 32
         
-        # After processing with YellowBlocks (stride=2 twice):
-        # - upper_out: from g2 at 64x64 -> prep 32x32 -> yellow1 16x16 -> yellow2 8x8
-        # - lower_out: from g3 at 128x128 -> prep 64x64 -> no downsample in red blocks -> 64x64
+        # After processing (dimensions shown are post-preprocessing):
+        # - upper_out: g2 starts at 64x64 (from DWT) -> prep to 32x32 -> yellow1 to 16x16 -> yellow2 to 8x8
+        # - lower_out: g3 starts at 128x128 (from DWT) -> prep to 64x64 -> red blocks maintain 64x64
         # We need to align them to the same spatial resolution (8x8) before concatenation
         
         # Downsample lower branch output to match upper branch resolution
@@ -635,7 +635,7 @@ class HFCFBranch(nn.Module):
         logger.debug(f'Lower branch output: {lower_out.shape}', once=True)
         
         # Align spatial dimensions: downsample lower_out to match upper_out
-        # B x 32 x 64 x 64 -> B x 32 x 8 x 8 (3 pooling layers: ÷2, ÷2, ÷2)
+        # B x 32 x 64 x 64 -> B x 32 x 8 x 8 (AdaptiveAvgPool to target size)
         lower_out_aligned = self.align_lower(lower_out)
         logger.debug(f'Lower branch output aligned: {lower_out_aligned.shape}', once=True)
 
