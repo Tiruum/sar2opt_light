@@ -314,7 +314,11 @@ class HFCFPreprocess(nn.Module):
     High-frequency component preprocessing block.
     According to Figure 5 in CFRWD paper: Conv -> Norm -> ReLU -> MaxPool
     
-    Note: We use InstanceNorm2d instead of BatchNorm for better style transfer performance.
+    Note: InstanceNorm2d is used (rather than BatchNorm) because it performs better
+    for image-to-image translation tasks where each sample should be processed 
+    independently, particularly important for SAR-to-optical translation with 
+    varying speckle noise patterns.
+    
     This block prepares high-frequency wavelet components for HFCF processing.
     """
     def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, padding=1):
@@ -448,12 +452,13 @@ class UpperBranch(nn.Module):
         
         # According to ResNet101 architecture (used in CFRWD paper):
         # Bottleneck blocks expand channels and may downsample
-        self.yellow_block1 = YellowBlock(channels, channels*2)      # 32 -> 64, spatial /2
-        self.blue_block1 = BlueBlock(channels*2)                    # 64 -> 64, maintain
-        self.blue_block2 = BlueBlock(channels*2)                    # 64 -> 64, maintain
-        self.yellow_block2 = YellowBlock(channels*2, channels*4)    # 64 -> 128, spatial /2
-        self.blue_block3 = BlueBlock(channels*4)                    # 128 -> 128, maintain
-        self.blue_block4 = BlueBlock(channels*4)                    # 128 -> 128, maintain
+        # When channels=32 (typical): C -> 2C -> 4C progression
+        self.yellow_block1 = YellowBlock(channels, channels*2)      # C -> 2C, spatial /2
+        self.blue_block1 = BlueBlock(channels*2)                    # 2C, maintain
+        self.blue_block2 = BlueBlock(channels*2)                    # 2C, maintain
+        self.yellow_block2 = YellowBlock(channels*2, channels*4)    # 2C -> 4C, spatial /2
+        self.blue_block3 = BlueBlock(channels*4)                    # 4C, maintain
+        self.blue_block4 = BlueBlock(channels*4)                    # 4C, maintain
         
         logger.debug(f'UpperBranch output channels: {channels*4}')
 
@@ -589,12 +594,8 @@ class HFCFBranch(nn.Module):
         # We need to align them to the same spatial resolution (8x8) before concatenation
         
         # Downsample lower branch output to match upper branch resolution
-        # Need to downsample from 64x64 to 8x8 (÷8 = 3 pooling layers of 2x2)
-        self.align_lower = nn.Sequential(
-            nn.AvgPool2d(kernel_size=2, stride=2),  # 64 -> 32
-            nn.AvgPool2d(kernel_size=2, stride=2),  # 32 -> 16
-            nn.AvgPool2d(kernel_size=2, stride=2),  # 16 -> 8
-        )
+        # Efficient downsampling from 64x64 to 8x8 (÷8) using adaptive pooling
+        self.align_lower = nn.AdaptiveAvgPool2d((8, 8))
         
         total_in_channels = upper_out_channels + lower_out_channels  # 160
         
@@ -608,8 +609,7 @@ class HFCFBranch(nn.Module):
         # g3: B x 3 x 128 x 128 (LH1, HL1, HH1 - high frequency level 1)
         g1, g2, g3 = self.dwt(x)
 
-        logger.debug('DWT shapes:', once=True)
-        logger.debug(f'g1.shape: {g1.shape}, g2.shape: {g2.shape}, g3.shape: {g3.shape}', once=True)
+        logger.debug(f'DWT shapes - g1: {g1.shape}, g2: {g2.shape}, g3: {g3.shape}', once=True)
 
         # Preprocess g2 (high-frequency level 2) for upper branch
         # g2: B x 3 x 64 x 64 -> B x 32 x 32 x 32 (after conv and maxpool ÷2)
