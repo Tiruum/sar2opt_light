@@ -23,47 +23,63 @@ class ResBlock(nn.Module):
     def forward(self, x):
         return x + self.block(x)
 
-class ConvBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size=3, stride=2):
+class EncoderBlock(nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size=3, stride=1):
         logger.debug('Conv Block INIT')
-        super(ConvBlock, self).__init__()
+        super(EncoderBlock, self).__init__()
 
-        self.conv_block = nn.Sequential(
+        self.block = nn.Sequential(
             nn.ReflectionPad2d(1), # Вообще по статье ReflectionPad используется один раз в начале, а затем, видимо, в Conv2d padding=1
-            nn.Conv2d(in_channels, out_channels, kernel_size, stride, bias=False),
+            nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding=0, bias=False),
             nn.InstanceNorm2d(out_channels, affine=True),
             nn.LeakyReLU(negative_slope=0.2, inplace=True)
         )
 
     def forward(self, x):
-        return self.conv_block(x)
+        return self.block(x)
     
-class TConvBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size=4, stride=2):
-        super(TConvBlock, self).__init__()
-        logger.debug('TConv Block INIT')
-        self.t_conv_block = nn.Sequential(
+class DecoderBlock(nn.Module):
+    def __init__(self, in_channels, out_channels, upsample=False):
+        super(DecoderBlock, self).__init__()
+        logger.debug('DecoderBlock Block INIT')
+        layers = []
+
+        if upsample:
+            layers.append(nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True))
+
+        layers.extend([
             nn.ReflectionPad2d(1),
-            nn.ConvTranspose2d(in_channels, out_channels, kernel_size, stride, bias=False),
+            nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=1, padding=0, bias=False),
             nn.InstanceNorm2d(out_channels, affine=True),
             nn.ReLU(inplace=True)
-        )
-        
-    def forward(self, x):
-        return self.t_conv_block(x)
+        ])
+        # В энкодере LeakyReLU нужен, чтобы градиенты не "умирали" при сжатии информации.
+        # В декодере, когда мы восстанавливаем изображение,
+        # обычный ReLU помогает "отсекать" лишний шум и делать выход более чистым (sparse activations),
+        # что полезно для финальной картинки.
 
-class FinalTConvBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size=3):
-        super(FinalTConvBlock, self).__init__()
-        logger.debug('Final TConv Block INIT')
-        self.final_t_conv_block = nn.Sequential(
-            nn.ReflectionPad2d(1),
-            nn.Conv2d(in_channels, out_channels, kernel_size, bias=False),
-            nn.Tanh()
+        self.block = nn.Sequential(*layers)
+
+    def forward(self, x):
+        return self.block(x)
+
+class FinalDecoderBlock(nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size=7):
+        super(FinalDecoderBlock, self).__init__()
+        # Для kernel_size=7 паддинг должен быть 3, чтобы сохранить размер (H, W)
+        pad = (kernel_size - 1) // 2  # для 7 это будет 3
+        
+        self.final_block = nn.Sequential(
+            nn.ReflectionPad2d(pad),
+            # Важно: bias=True, так как нет нормализации после этой свертки
+            nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=1, padding=0, bias=True),
+            nn.Tanh() # Выход в диапазоне [-1, 1]
         )
         
     def forward(self, x):
-        return self.final_t_conv_block(x)
+        return self.final_block(x)
+
+
 
 class CFRBlock(nn.Module):
     def __init__(self, channels):
@@ -90,6 +106,13 @@ class CFRBlock(nn.Module):
         self.fuse1_to2_1 = nn.Sequential(
             nn.ReflectionPad2d(1),
             nn.Conv2d((channels // 4 + channels // 2), channels // 8, kernel_size=3, stride=1)
+            # Дополнительно можно обернуть их в лёгкий Conv+Norm+LeakyReLU (InstanceNorm/BN + LeakyReLU),
+            # чтобы смешивание масштабов было более выразительным.
+            # Это уже инженерный апгрейд, а не строгое следование статье.
+            # Аналогично для fuse1_to2_2, fuse1_to2_3, fuse2_to3_1..4
+            # Если позже добавить InstanceNorm2d после этих fusion‑свёрток,
+            # тогда в них стоит поменять на bias=False,
+            # чтобы не плодить бесполезные параметры.
         )
         self.fuse1_to2_2 = nn.Sequential(
             nn.ReflectionPad2d(1),
@@ -210,7 +233,7 @@ class CFRBlock(nn.Module):
 
         # Final fusion
         d = self.fuse3_to4(torch.cat([self.down(k1), k2, self.up(k3), self.up(self.up(k4))], dim=1))
-        logger.debug(f'Output shape: {d.shape}', once=True)
+        logger.debug(f'CFRBlock output shape: {d.shape}', once=True)
 
         return d
     
@@ -219,29 +242,32 @@ class CFRBranch(nn.Module):
         super(CFRBranch, self).__init__()
         logger.debug('CFR BRANCH INIT')
         logger.debug('CFR BRANCH INIT DEBUG')
+        base_cfr_ch = 64
 
         self.encoder = nn.Sequential(
-            ConvBlock(in_channels, 64),
-            ConvBlock(64, 128),
-            ConvBlock(128, 256),
-            ConvBlock(256, 512),
+            EncoderBlock(in_channels, 16),
+            EncoderBlock(16, 32),
+            EncoderBlock(32, 64),
+            EncoderBlock(base_cfr_ch, base_cfr_ch),
         )
 
-        logger.debug(f"Conv:\t\t{' -> '.join(map(str, [in_channels, 64, 128, 256, 512]))}")
+        logger.debug(f"Conv:\t\t{' -> '.join(map(str, [in_channels, 16, 32, base_cfr_ch, base_cfr_ch]))}")
 
-        self.CFR = CFRBlock(512)
-        logger.debug(f'CFRBlock:\t{512} -> {512 // 4}')
-
-        dec_in_ch = 512 // 4
+        self.CFR = CFRBlock(base_cfr_ch)
+        logger.debug(f'CFRBlock:\t{base_cfr_ch} -> {base_cfr_ch // 4}')
 
         self.decoder = nn.Sequential(
-            TConvBlock(dec_in_ch, 256),
-            TConvBlock(256, 512),
-            TConvBlock(512, 256),
-            TConvBlock(256, 128),
-            TConvBlock(128, 64),
-            # TConvBlock(64, 3),
-            FinalTConvBlock(64, 3),
+            # Шаг 1: Восстанавливаем разрешение 128 -> 256.
+            # Расширяем каналы 16 -> 64, чтобы дать модели пространство для генерации деталей.
+            DecoderBlock(in_channels=base_cfr_ch // 4, out_channels=64, upsample=True),
+            
+            # Шаг 2: Дополнительный слой обработки на полном разрешении (256x256).
+            # Сжимаем каналы 64 -> 32 перед финалом.
+            DecoderBlock(in_channels=64, out_channels=32, upsample=False),
+            
+            # Шаг 3: Финальная проекция в RGB с большим ядром (7x7).
+            # 32 -> 3 канала.
+            FinalDecoderBlock(in_channels=32, out_channels=3, kernel_size=7)
         )
 
     def forward(self, x):
@@ -277,24 +303,23 @@ class HaarDown(nn.Module):
         out = torch.einsum('bcihw, oi -> bcohw', x_reshaped, weights)
         return out[:, :, 0], out[:, :, 1], out[:, :, 2], out[:, :, 3]
     
-class HaarUp(nn.Module):
-    def __init__(self, in_channels=1):
-        super(HaarUp, self).__init__()
-        # Обратная матрица Haar (transposed)
-        self.register_buffer('inv_weights', torch.tensor([
-             [ 1.0, -1.0, -1.0,  1.0],
-             [ 1.0,  1.0, -1.0, -1.0],
-             [ 1.0, -1.0,  1.0, -1.0],
-             [ 1.0,  1.0,  1.0,  1.0]
-        ], dtype=torch.float32))
-        
-    def forward(self, LL, LH, HL, HH):
-        stack = torch.stack([LL, LH, HL, HH], dim=2)
-        weights = self.inv_weights.to(LL.device)
-        out_pixels = torch.einsum('bcihw, oi -> bcohw', stack, weights)
-        B, C, _, H, W = out_pixels.shape
-        out_pixels = out_pixels.view(B, C * 4, H, W)
-        return torch.nn.functional.pixel_shuffle(out_pixels, 2)
+# class HaarUp(nn.Module):
+#     def __init__(self, in_channels=1):
+#         super(HaarUp, self).__init__()
+#         # Обратная матрица Haar (transposed)
+#         self.register_buffer('inv_weights', torch.tensor([
+#              [ 1.0, -1.0, -1.0,  1.0],
+#              [ 1.0,  1.0, -1.0, -1.0],
+#              [ 1.0, -1.0,  1.0, -1.0],
+#              [ 1.0,  1.0,  1.0,  1.0]
+#         ], dtype=torch.float32))
+#     def forward(self, LL, LH, HL, HH):
+#         stack = torch.stack([LL, LH, HL, HH], dim=2)
+#         weights = self.inv_weights.to(LL.device)
+#         out_pixels = torch.einsum('bcihw, oi -> bcohw', stack, weights)
+#         B, C, _, H, W = out_pixels.shape
+#         out_pixels = out_pixels.view(B, C * 4, H, W)
+#         return torch.nn.functional.pixel_shuffle(out_pixels, 2)
 
 class DWTBlock(nn.Module):
     def __init__(self, in_channels=1):
@@ -310,187 +335,183 @@ class DWTBlock(nn.Module):
         return g1, g2, g3
 
 class HFCFPreprocess(nn.Module):
-    """Высокочастотный блок обработки и фильтрации"""
-    def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, padding=1):
+    """
+    SOTA & SAR-Specific Preprocessing.
+    1. Expand: Расширяем каналы сразу, чтобы "размазать" шум и выделить признаки.
+    2. Filter/Downsample: Вторая свертка работает как обучаемый фильтр (вместо MaxPool).
+    """
+    def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, padding=1, downsample=True):
         super(HFCFPreprocess, self).__init__()
         logger.debug('HFCF Preprocess INIT')
-        self.block = nn.Sequential(
+
+        # 1. Этап "Conv2d -> BN -> ReLU"
+        # Сразу расширяем каналы (in -> out). 
+        # Это дает сети "место" для извлечения признаков.
+        layers = [
             nn.ReflectionPad2d(padding),
             nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride),
             nn.InstanceNorm2d(out_channels, affine=True),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(kernel_size=2, stride=2)
-        )
+            nn.ReLU(inplace=True)
+        ]
+
+        # 2. Этап "MaxPool" (заменен на Conv)
+        # Каналы уже out_channels, поэтому здесь out -> out.
+        if downsample:
+            # Stride=2 свертка лучше MaxPool для SAR, так как учится игнорировать спеклы,
+            # а не просто выбирать максимум (который может быть спеклом!).
+            layers.extend([
+                nn.ReflectionPad2d(1),
+                nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=2, bias=False),
+                nn.InstanceNorm2d(out_channels, affine=True),
+                nn.ReLU(inplace=True)
+            ])
+        else:
+            # Если сжимать не надо, добавляем еще слой обработки (глубина помогает денойзингу).
+            layers.extend([
+                nn.ReflectionPad2d(1),
+                nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, bias=False),
+                nn.InstanceNorm2d(out_channels, affine=True),
+                nn.ReLU(inplace=True)
+            ])
+            
+        self.block = nn.Sequential(*layers)
     
     def forward(self, x):
         return self.block(x)
     
-class YellowBlock(nn.Module):
+class WDResBlock(nn.Module):
     """
-    Block с уменьшением размерности (Stride=2).
-    Структура соответствует схеме (3 свертки), но оптимизирована для GAN.
+    Универсальный класс для Yellow и Blue блоков.
+    Тип блока (Yellow/Blue) определяется параметром `projection`.
+    
+    Структура Main: 1x1 -> 3x3 -> 1x1 (Bottleneck)
+    Структура Skip:
+       - Если projection=True (Yellow): Conv1x1 -> Norm
+       - Если projection=False (Blue): Identity
     """
-    def __init__(self, in_channels, out_channels, negative_slope=0.2):
-        super(YellowBlock, self).__init__()
+    def __init__(self, channels, projection=False):
+        super(WDResBlock, self).__init__()
         
-        self.f_block = nn.Sequential(
-            # Conv 1
+        # Внутренние каналы. В ResNet обычно channels // 4. 
+        # Но у нас каналов мало (напр. 64), делить на 4 (16) может быть узко.
+        # Давайте сделаем channels // 2 или оставим channels.
+        # Для HFCF (детали) лучше сохранить поток: mid = channels.
+        mid_channels = channels 
+        
+        self.main_branch = nn.Sequential(
+            # 1x1
+            nn.Conv2d(channels, mid_channels, kernel_size=1, bias=False),
+            nn.InstanceNorm2d(mid_channels, affine=True),
+            nn.ReLU(inplace=True),
+            
+            # 3x3
             nn.ReflectionPad2d(1),
-            nn.Conv2d(in_channels, in_channels, kernel_size=3, stride=1, padding=0, bias=False),
-            nn.InstanceNorm2d(in_channels, affine=True),
-            nn.LeakyReLU(negative_slope, inplace=True),
-
-            # Conv 2
-            nn.ReflectionPad2d(1),
-            nn.Conv2d(in_channels, in_channels, kernel_size=3, stride=1, padding=0, bias=False),
-            nn.InstanceNorm2d(in_channels, affine=True),
-            nn.LeakyReLU(negative_slope, inplace=True),
-
-            # Conv 3 (Downsample)
-            # При stride=2 и kernel=3 нужен padding=1, чтобы выход был ровно H/2
-            # ReflectionPad2d(1) работает корректно.
-            nn.ReflectionPad2d(1),
-            nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=2, padding=0, bias=False),
-            nn.InstanceNorm2d(out_channels, affine=True)
-            # ВАЖНО: Нет активации в конце ветви
-        )
-
-        self.skip = nn.Sequential(
-            # 1x1 свертка для изменения каналов и размера
-            # bias=False, так как дальше Norm
-            nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=2, padding=0, bias=False),
-            nn.InstanceNorm2d(out_channels, affine=True)
-        )
-
-    def forward(self, x):
-        # Сложение без финальной активации
-        return self.f_block(x) + self.skip(x)
-
-
-class BlueBlock(nn.Module):
-    """
-    Block без изменения размерности.
-    """
-    def __init__(self, channels, negative_slope=0.2):
-        super(BlueBlock, self).__init__()
-
-        self.f_block = nn.Sequential(
-            # Conv 1
-            nn.ReflectionPad2d(1),
-            nn.Conv2d(channels, channels, kernel_size=3, stride=1, padding=0, bias=False),
-            nn.InstanceNorm2d(channels, affine=True),
-            nn.LeakyReLU(negative_slope, inplace=True),
-
-            # Conv 2
-            nn.ReflectionPad2d(1),
-            nn.Conv2d(channels, channels, kernel_size=3, stride=1, padding=0, bias=False),
-            nn.InstanceNorm2d(channels, affine=True),
-            nn.LeakyReLU(negative_slope, inplace=True),
-
-            # Conv 3
-            nn.ReflectionPad2d(1),
-            nn.Conv2d(channels, channels, kernel_size=3, stride=1, padding=0, bias=False),
+            nn.Conv2d(mid_channels, mid_channels, kernel_size=3, stride=1, padding=0, bias=False),
+            nn.InstanceNorm2d(mid_channels, affine=True),
+            nn.ReLU(inplace=True),
+            
+            # 1x1
+            nn.Conv2d(mid_channels, channels, kernel_size=1, bias=False),
             nn.InstanceNorm2d(channels, affine=True)
-            # Без активации
         )
+        
+        # Skip connection
+        if projection:
+            self.skip_branch = nn.Sequential(
+                nn.Conv2d(channels, channels, kernel_size=1, bias=False),
+                nn.InstanceNorm2d(channels, affine=True)
+            )
+        else:
+            self.skip_branch = nn.Identity()
+            
+        self.final_relu = nn.ReLU(inplace=True)
 
     def forward(self, x):
-        return self.f_block(x) + x
+        return self.final_relu(self.main_branch(x) + self.skip_branch(x))
 
 
 class RedBlock(nn.Module):
     """
-    Basic Block (ResNet18 style) для GAN.
+    SOTA implementation of the 'Red' block (Basic ResBlock).
+    Conv3x3 -> IN -> ReLU -> Conv3x3 -> IN + Identity -> ReLU.
     """
-    def __init__(self, channels, negative_slope=0.2):
+    def __init__(self, channels):
         super(RedBlock, self).__init__()
-
-        self.f_block = nn.Sequential(
-            # Conv 1
+        
+        self.main_branch = nn.Sequential(
             nn.ReflectionPad2d(1),
-            nn.Conv2d(channels, channels, kernel_size=3, stride=1, padding=0, bias=False),
+            nn.Conv2d(channels, channels, kernel_size=3, stride=1, bias=False),
             nn.InstanceNorm2d(channels, affine=True),
-            nn.LeakyReLU(negative_slope, inplace=True),
-
-            # Conv 2
+            nn.ReLU(inplace=True),
+            
             nn.ReflectionPad2d(1),
-            nn.Conv2d(channels, channels, kernel_size=3, stride=1, padding=0, bias=False),
+            nn.Conv2d(channels, channels, kernel_size=3, stride=1, bias=False),
             nn.InstanceNorm2d(channels, affine=True)
-            # Без активации
         )
+        self.final_relu = nn.ReLU(inplace=True)
 
     def forward(self, x):
-        return self.f_block(x) + x
-
-    
-class UpperBranch(nn.Module):
-    def __init__(self, channels):
-        super(UpperBranch, self).__init__()
-        logger.debug('UpperBranch INIT')
-        self.yellow_block1 = YellowBlock(channels, channels*2)
-        self.blue_block1 = BlueBlock(channels*2)
-        self.blue_block2 = BlueBlock(channels*2)
-        self.yellow_block2 = YellowBlock(channels*2, channels*4)
-        self.blue_block3 = BlueBlock(channels*4)
-        self.blue_block4 = BlueBlock(channels*4)
-
-    def forward(self, x):
-        x1 = self.yellow_block1(x)
-        x2 = self.blue_block1(x1)
-        x3 = self.blue_block2(x2)
-        x4 = self.yellow_block2(x3)
-        x5 = self.blue_block3(x4)
-        out = self.blue_block4(x5)
-        return out
-    
-class LowerBranch(nn.Module):
-    def __init__(self, channels):
-        super(LowerBranch, self).__init__()
-        logger.debug('LowerBranch INIT')
-        self.red_block1 = RedBlock(channels)
-        self.red_block2 = RedBlock(channels)
-
-    def forward(self, x):
-        x1 = self.red_block1(x) 
-        out = self.red_block2(x1)
-        return out
-    
-class HFCFUpconvBlock(nn.Module):
-    def __init__(self, in_channels, out_channels):
-        super(HFCFUpconvBlock, self).__init__()
-        logger.debug('HFCF Upconv INIT')
-        self.upconv_block = nn.Sequential(
-            ConvBlock(in_channels, in_channels, stride=1),
-            TConvBlock(in_channels, in_channels // 2),
-            TConvBlock(in_channels // 2, in_channels // 4),
-            TConvBlock(in_channels // 4, in_channels // 8),
-            TConvBlock(in_channels // 8, in_channels // 16),
-            TConvBlock(in_channels // 16, out_channels),
-            FinalTConvBlock(out_channels, 3)
-        )
-    
-    def forward(self, x):
-        return self.upconv_block(x)
+        return self.final_relu(self.main_branch(x) + x)
     
 class HFCFBranch(nn.Module):
-    def __init__(self, in_channels=1):
+    def __init__(self, in_channels=1, hidden_dim=64):
         super(HFCFBranch, self).__init__()
         logger.debug('HFCF BRANCH INIT')
+
+        # --- DWT ---
         self.dwt = DWTBlock(in_channels=in_channels)
+        freq_c = 3 * in_channels # 3 канала вейвлетов
 
-        self.HFCF_g2_prep = HFCFPreprocess(in_channels=in_channels*3, out_channels=32)
-        self.HFCF_g3_prep = HFCFPreprocess(in_channels=in_channels*3, out_channels=32)
+        # --- 1. Preprocess (SOTA: Strided Conv) ---
+        # Upper (G2, 64x64): Не сжимаем
+        self.pre_top = HFCFPreprocess(freq_c, hidden_dim, downsample=False)
+        # Lower (G3, 128x128): Сжимаем (Stride=2)
+        self.pre_bot = HFCFPreprocess(freq_c, hidden_dim, downsample=True)
 
-        p2_channels = 32
-        p3_channels = 32
+        # --- 2. Streams ---
 
-        self.upper_branch = UpperBranch(channels=p2_channels)
-        self.lower_branch = LowerBranch(channels=p3_channels)
-
-        total_in_channels = 4 * (
-            3 * p2_channels + 3 * p3_channels
+        # Top Stream (Yellow/Blue -> Bottlenecks)
+        # Y(Proj) -> B(Id) -> B(Id) -> Y(Proj) -> B(Id) -> B(Id)
+        self.top_stream = nn.Sequential(
+            WDResBlock(hidden_dim, projection=True),
+            WDResBlock(hidden_dim, projection=False),
+            WDResBlock(hidden_dim, projection=False),
+            WDResBlock(hidden_dim, projection=True),
+            WDResBlock(hidden_dim, projection=False),
+            WDResBlock(hidden_dim, projection=False)
         )
-        self.hfcf_upconv = HFCFUpconvBlock(in_channels=total_in_channels, out_channels=3)
+        
+        # Bottom Stream (Red -> Basic Blocks)
+        # Red -> Red
+        self.bot_stream = nn.Sequential(
+            RedBlock(hidden_dim),
+            RedBlock(hidden_dim)
+        )
+        
+        # --- 3. Fusion & Transition ---
+        # Оставим Conv+Norm+ReLU для стабильности,
+        # 1x1 Conv для смешивания каналов после Concat (128 -> 64)
+        self.fusion_conv = nn.Sequential(
+            nn.Conv2d(hidden_dim * 2, hidden_dim, kernel_size=1, bias=False),
+            nn.InstanceNorm2d(hidden_dim, affine=True),
+            nn.ReLU(inplace=True)
+        )
+
+        # --- 4. Decoder (SOTA: Upsample + Conv) ---
+        self.decoder = nn.Sequential(
+            # 64 -> 128
+            DecoderBlock(hidden_dim, 64, upsample=True),
+            # Refine at 128
+            DecoderBlock(64, 64, upsample=False),
+            
+            # 128 -> 256
+            DecoderBlock(64, 32, upsample=True),
+            # Refine at 256
+            DecoderBlock(32, 32, upsample=False)
+        )
+        
+        # --- 5. Final Output ---
+        self.final = FinalDecoderBlock(32, 3, kernel_size=7)
 
     def forward(self, x):
         g1, g2, g3 = self.dwt(x)
@@ -498,20 +519,20 @@ class HFCFBranch(nn.Module):
         logger.debug('DWT shapes:', once=True)
         logger.debug(f'g1.shape: {g1.shape}, g2.shape: {g2.shape}, g3.shape: {g3.shape}', once=True)
 
-        hfcf_g2 = self.HFCF_g2_prep(g2).to(g2.device)
-        hfcf_g3 = self.HFCF_g3_prep(g3).to(g3.device)
+        hfcf_g2_in = self.pre_top(g2).to(g2.device)
+        hfcf_g3 = self.pre_bot(g3).to(g3.device)
 
-        print(f'hfcf_g2.shape: {hfcf_g2.shape}')
-        print(f'hfcf_g3.shape: {hfcf_g3.shape}')
-        hfcf_g2 = torch.cat([hfcf_g2, hfcf_g3], dim=1)
-        print(f'hfcf_g2.shape: {hfcf_g2.shape}')
+        hfcf_g2 = hfcf_g2_in + hfcf_g3
 
-        upper_branch = self.upper_branch
-        lower_branch = self.lower_branch
+        out_g2 = self.top_stream(hfcf_g2)
+        out_g3 = self.bot_stream(hfcf_g3)
 
-        out = torch.cat([upper_branch(hfcf_g2), lower_branch(hfcf_g3)], dim=1)
+        merged = torch.cat([out_g2, out_g3], dim=1) # 64+64=128 ch
+        merged = self.fusion_conv(merged) # -> 64 ch
 
-        out = self.hfcf_upconv(out)
+        dec = self.decoder(merged)
+        out = self.final(dec)
+
         return out
     
 class CFRWDGenerator(nn.Module):
@@ -529,30 +550,16 @@ class CFRWDGenerator(nn.Module):
         self._initialize_weights()
 
     def _initialize_weights(self):
-        hfcf_wavelet_convs = set()
-        if hasattr(self.hfcf_branch, "dwt"):
-            dwt_block = self.hfcf_branch.dwt
-            if hasattr(dwt_block, "dwt"):
-                haar_down = dwt_block.dwt
-                for attr in ("low", "high_h", "high_v", "high_d"):
-                    module = getattr(haar_down, attr, None)
-                    if module is not None:
-                        hfcf_wavelet_convs.add(module)
-                        for param in module.parameters():
-                            param.requires_grad = False
-
         for m in self.modules():
-            if m in hfcf_wavelet_convs:
-                continue
-            if isinstance(m, nn.Conv2d):
+            if isinstance(m, (nn.Conv2d, nn.ConvTranspose2d)):
+                # Kaiming init
                 nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
                 if m.bias is not None:
                     nn.init.constant_(m.bias, 0)
+                    
             elif isinstance(m, (nn.BatchNorm2d, nn.InstanceNorm2d)):
-                nn.init.constant_(m.weight, 1)
-                nn.init.constant_(m.bias, 0)
-            elif isinstance(m, nn.ConvTranspose2d):
-                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                if m.weight is not None:
+                    nn.init.constant_(m.weight, 1)
                 if m.bias is not None:
                     nn.init.constant_(m.bias, 0)
 
@@ -563,7 +570,7 @@ class CFRWDGenerator(nn.Module):
         cfr_out = self.cfr_branch(x)
         hfcf_out = self.hfcf_branch(x)
         fusion_weight = self.fusion_coeff
-        print(f"CFR out shape: {cfr_out.shape}, HFCF out shape: {hfcf_out.shape}, Fusion weight: {fusion_weight.item()}")
+        logger.debug(f"CFR out shape: {cfr_out.shape}, HFCF out shape: {hfcf_out.shape}, Fusion weight: {fusion_weight.item()}")
         fused = fusion_weight * cfr_out + (1 - fusion_weight) * hfcf_out
         out = self.fuse_cfr_hfcf(fused)
         return out
@@ -576,7 +583,7 @@ if __name__ == "__main__":
     input_array = None #  cv2.imread('C:/Users/tiruu/Desktop/sar2opt_light/data/sen12/agri/s1/ROIs1868_summer_s1_59_p2.png', cv2.IMREAD_COLOR)
     if input_array is None:
         # Создаем случайный тензор с 3 каналами и размером 256x256
-        input_tensor = torch.randn(1, 3, 256, 256).to(device)  # Форма: [1, 3, 256, 256]
+        input_tensor = torch.randn(1, 1, 256, 256).to(device)  # Форма: [1, 3, 256, 256]
     else:
         # Конвертируем BGR в RGB и изменяем размер до 256x256
         input_array = cv2.cvtColor(input_array, cv2.COLOR_BGR2RGB)
@@ -586,11 +593,11 @@ if __name__ == "__main__":
         input_tensor = torch.from_numpy(input_array).float().permute(2, 0, 1) / 255.0
         input_tensor = input_tensor.unsqueeze(0).to(device)  # Добавляем batch-размер -> [1, 3, 256, 256]
 
-    gen = CFRWDGenerator(in_channels=3).to(device)
+    gen = CFRWDGenerator(in_channels=1).to(device)
     out = gen(input_tensor)
 
     plt.subplot(1, 2, 1)
-    plt.imshow(input_tensor.squeeze().permute(1, 2, 0).detach().cpu().numpy())
+    plt.imshow(input_tensor.squeeze().detach().cpu().numpy())
     plt.title('Input SAR Image')
     plt.axis('off')
     plt.subplot(1, 2, 2)

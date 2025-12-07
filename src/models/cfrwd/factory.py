@@ -15,7 +15,7 @@ def build_models():
         tuple: A tuple containing the generator and discriminator models.
     """
 
-    netG = CFRWDGenerator(in_channels=cfg.model.gen.in_channels, image_size=cfg.data.image_size, hfcf_concat_type='cat')
+    netG = CFRWDGenerator(in_channels=cfg.model.gen.in_channels)
     netD = CFRWDPatchDis(in_channels=cfg.model.dis.in_channels, ndf=cfg.model.dis.ndf, return_features=True)
 
     return netG, netD
