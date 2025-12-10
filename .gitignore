@@ -1,5 +1,5 @@
-checkpoints
-data
-output
+/checkpoints/
+/data/
+/output/
 **/__pycache__/
 **/*.pyc

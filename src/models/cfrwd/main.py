@@ -104,6 +104,7 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
             'd_real_mean': real_means.mean(),
             'd_fake_mean': fake_means.mean(),
         }, prog_bar=False, on_step=False, on_epoch=True)
+        self.log('fusion_coeff', self.netG.fusion_coeff.detach(), prog_bar=True, on_step=False, on_epoch=True)
     
     def validation_step(self, batch, batch_idx):
         real_sar, real_opt = batch
