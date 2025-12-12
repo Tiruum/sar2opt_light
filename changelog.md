@@ -26,3 +26,14 @@
 - Поправил `.gitignore`, теперь в него попали файлы src/data
 - Косметические улучшения `src/data/sen12/dataset.py`
 - Скачиваю новый датасет SEN1-2. Это полный датасет на 43Гб
+
+- **cfrwd-18**
+ - Заменил в `DecoderBlock` `nn.InstanceNorm2d(out_channels, affine=True) -> nn.BatchNorm2d(out_channels, affine=True)`,
+ - Заменил `fusion_coef -> fusion_conv`
+
+- **cfrwd-19**
+ - Вернул в `DecoderBlock` `nn.BatchNorm2d(out_channels, affine=True) -> nn.InstanceNorm2d(out_channels, affine=True)`,
+ - Заменил `fusion_coef -> fusion_conv`
+
+- **cfrwd-20**
+ - Вернул `fusion_conv -> fusion_coef`

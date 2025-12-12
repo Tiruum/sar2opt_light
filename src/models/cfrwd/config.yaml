@@ -51,5 +51,5 @@ system:
   summary_dir: "./output/cfrwd/summary"
   limit_train_batches: 0.1
   limit_val_batches: 0.1
-  tb_version: 'cfrwd-17'
+  tb_version: 'cfrwd-20'
   debug: false

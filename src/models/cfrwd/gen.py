@@ -50,7 +50,8 @@ class DecoderBlock(nn.Module):
         layers.extend([
             nn.ReflectionPad2d(1),
             nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=1, padding=0, bias=False),
-            nn.InstanceNorm2d(out_channels, affine=True),
+            # nn.InstanceNorm2d(out_channels, affine=True),
+            nn.BatchNorm2d(out_channels, affine=True),
             nn.ReLU(inplace=True)
         ])
         # В энкодере LeakyReLU нужен, чтобы градиенты не "умирали" при сжатии информации.
@@ -571,8 +572,8 @@ class CFRWDGenerator(nn.Module):
         hfcf_out = self.hfcf_branch(x)
         fusion_weight = self.fusion_coeff
         logger.debug(f"CFR out shape: {cfr_out.shape}, HFCF out shape: {hfcf_out.shape}, Fusion weight: {fusion_weight.item()}")
-        fused = fusion_weight * cfr_out + (1 - fusion_weight) * hfcf_out
-        out = self.fuse_cfr_hfcf(fused)
+        alpha = torch.sigmoid(self.fusion_coeff)
+        out = alpha * cfr_out + (1 - alpha) * hfcf_out
         return out
 
 
