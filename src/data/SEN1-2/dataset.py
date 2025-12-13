@@ -11,15 +11,15 @@ from torch.utils.data import Dataset
 
 class SEN12Dataset(Dataset):
     """
-    PyTorch Dataset РґР»СЏ SEN1-2 РІ Р·Р°РґР°С‡Рµ SAR->Optical.
+    PyTorch Dataset для SEN1-2 в задаче SAR->Optical.
 
-    - Р—РґРµСЃСЊ РќР• РґРµР»Р°РµРј РЅРёРєР°РєРѕРіРѕ РґРѕРїРѕР»РЅРёС‚РµР»СЊРЅРѕРіРѕ Р»РѕРі-РїСЂРµРѕР±СЂР°Р·РѕРІР°РЅРёСЏ РёР»Рё РїРµСЂС†РµРЅС‚РёР»СЊРЅРѕРіРѕ РєР»РёРїРїРёРЅРіР°.
-      Р’СЃС‘ СЌС‚Рѕ СѓР¶Рµ СЃРґРµР»Р°РЅРѕ РЅР° СѓСЂРѕРІРЅРµ РёСЃС…РѕРґРЅС‹С… GeoTIFF Р°РІС‚РѕСЂСЃРєРёРј РїР°Р№РїР»Р°Р№РЅРѕРј SEN1-2.
-    - Р’ СЌС‚РѕРј РєР»Р°СЃСЃРµ С‚РѕР»СЊРєРѕ:
-        * С‡С‚РµРЅРёРµ PNG,
-        * РїРµСЂРµРІРѕРґ 0вЂ“255 -> [0,1],
-        * СЃРёРЅС…СЂРѕРЅРЅС‹Рµ РіРµРѕРјРµС‚СЂРёС‡РµСЃРєРёРµ Р°СѓРіРјРµРЅС‚Р°С†РёРё (С‡РµСЂРµР· Albumentations),
-        * СЂР°Р·РґРµР»СЊРЅР°СЏ РЅРѕСЂРјР°Р»РёР·Р°С†РёСЏ SAR/OPT (РЅР°РїСЂРёРјРµСЂ, РІ [-1,1] + ToTensorV2).
+    - Здесь НЕ делаем никакого дополнительного лог-преобразования или перцентильного клиппинга.
+      Всё это уже сделано на уровне исходных GeoTIFF авторским пайплайном SEN1-2.
+    - В этом классе только:
+        * чтение PNG,
+        * перевод 0–255 -> [0,1],
+        * синхронные геометрические аугментации (через Albumentations),
+        * раздельная нормализация SAR/OPT (например, в [-1,1] + ToTensorV2).
     """
 
     def __init__(
@@ -34,19 +34,19 @@ class SEN12Dataset(Dataset):
         Parameters
         ----------
         root_dir : str
-            РџСѓС‚СЊ Рє РєРѕСЂРЅСЋ SEN1-2 (РіРґРµ Р»РµР¶Р°С‚ РїР°РїРєРё ROIs1158_spring, ...).
+            Путь к корню SEN1-2 (где лежат папки ROIs1158_spring, ...).
         season_dirs : list of str
-            РЎРїРёСЃРѕРє РїРѕРґРїР°РїРѕРє-СЃРµР·РѕРЅРѕРІ, РєРѕС‚РѕСЂС‹Рµ РЅСѓР¶РЅРѕ РёСЃРїРѕР»СЊР·РѕРІР°С‚СЊ.
-            РќР°РїСЂРёРјРµСЂ: ["ROIs1158_spring", "ROIs1868_summer",
+            Список подпапок-сезонов, которые нужно использовать.
+            Например: ["ROIs1158_spring", "ROIs1868_summer",
                        "ROIs1970_fall", "ROIs2017_winter"].
         transform : albumentations.Compose or None
-            Р“РµРѕРјРµС‚СЂРёС‡РµСЃРєРёРµ Р°СѓРіРјРµРЅС‚Р°С†РёРё, РїСЂРёРјРµРЅСЏРµРјС‹Рµ РЎРРќРҐР РћРќРќРћ
-            Рє РѕРїС‚РёРєРµ Рё SAR. Р”РѕР»Р¶РµРЅ Р±С‹С‚СЊ СЃРѕР·РґР°РЅ СЃ
+            Геометрические аугментации, применяемые СИНХРОННО
+            к оптике и SAR. Должен быть создан с
             additional_targets={'sar': 'image'}.
         sar_norm : albumentations.Compose or None
-            РџР°Р№РїР»Р°Р№РЅ РЅРѕСЂРјР°Р»РёР·Р°С†РёРё SAR (РЅР°РїСЂРёРјРµСЂ, [0,1] -> [-1,1] + ToTensorV2()).
+            Пайплайн нормализации SAR (например, [0,1] -> [-1,1] + ToTensorV2()).
         opt_norm : albumentations.Compose or None
-            РџР°Р№РїР»Р°Р№РЅ РЅРѕСЂРјР°Р»РёР·Р°С†РёРё РѕРїС‚РёРєРё (Р°РЅР°Р»РѕРіРёС‡РЅРѕ).
+            Пайплайн нормализации оптики (аналогично).
         """
         self.root_dir = root_dir
         self.season_dirs = list(season_dirs)
@@ -64,9 +64,9 @@ class SEN12Dataset(Dataset):
 
     def _collect_pairs(self) -> List[Dict[str, str]]:
         """
-        РЎРѕР±РёСЂР°РµРј РІСЃРµ РїР°СЂС‹ (s1_..._pK.png, s2_..._pK.png) РїРѕ СѓРєР°Р·Р°РЅРЅС‹Рј СЃРµР·РѕРЅР°Рј.
+        Собираем все пары (s1_..._pK.png, s2_..._pK.png) по указанным сезонам.
 
-        РћР¶РёРґР°РµРј СЃС‚СЂСѓРєС‚СѓСЂСѓ:
+        Ожидаем структуру:
             root/ROIs1158_spring/
                 s1_0/
                     ROIs1158_spring_s1_0_p1.png
@@ -80,13 +80,13 @@ class SEN12Dataset(Dataset):
                 s2_1/
                     ...
 
-        Р›РѕРіРёРєР°:
-        - РІ РєР°Р¶РґРѕРј СЃРµР·РѕРЅРµ РёС‰РµРј РІСЃРµ РїР°РїРєРё s1_*;
-        - РІРЅСѓС‚СЂРё РєР°Р¶РґРѕР№ С‚Р°РєРѕР№ РїР°РїРєРё СЃРѕР±РёСЂР°РµРј РІСЃРµ PNG;
-        - РґР»СЏ РєР°Р¶РґРѕРіРѕ SAR-С„Р°Р№Р»Р° СЃС‚СЂРѕРёРј РїСѓС‚СЊ Рє СЃРѕРѕС‚РІРµС‚СЃС‚РІСѓСЋС‰РµРјСѓ OPT-С„Р°Р№Р»Сѓ:
-            * Р·Р°РјРµРЅСЏРµРј 's1_' РЅР° 's2_' РІ РёРјРµРЅРё РїР°РїРєРё;
-            * Рё 's1_' РЅР° 's2_' РІ РёРјРµРЅРё С„Р°Р№Р»Р°;
-        - РµСЃР»Рё РѕРїС‚РёС‡РµСЃРєРёР№ С„Р°Р№Р» СЃСѓС‰РµСЃС‚РІСѓРµС‚ вЂ” РґРѕР±Р°РІР»СЏРµРј РїР°СЂСѓ.
+        Логика:
+        - в каждом сезоне ищем все папки s1_*;
+        - внутри каждой такой папки собираем все PNG;
+        - для каждого SAR-файла строим путь к соответствующему OPT-файлу:
+            * заменяем 's1_' на 's2_' в имени папки;
+            * и 's1_' на 's2_' в имени файла;
+        - если оптический файл существует — добавляем пару.
         """
         samples: List[Dict[str, str]] = []
 
@@ -95,23 +95,23 @@ class SEN12Dataset(Dataset):
             if not os.path.isdir(season_path):
                 continue
 
-            # РІСЃРµ РїРѕРґРєР°С‚Р°Р»РѕРіРё РІРёРґР° s1_*
+            # все подкаталоги вида s1_*
             sar_dirs = sorted(
                 d for d in glob(os.path.join(season_path, "s1_*"))
                 if os.path.isdir(d)
             )
 
             for sar_dir in sar_dirs:
-                # СЃРѕРѕС‚РІРµС‚СЃС‚РІСѓСЋС‰РёР№ РєР°С‚Р°Р»РѕРі РґР»СЏ РѕРїС‚РёРєРё: s1_X -> s2_X
+                # соответствующий каталог для оптики: s1_X -> s2_X
                 opt_dir = sar_dir.replace(os.sep + "s1_", os.sep + "s2_")
                 if not os.path.isdir(opt_dir):
-                    # РµСЃР»Рё РЅРµС‚ РїР°СЂС‹ РєР°С‚Р°Р»РѕРіР°, РїСЂРѕРїСѓСЃРєР°РµРј СЌС‚РѕС‚ ROI
+                    # если нет пары каталога, пропускаем этот ROI
                     continue
 
                 sar_paths = sorted(glob(os.path.join(sar_dir, "*.png")))
                 for sar_path in sar_paths:
                     fname = os.path.basename(sar_path)
-                    # РёРјСЏ РѕРїС‚РёС‡РµСЃРєРѕРіРѕ С„Р°Р№Р»Р°: РјРµРЅСЏРµРј _s1_ -> _s2_
+                    # имя оптического файла: меняем _s1_ -> _s2_
                     opt_fname = fname.replace("_s1_", "_s2_")
                     opt_path = os.path.join(opt_dir, opt_fname)
 
@@ -131,11 +131,11 @@ class SEN12Dataset(Dataset):
 
     def _load_sar(self, path: str) -> np.ndarray:
         """
-        Р§С‚РµРЅРёРµ SAR PNG:
-        - РєРѕРЅРІРµСЂС‚РёСЂСѓРµРј РІ grayscale (L),
-        - РїСЂРёРІРѕРґРёРј Рє float32,
-        - РЅРѕСЂРјР°Р»РёР·СѓРµРј 0вЂ“255 -> [0,1],
-        - РґРѕР±Р°РІР»СЏРµРј РѕСЃСЊ РєР°РЅР°Р»Р°: (H, W) -> (H, W, 1).
+        Чтение SAR PNG:
+        - конвертируем в grayscale (L),
+        - приводим к float32,
+        - нормализуем 0–255 -> [0,1],
+        - добавляем ось канала: (H, W) -> (H, W, 1).
         """
         img = Image.open(path).convert("L")        # (H, W), uint8
         arr = np.asarray(img, dtype=np.float32)    # (H, W)
@@ -145,10 +145,10 @@ class SEN12Dataset(Dataset):
 
     def _load_opt(self, path: str) -> np.ndarray:
         """
-        Р§С‚РµРЅРёРµ Optical PNG:
-        - РєРѕРЅРІРµСЂС‚РёСЂСѓРµРј РІ RGB,
-        - РїСЂРёРІРѕРґРёРј Рє float32,
-        - РЅРѕСЂРјР°Р»РёР·СѓРµРј 0вЂ“255 -> [0,1].
+        Чтение Optical PNG:
+        - конвертируем в RGB,
+        - приводим к float32,
+        - нормализуем 0–255 -> [0,1].
         """
         img = Image.open(path).convert("RGB")      # (H, W, 3), uint8
         arr = np.asarray(img, dtype=np.float32)    # (H, W, 3)
@@ -160,37 +160,37 @@ class SEN12Dataset(Dataset):
         sar_path = sample["sar"]
         opt_path = sample["opt"]
 
-        # 1. Р§С‚РµРЅРёРµ PNG
+        # 1. Чтение PNG
         sar = self._load_sar(sar_path)  # (H, W, 1), float32 in [0,1]
         opt = self._load_opt(opt_path)  # (H, W, 3), float32 in [0,1]
 
-        # 2. РЎРёРЅС…СЂРѕРЅРЅС‹Рµ РіРµРѕРјРµС‚СЂРёС‡РµСЃРєРёРµ Р°СѓРіРјРµРЅС‚Р°С†РёРё (train-СЂРµР¶РёРј)
+        # 2. Синхронные геометрические аугментации (train-режим)
         if self.transform is not None:
             augmented = self.transform(image=opt, sar=sar)
             opt = augmented["image"]
             sar = augmented["sar"]
 
-        # 3. Р Р°Р·РґРµР»СЊРЅР°СЏ РЅРѕСЂРјР°Р»РёР·Р°С†РёСЏ (РІ С‚.С‡. ToTensorV2)
+        # 3. Раздельная нормализация (в т.ч. ToTensorV2)
         if self.sar_norm is not None:
             sar = self.sar_norm(image=sar)["image"]       # tensor [C,H,W]
         if self.opt_norm is not None:
             opt = self.opt_norm(image=opt)["image"]       # tensor [C,H,W]
 
         return {
-            "sar": sar,               # torch.Tensor РёР»Рё np.ndarray, РІ Р·Р°РІРёСЃРёРјРѕСЃС‚Рё РѕС‚ norm
-            "optical": opt,           # С‚Рѕ Р¶Рµ
+            "sar": sar,               # torch.Tensor или np.ndarray, в зависимости от norm
+            "optical": opt,           # то же
             "season": sample["season"]
         }
 
 if __name__ == "__main__":
     """
-    Sanity-check РґР»СЏ SEN12Dataset + augmentations.py.
+    Sanity-check для SEN12Dataset + augmentations.py.
 
-    РџСЂРѕРІРµСЂСЏРµРј:
-    - С‡С‚Рѕ РїР°СЂС‹ SAR/OPT РЅР°С…РѕРґСЏС‚СЃСЏ;
-    - С„РѕСЂРјС‹ Рё РґРёР°РїР°Р·РѕРЅС‹ Р·РЅР°С‡РµРЅРёР№ РґРѕ/РїРѕСЃР»Рµ РЅРѕСЂРјР°Р»РёР·Р°С†РёРё;
-    - С‡С‚Рѕ РіРµРѕРјРµС‚СЂРёС‡РµСЃРєРёРµ Р°СѓРіРјРµРЅС‚Р°С†РёРё РёР· augmentations.py
-      РїСЂРёРјРµРЅСЏСЋС‚СЃСЏ СЃРёРЅС…СЂРѕРЅРЅРѕ (SAR Рё OPT РёСЃРєР°Р¶РµРЅС‹ РѕРґРёРЅР°РєРѕРІРѕ).
+    Проверяем:
+    - что пары SAR/OPT находятся;
+    - формы и диапазоны значений до/после нормализации;
+    - что геометрические аугментации из augmentations.py
+      применяются синхронно (SAR и OPT искажены одинаково).
     """
 
     import random
@@ -206,9 +206,9 @@ if __name__ == "__main__":
         get_opt_norm,
     )
 
-    DATA_ROOT = "/Users/timur/Desktop/SEN1-2"  # Р·Р°РјРµРЅРёС‚СЊ РЅР° СЃРІРѕР№ РїСѓС‚СЊ
+    DATA_ROOT = "/Users/timur/Desktop/SEN1-2"  # заменить на свой путь
 
-    # 1. Р”Р°С‚Р°СЃРµС‚ Р‘Р•Р— Р°СѓРіРјРµРЅС‚Р°С†РёР№ Рё РЅРѕСЂРјР°Р»РёР·Р°С†РёРё (raw)
+    # 1. Датасет БЕЗ аугментаций и нормализации (raw)
     ds_raw = SEN12Dataset(
         root_dir=DATA_ROOT,
         season_dirs=[
@@ -228,7 +228,7 @@ if __name__ == "__main__":
     for s, c in season_counts.items():
         print(f"  {s}: {c}")
 
-    # 2. Р”Р°С‚Р°СЃРµС‚ РЎ Р°СѓРіРјРµРЅС‚Р°С†РёСЏРјРё train-СЂРµР¶РёРјР° + РЅРѕСЂРјР°Р»РёР·Р°С†РёСЏРјРё
+    # 2. Датасет С аугментациями train-режима + нормализациями
     train_geo = get_train_geo(image_size=256)
     sar_norm = get_sar_norm()
     opt_norm = get_opt_norm()
@@ -246,42 +246,42 @@ if __name__ == "__main__":
         opt_norm=opt_norm,
     )
 
-    # Р’С‹Р±РµСЂРµРј РЅРµСЃРєРѕР»СЊРєРѕ РёРЅРґРµРєСЃРѕРІ
+    # Выберем несколько индексов
     indices = random.sample(range(len(ds_raw)), k=min(3, len(ds_raw)))
 
     for idx in indices:
         meta = ds_raw.samples[idx]
 
-        # --- RAW РІРµСЂСЃРёРё (Р±РµР· Р°СѓРіРјРµРЅС‚Р°С†РёР№/РЅРѕСЂРјР°Р»РёР·Р°С†РёРё) ---
+        # --- RAW версии (без аугментаций/нормализации) ---
         sar_raw = ds_raw._load_sar(meta["sar"])      # (H,W,1), [0,1]
         opt_raw = ds_raw._load_opt(meta["opt"])      # (H,W,3), [0,1]
 
-        # --- AUG + NORM РІРµСЂСЃРёРё ---
+        # --- AUG + NORM версии ---
         item_aug = ds_aug[idx]
         sar_t = item_aug["sar"]          # tensor [1,H,W] ~ [-1,1]
         opt_t = item_aug["optical"]      # tensor [3,H,W] ~ [-1,1]
 
-        # Р”Р»СЏ РѕС‚РѕР±СЂР°Р¶РµРЅРёСЏ РїРµСЂРµРІРµРґС‘Рј С‚РµРЅР·РѕСЂС‹ РѕР±СЂР°С‚РЅРѕ РІ [0,1]
+        # Для отображения переведём тензоры обратно в [0,1]
         sar_aug = sar_t.clone().cpu().numpy()[0]     # [H,W]
-        # SAR РЅРѕСЂРјР°Р»РёР·РѕРІР°РЅ С‡РµСЂРµР· mean=0.5,std=0.5 РїСЂРё РІС…РѕРґРµ [0,1]:
+        # SAR нормализован через mean=0.5,std=0.5 при входе [0,1]:
         # x_norm = (x - 0.5)/0.5 => x = 0.5 * x_norm + 0.5
         sar_aug = 0.5 * sar_aug + 0.5
         sar_aug = sar_aug.clip(0.0, 1.0)
 
         opt_aug = opt_t.clone().cpu().numpy()        # [3,H,W]
-        # РђРЅР°Р»РѕРіРёС‡РЅРѕ: x = 0.5 * x_norm + 0.5
+        # Аналогично: x = 0.5 * x_norm + 0.5
         opt_aug = 0.5 * opt_aug + 0.5
         opt_aug = opt_aug.clip(0.0, 1.0)
         opt_aug = opt_aug.transpose(1, 2, 0)         # [H,W,3]
 
-        # --- РџРµС‡Р°С‚Р°РµРј Р±Р°Р·РѕРІС‹Рµ СЃС‚Р°С‚РёСЃС‚РёРєРё ---
+        # --- Печатаем базовые статистики ---
         print(f"\nIndex {idx}, season={meta['season']}")
         print(f"  SAR raw shape: {sar_raw.shape}, min/max: {sar_raw.min():.3f}/{sar_raw.max():.3f}")
         print(f"  OPT raw shape: {opt_raw.shape}, min/max: {opt_raw.min():.3f}/{opt_raw.max():.3f}")
         print(f"  SAR aug tensor min/max: {sar_t.min().item():.3f}/{sar_t.max().item():.3f}")
         print(f"  OPT aug tensor min/max: {opt_t.min().item():.3f}/{opt_t.max().item():.3f}")
 
-        # --- Р РёСЃСѓРµРј 4 РєР°СЂС‚РёРЅРєРё: raw SAR/OPT Рё aug SAR/OPT ---
+        # --- Рисуем 4 картинки: raw SAR/OPT и aug SAR/OPT ---
         fig, axes = plt.subplots(1, 4, figsize=(10, 3))
         fig.suptitle(f"idx={idx}, season={meta['season']}", fontsize=10)
 

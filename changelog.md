@@ -37,3 +37,6 @@
 
 - **cfrwd-20**
  - Вернул `fusion_conv -> fusion_coef`
+
+- **cfrwd-21**
+ - Switched add InstanceNrm to BatchNorm

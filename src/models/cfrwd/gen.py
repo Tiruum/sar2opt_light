@@ -13,11 +13,11 @@ class ResBlock(nn.Module):
         self.block = nn.Sequential(
             nn.ReflectionPad2d(1),
             nn.Conv2d(channels, channels, kernel_size=3, stride=1, padding=0, bias=False),
-            nn.InstanceNorm2d(channels, affine=True),
+            nn.BatchNorm2d(channels, affine=True),
             nn.LeakyReLU(0.2, inplace=True),
             nn.ReflectionPad2d(1),
             nn.Conv2d(channels, channels, kernel_size=3, stride=1, padding=0, bias=False),
-            nn.InstanceNorm2d(channels, affine=True)
+            nn.BatchNorm2d(channels, affine=True)
         )
         
     def forward(self, x):
@@ -31,7 +31,7 @@ class EncoderBlock(nn.Module):
         self.block = nn.Sequential(
             nn.ReflectionPad2d(1), # Вообще по статье ReflectionPad используется один раз в начале, а затем, видимо, в Conv2d padding=1
             nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding=0, bias=False),
-            nn.InstanceNorm2d(out_channels, affine=True),
+            nn.BatchNorm2d(out_channels, affine=True),
             nn.LeakyReLU(negative_slope=0.2, inplace=True)
         )
 
@@ -50,7 +50,7 @@ class DecoderBlock(nn.Module):
         layers.extend([
             nn.ReflectionPad2d(1),
             nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=1, padding=0, bias=False),
-            # nn.InstanceNorm2d(out_channels, affine=True),
+            # nn.BatchNorm2d(out_channels, affine=True),
             nn.BatchNorm2d(out_channels, affine=True),
             nn.ReLU(inplace=True)
         ])
@@ -111,7 +111,7 @@ class CFRBlock(nn.Module):
             # чтобы смешивание масштабов было более выразительным.
             # Это уже инженерный апгрейд, а не строгое следование статье.
             # Аналогично для fuse1_to2_2, fuse1_to2_3, fuse2_to3_1..4
-            # Если позже добавить InstanceNorm2d после этих fusion‑свёрток,
+            # Если позже добавить BatchNorm2d после этих fusion‑свёрток,
             # тогда в них стоит поменять на bias=False,
             # чтобы не плодить бесполезные параметры.
         )
@@ -351,7 +351,7 @@ class HFCFPreprocess(nn.Module):
         layers = [
             nn.ReflectionPad2d(padding),
             nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride),
-            nn.InstanceNorm2d(out_channels, affine=True),
+            nn.BatchNorm2d(out_channels, affine=True),
             nn.ReLU(inplace=True)
         ]
 
@@ -363,7 +363,7 @@ class HFCFPreprocess(nn.Module):
             layers.extend([
                 nn.ReflectionPad2d(1),
                 nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=2, bias=False),
-                nn.InstanceNorm2d(out_channels, affine=True),
+                nn.BatchNorm2d(out_channels, affine=True),
                 nn.ReLU(inplace=True)
             ])
         else:
@@ -371,7 +371,7 @@ class HFCFPreprocess(nn.Module):
             layers.extend([
                 nn.ReflectionPad2d(1),
                 nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, bias=False),
-                nn.InstanceNorm2d(out_channels, affine=True),
+                nn.BatchNorm2d(out_channels, affine=True),
                 nn.ReLU(inplace=True)
             ])
             
@@ -402,25 +402,25 @@ class WDResBlock(nn.Module):
         self.main_branch = nn.Sequential(
             # 1x1
             nn.Conv2d(channels, mid_channels, kernel_size=1, bias=False),
-            nn.InstanceNorm2d(mid_channels, affine=True),
+            nn.BatchNorm2d(mid_channels, affine=True),
             nn.ReLU(inplace=True),
             
             # 3x3
             nn.ReflectionPad2d(1),
             nn.Conv2d(mid_channels, mid_channels, kernel_size=3, stride=1, padding=0, bias=False),
-            nn.InstanceNorm2d(mid_channels, affine=True),
+            nn.BatchNorm2d(mid_channels, affine=True),
             nn.ReLU(inplace=True),
             
             # 1x1
             nn.Conv2d(mid_channels, channels, kernel_size=1, bias=False),
-            nn.InstanceNorm2d(channels, affine=True)
+            nn.BatchNorm2d(channels, affine=True)
         )
         
         # Skip connection
         if projection:
             self.skip_branch = nn.Sequential(
                 nn.Conv2d(channels, channels, kernel_size=1, bias=False),
-                nn.InstanceNorm2d(channels, affine=True)
+                nn.BatchNorm2d(channels, affine=True)
             )
         else:
             self.skip_branch = nn.Identity()
@@ -442,12 +442,12 @@ class RedBlock(nn.Module):
         self.main_branch = nn.Sequential(
             nn.ReflectionPad2d(1),
             nn.Conv2d(channels, channels, kernel_size=3, stride=1, bias=False),
-            nn.InstanceNorm2d(channels, affine=True),
+            nn.BatchNorm2d(channels, affine=True),
             nn.ReLU(inplace=True),
             
             nn.ReflectionPad2d(1),
             nn.Conv2d(channels, channels, kernel_size=3, stride=1, bias=False),
-            nn.InstanceNorm2d(channels, affine=True)
+            nn.BatchNorm2d(channels, affine=True)
         )
         self.final_relu = nn.ReLU(inplace=True)
 
@@ -494,7 +494,7 @@ class HFCFBranch(nn.Module):
         # 1x1 Conv для смешивания каналов после Concat (128 -> 64)
         self.fusion_conv = nn.Sequential(
             nn.Conv2d(hidden_dim * 2, hidden_dim, kernel_size=1, bias=False),
-            nn.InstanceNorm2d(hidden_dim, affine=True),
+            nn.BatchNorm2d(hidden_dim, affine=True),
             nn.ReLU(inplace=True)
         )
 
@@ -558,7 +558,7 @@ class CFRWDGenerator(nn.Module):
                 if m.bias is not None:
                     nn.init.constant_(m.bias, 0)
                     
-            elif isinstance(m, (nn.BatchNorm2d, nn.InstanceNorm2d)):
+            elif isinstance(m, (nn.BatchNorm2d, nn.BatchNorm2d)):
                 if m.weight is not None:
                     nn.init.constant_(m.weight, 1)
                 if m.bias is not None:
