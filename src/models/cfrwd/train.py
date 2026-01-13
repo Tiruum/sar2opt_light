@@ -57,11 +57,12 @@ def main():
         save_dir=cfg.system.output_dir,
         version=cfg.system.tb_version,
         name='tb_logs',
+        default_hp_metric=False
     )
     checkpoints = ModelCheckpoint(
         dirpath=f"{cfg.system.checkpoints_dir}/{cfg.system.tb_version}",
         filename="{epoch:03d}-{val_psnr:.4f}",
-        monitor="val_psnr",
+        monitor="val/psnr",
         mode="max",
         save_top_k=3,
         save_last=True,
@@ -87,7 +88,7 @@ def main():
         limit_train_batches=cfg.system.limit_train_batches,
         limit_val_batches=cfg.system.limit_val_batches,
 
-        log_every_n_steps=None
+        log_every_n_steps=50
     )
 
     # 8) Запуск обучения
@@ -107,7 +108,7 @@ def cleanup():
 if __name__ == "__main__":
     cfg = OmegaConf.load('src/models/cfrwd/config.yaml')
     from src.utils.logger import Logger
-    terminal_logger = Logger(name=str(cfg.system.tb_version).upper(), cfg_path='src/models/cfrwd/config.yaml')
+    terminal_logger = Logger(cfg_path='src/models/cfrwd/config.yaml')
     try:
         terminal_logger.info("Начинаем обучение...")
         main()

@@ -1,31 +1,26 @@
 import torch
 import torch.nn as nn
 
-
-def _default_norm(num_features: int) -> nn.Module:
-    """Factory for discriminator normalization layers."""
-    return nn.BatchNorm2d(num_features)
-
-
 class CFRWDPatchDisBranch(nn.Module):
-    def __init__(self, in_channels: int = 6, ndf: int = 64, return_features: bool = True):
+    def __init__(self, in_channels: int = 3, ndf: int = 64, return_features: bool = True):
         super().__init__()
+        self.in_channels = in_channels
         self.return_features = return_features
 
         layers = [
-            nn.Conv2d(in_channels, ndf, kernel_size=4, stride=2, padding=1),
+            nn.Conv2d(self.in_channels, ndf, kernel_size=4, stride=2, padding=1),
             nn.LeakyReLU(0.2, inplace=True),
 
-            nn.Conv2d(ndf, ndf * 2, kernel_size=4, stride=2, padding=1),
-            _default_norm(ndf * 2),
+            nn.Conv2d(ndf, ndf * 2, kernel_size=4, stride=2, padding=1, bias=False),
+            nn.InstanceNorm2d(ndf * 2, affine=True),
             nn.LeakyReLU(0.2, inplace=True),
 
-            nn.Conv2d(ndf * 2, ndf * 4, kernel_size=4, stride=2, padding=1),
-            _default_norm(ndf * 4),
+            nn.Conv2d(ndf * 2, ndf * 4, kernel_size=4, stride=2, padding=1, bias=False),
+            nn.InstanceNorm2d(ndf * 4, affine=True),
             nn.LeakyReLU(0.2, inplace=True),
 
-            nn.Conv2d(ndf * 4, ndf * 8, kernel_size=4, stride=2, padding=1),
-            _default_norm(ndf * 8),
+            nn.Conv2d(ndf * 4, ndf * 8, kernel_size=4, stride=2, padding=1, bias=False),
+            nn.InstanceNorm2d(ndf * 8, affine=True),
             nn.LeakyReLU(0.2, inplace=True),
 
             nn.Conv2d(ndf * 8, 1, kernel_size=4, stride=1, padding=1),
@@ -48,45 +43,32 @@ class CFRWDPatchDisBranch(nn.Module):
 class CFRWDPatchDis(nn.Module):
     """Двухмасштабный PatchGAN-дискриминатор для пар (fake_opt, real_opt)."""
 
-    def __init__(self, in_channels: int = 6, ndf: int = 64, return_features: bool = True):
+    def __init__(self, in_channels: int = 3, ndf: int = 64, return_features: bool = True):
         super().__init__()
         self.in_channels = in_channels
         self.return_features = return_features
+        self.ndf = ndf
 
-        self.large_scale_branch = CFRWDPatchDisBranch(in_channels, ndf, return_features)
-        self.small_scale_branch = CFRWDPatchDisBranch(in_channels, ndf, return_features)
+        self.large_scale_branch = CFRWDPatchDisBranch(self.in_channels, self.ndf, self.return_features)
+        self.small_scale_branch = CFRWDPatchDisBranch(self.in_channels, self.ndf, self.return_features)
         self.downsample = nn.AvgPool2d(kernel_size=3, stride=2, padding=1)
 
-    def _build_input(self, fake_opt: torch.Tensor, real_opt: torch.Tensor) -> torch.Tensor:
-        if fake_opt.shape != real_opt.shape:
-            raise ValueError(
-                f"Ожидаются совпадающие тензоры fake_opt и real_opt, получено {fake_opt.shape} vs {real_opt.shape}."
-            )
-        return torch.cat([fake_opt, real_opt], dim=1)
-
-    def forward(self, fake_opt: torch.Tensor = None, real_opt: torch.Tensor = None):
-        if fake_opt is None or real_opt is None:
-            raise ValueError("Для дискриминатора требуется fake_opt и real_opt.")
-
-        input_img = self._build_input(fake_opt, real_opt)
-        if input_img.shape[1] != self.in_channels:
-            raise ValueError(
-                f"Ожидается {self.in_channels} каналов после конкатенации, получено {input_img.shape[1]}."
-            )
+    def forward(self, x: torch.Tensor):
+        """
+        x: оптическое изображение [B, 3, H, W] (реальное или фейковое)
+        """
 
         if self.return_features:
-            large_output, large_features = self.large_scale_branch(input_img)
+            large_output, large_features = self.large_scale_branch(x)
         else:
-            large_output = self.large_scale_branch(input_img)
+            large_output = self.large_scale_branch(x)
 
-        small_fake = self.downsample(fake_opt)
-        small_real = self.downsample(real_opt)
-        small_input = self._build_input(small_fake, small_real)
+        x_small = self.downsample(x)
 
         if self.return_features:
-            small_output, small_features = self.small_scale_branch(small_input)
+            small_output, small_features = self.small_scale_branch(x_small)
         else:
-            small_output = self.small_scale_branch(small_input)
+            small_output = self.small_scale_branch(x_small)
 
         outputs = (large_output, small_output)
 
@@ -103,9 +85,16 @@ if __name__ == "__main__":
     fake_optical = torch.randn(batch_size, 3, height, width)
     real_optical = torch.randn(batch_size, 3, height, width)
 
-    discriminator = CFRWDPatchDis(in_channels=6, ndf=64, return_features=True)
-    (large_out, small_out), feats = discriminator(fake_opt=fake_optical, real_opt=real_optical)
+    discriminator = CFRWDPatchDis(in_channels=3, ndf=64, return_features=True)
+    (real_large, real_small), real_feats = discriminator(real_optical)
+    (fake_large, fake_small), fake_feats = discriminator(fake_optical)
 
-    print(f"Large scale output shape: {large_out.shape}")
-    print(f"Small scale output shape: {small_out.shape}")
-    print(f"Number of feature maps extracted: {len(feats)}")
+    print('Real:')
+    print(f"\tLarge scale output shape: {real_large.shape}")
+    print(f"\tSmall scale output shape: {real_small.shape}")
+    print(f"\tNumber of feature maps extracted: {len(real_feats)}")
+
+    print('Fake:')
+    print(f"\tLarge scale output shape: {fake_large.shape}")
+    print(f"\tSmall scale output shape: {fake_small.shape}")
+    print(f"\tNumber of feature maps extracted: {len(fake_feats)}")

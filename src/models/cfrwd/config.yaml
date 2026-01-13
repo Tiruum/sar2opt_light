@@ -19,12 +19,12 @@ model:
     in_channels: 1
   dis:
     ndf: 64
-    in_channels: 6 # concatenated fake/real optical images (3 + 3)
+    in_channels: 3 # fake or real opt
   log_summary: true
 
 optimizer:
   lr_g: 2e-4
-  lr_d: 2e-4
+  lr_d: 1e-4
   beta1: 0.5
   beta2: 0.999
 
@@ -42,14 +42,14 @@ system:
   deterministic: false
   benchmark: false
   use_amp: false
-  max_epochs: 100
+  max_epochs: 300
   checkpoints_dir: "checkpoints/cfrwd"
   image_freq: 10 # 0 to disable
   output_dir: "./output/cfrwd"
   images_dir: "./output/cfrwd/images"
   profiler_dir: "./output/cfrwd/profiler"
   summary_dir: "./output/cfrwd/summary"
-  limit_train_batches: 0.1
-  limit_val_batches: 0.1
-  tb_version: 'cfrwd-21 '
+  limit_train_batches: 0.3
+  limit_val_batches: 0.3
+  tb_version: 'cfrwd-24'
   debug: false

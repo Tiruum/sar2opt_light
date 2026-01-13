@@ -18,9 +18,9 @@ class Logger:
     }
 
     def __init__(self, name: str = None, stream=sys.stdout, cfg_path: str = 'src/models/cfrwd/config.yaml'):
-        self.name = name
-        self.stream = stream
         self.cfg = OmegaConf.load(cfg_path)
+        self.name = name if name else str(self.cfg.system.tb_version).upper()
+        self.stream = stream
         self.logged_lines = set()
         # Определяем корень проекта (папку, содержащую src)
         self.project_root = self._find_project_root()
