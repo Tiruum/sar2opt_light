@@ -10,6 +10,8 @@ from src.models.cfrwd.factory import build_models, build_optimizers, build_crite
 from src.utils.visualize import visualize_batch
 from torchmetrics.image import PeakSignalNoiseRatio, StructuralSimilarityIndexMeasure
 from omegaconf import OmegaConf
+from src.utils.notification import send_telegram
+from src.utils.cleanup_memory import cleanup_memory
 
 class SAR2OPTGANLightningModule(pl.LightningModule):
     def __init__(self, config):
@@ -51,36 +53,41 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
         real_sar, real_opt = batch
         opt_d, opt_g = self.optimizers()
 
-        # Discriminator step
+        # ========== ОБУЧЕНИЕ ДИСКРИМИНАТОРА ==========
         opt_d.zero_grad(set_to_none=True)
         with autocast(device_type=self.device.type, enabled=self.trainer.precision == 16):
+            # Генерируем fake изображения (detach чтобы не обучать G)
             fake_opt = self.netG(real_sar).detach()
 
-            d_fake, _ = self.netD(fake_opt=fake_opt, real_opt=real_opt)
-            d_real, _ = self.netD(fake_opt=real_opt, real_opt=real_opt)
+            # Дискриминатор смотрит на РЕАЛЬНЫЕ оптические изображения
+            d_real, _ = self.netD(real_opt)
+            # Дискриминатор смотрит на FAKE оптические изображения
+            d_fake, _ = self.netD(fake_opt)
 
             num_scales = len(d_real)
             d_loss = 0.0
             for real_out, fake_out in zip(d_real, d_fake):
-                real_loss = self.criterions['GAN'](real_out, target_is_real=True, real_label_smooth=0.9, fake_label_smooth=0.1)
-                fake_loss = self.criterions['GAN'](fake_out, target_is_real=False, real_label_smooth=0.9, fake_label_smooth=0.1)
-                d_loss += (real_loss + fake_loss) / 2
+                real_loss = self.criterions['GAN'](real_out, target_is_real=True)
+                fake_loss = self.criterions['GAN'](fake_out, target_is_real=False)
+                d_loss += 0.5 * (real_loss + fake_loss)
             d_loss /= num_scales
 
+            # Статистика для логирования
             real_means = torch.stack([real_out.detach().mean() for real_out in d_real])
             fake_means = torch.stack([fake_out.detach().mean() for fake_out in d_fake])
 
         self.manual_backward(d_loss)
         opt_d.step()
 
-        # Generator step
+        # ========== ОБУЧЕНИЕ ГЕНЕРАТОРА ==========
         opt_g.zero_grad(set_to_none=True)
         with autocast(device_type=self.device.type, enabled=self.trainer.precision == 16):
-            fake_opt = self.netG(real_sar)
+            fake_opt = self.netG(real_sar)  # Генерируем fake изображения (БЕЗ detach!)
 
-            d_fake, fake_feats = self.netD(fake_opt=fake_opt, real_opt=real_opt)
-            _, real_feats = self.netD(fake_opt=real_opt, real_opt=real_opt)
-            loss_gan = sum(self.criterions['GAN'](pf, True) for pf in d_fake)
+            d_fake, fake_feats = self.netD(fake_opt)  # Дискриминатор оценивает fake (для adversarial loss)
+            _, real_feats = self.netD(real_opt)  # Дискриминатор оценивает real (для feature matching loss)
+
+            loss_gan = 0.5 * sum(self.criterions['GAN'](pf, True) for pf in d_fake)
             loss_fm = self.criterions['FM'](
                 [feat.detach() for feat in real_feats],
                 [feat for feat in fake_feats]
@@ -96,13 +103,14 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
         self.manual_backward(g_loss)
         opt_g.step()
 
-        self.log('train_g_loss', g_loss, prog_bar=True, on_step=False, on_epoch=True)
+        self.log('train/g_loss', g_loss, prog_bar=True, on_step=False, on_epoch=True)
         self.log_dict({
-            'train_loss_fm': loss_fm,
-            'train_loss_gan': loss_gan,
-            'train_loss_d': d_loss,
-            'd_real_mean': real_means.mean(),
-            'd_fake_mean': fake_means.mean(),
+            'train/loss_fm': loss_fm,
+            'train/loss_gan': loss_gan,
+            'train/loss_d': d_loss,
+            'train/loss_l1': loss_l1,
+            'feats/d_real_mean': real_means.mean(),
+            'feats/d_fake_mean': fake_means.mean(),
         }, prog_bar=False, on_step=False, on_epoch=True)
     
     def validation_step(self, batch, batch_idx):
@@ -111,14 +119,14 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
 
         # Losses
         loss_l1 = self.criterions['L1'](fake_opt, real_opt)
-        self.log('val_l1', loss_l1, prog_bar=True, on_step=False, on_epoch=True)
+        self.log('val/loss_l1', loss_l1, prog_bar=True, on_step=False, on_epoch=True)
 
         # Metrics
         psnr = self.psnr(fake_opt, real_opt)
         ssim = self.ssim(fake_opt, real_opt)
 
-        self.log('val_psnr', psnr, prog_bar=True, on_step=False, on_epoch=True)
-        self.log('val_ssim', ssim, prog_bar=True, on_step=False, on_epoch=True)
+        self.log('val/psnr', psnr, prog_bar=True, on_step=False, on_epoch=True)
+        self.log('val/ssim', ssim, prog_bar=True, on_step=False, on_epoch=True)
 
     def test_step(self, batch, batch_idx):
         pass
@@ -132,8 +140,7 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
         if self.fixed_sar is None:
             return
         
-        gc.collect()
-        torch.cuda.empty_cache()
+        cleanup_memory()
         
         if (self.cfg.system.image_freq != 0):
             if (self.current_epoch + 1) % self.cfg.system.image_freq == 0:
@@ -147,6 +154,14 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
                     path, max_rows=6, mode='quality',
                     title=f"Epoch {self.current_epoch+1}"
                 )
+                send_telegram(image_path=path, message=f'[{str(self.cfg.system.tb_version).upper()}]\nEpoch {self.current_epoch + 1}/{str(self.cfg.system.max_epochs)}')
+
+    def on_train_start(self):
+        send_telegram(message=f"[{str(self.cfg.system.tb_version).upper()}] Обучение началось")
+
+    def on_train_end(self):
+        cleanup_memory()
+        send_telegram(message=f"[{str(self.cfg.system.tb_version).upper()}] Обучение завершено")
 
 
 from pytorch_lightning import Trainer
@@ -155,19 +170,8 @@ from pytorch_lightning.loggers import TensorBoardLogger
 
 from src.data.sen12.datamodule import SEN12Datamodule
 from src.utils.logger import Logger
-terminal_logger = Logger(name="CFRWD main.py", cfg_path='src/models/cfrwd/config.yaml')
+terminal_logger = Logger(cfg_path='src/models/cfrwd/config.yaml')
 cfg = OmegaConf.load("src/models/cfrwd/config.yaml")
-
-def cleanup():
-    """Функция для освобождения оперативной памяти и кэша."""
-    global model, dm
-    if 'model' in globals():
-        del model
-    if 'dm' in globals():
-        del dm
-    gc.collect()
-    if torch.cuda.is_available():
-        torch.cuda.empty_cache()
 
 if __name__ == "__main__":
     pl.seed_everything(42, workers=True)
@@ -218,11 +222,11 @@ if __name__ == "__main__":
         trainer.fit(model, datamodule=dm)
     except KeyboardInterrupt:
         terminal_logger.warning("Обучение прервано пользователем. Выполняем очистку...")
-        cleanup()
+        cleanup_memory()
         raise  # Перевыбрасываем исключение
     except Exception as e:
         terminal_logger.error(f"Произошла ошибка: {e}. Выполняем очистку...")
-        cleanup()
+        cleanup_memory()
         raise  # Перевыбрасываем исключение
     finally:
-        cleanup()
+        cleanup_memory()

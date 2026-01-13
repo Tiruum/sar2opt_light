@@ -1,0 +1,42 @@
+# Changelog
+Этот файл призван структурировать и упростить понимание коммитов и запусков, кодируя их букво-численной аббревиатурой.
+
+### 21.09.2025
+#### Re-init
+- (`0028ae7`) Переопределена архитектура, сохранена модель Pix2Pix (UNet Generator with attention + Multiscale Patch Discriminator)
+- Добавлена многообещающая модель CFRWD GAN.
+
+- **cfrwd-1**: Модель создана, начинаем улучшать, подгонять параметры и прочее, чтобы достичь наилучших результатов. 
+##### CFRWD-1
+- **cfrwd-2**: В связи с тем, что модель генерирует цветной шум, была добавлена в дискриминатор возможность выбора использования conditional или нет (проще говоря, теперь есть возможность не передавать SAR в дискриминатор, а только fake opt и real opt, как в статье). main.py редактирован под случай 3 канального входного изображения (только fake opt). В конфиг добавлена быстрая настройка этого случая
+- **cfrwd-3**: В дискриминаторе заменил InstanceNorm на BatchNorm. Заменил `nn.Conv2d(ndf * 8, 1, kernel_size=4, stride=1, padding=1)` на `nn.Conv2d(ndf * 8, 1, kernel_size=1, stride=1, padding=0)`
+- **cfrwd-4**: Добавил `torch.nn.utils.clip_grad_norm_(self.netG.parameters(), max_norm=0.5)`. Убрал деление в конце FMLoss.
+- **cfrwd-5**: Добавил L1 * 100, повысил fm до 50. Добавил `real_label_smooth=0.9`, `fake_label_smooth=0.1`.
+- **cfrwd-6**: Сделать возможность отключать аугментации и попробовать без них
+- **cfrwd-7**: Сейчас добавил возможность выбрать три канала в генераторе на входе вместо одного (SAR теперь может быть не один канакл, а три).
+- **cfrwd-8**: Надо переработать структуру генератора, взять нормальные ResBlock'и
+##### CFRWD-2 починил модель, заменил print на logger из src.utils.logger. Debug отображается условно флагом из config.yaml
+- **cfrwd-9**: Вынес инициализацию модулей в генератор (HFCF каждый раз создавались заново), чтобы не было шумов
+##### CFRWD-9
+- **cfrwd-11**: Заметили, что _initialize_weights также инициализирует веса Haar, который должен быть фиксирован. Исправили это. Предположительно, это должно убрать пятна, тк после переинициализации Haar вырождается в обычный downsampling.
+##### CFRWD-10
+- **cfrwd-17** Полностью и основательно переписал ветви CFR и HFCF, структурные блоки. Это дало генерацию похожих на правду изображений. Цели ветви GitHub cfrwd-12 выполнены, делаю Pull Request в master.
+
+##### CFRWD-11
+- Поправил `.gitignore`, теперь в него попали файлы src/data
+- Косметические улучшения `src/data/sen12/dataset.py`
+- Скачиваю новый датасет SEN1-2. Это полный датасет на 43Гб
+
+- **cfrwd-18**
+ - Заменил в `DecoderBlock` `nn.InstanceNorm2d(out_channels, affine=True) -> nn.BatchNorm2d(out_channels, affine=True)`,
+ - Заменил `fusion_coef -> fusion_conv`
+
+- **cfrwd-19**
+ - Вернул в `DecoderBlock` `nn.BatchNorm2d(out_channels, affine=True) -> nn.InstanceNorm2d(out_channels, affine=True)`,
+ - Заменил `fusion_coef -> fusion_conv`
+
+- **cfrwd-20**
+ - Вернул `fusion_conv -> fusion_coef`
+
+- **cfrwd-21**
+ - Поменял везде InstanceNorm на BatchNorm
