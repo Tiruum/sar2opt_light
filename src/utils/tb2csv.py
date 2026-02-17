@@ -182,7 +182,7 @@ def analyze_and_plot(exp_name, df_clean):
 
 
 if __name__ == '__main__':
-    experiments = ['cfrwd-24']
+    experiments = ['cfrwd-25']
     
     for exp in experiments:
         print(f"\n{'='*60}")
