@@ -49,7 +49,7 @@ system:
   images_dir: "./output/cfrwd/images"
   profiler_dir: "./output/cfrwd/profiler"
   summary_dir: "./output/cfrwd/summary"
-  limit_train_batches: 0.3
-  limit_val_batches: 0.3
-  tb_version: 'cfrwd-24'
+  limit_train_batches: 0.1
+  limit_val_batches: 0.1
+  tb_version: 'cfrwd-26'
   debug: false

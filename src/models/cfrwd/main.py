@@ -1,4 +1,4 @@
-# src/models/lightning/gan_module.py
+# src/models/lightning/main.py
 
 import gc
 import os
@@ -10,7 +10,7 @@ from src.models.cfrwd.factory import build_models, build_optimizers, build_crite
 from src.utils.visualize import visualize_batch
 from torchmetrics.image import PeakSignalNoiseRatio, StructuralSimilarityIndexMeasure
 from omegaconf import OmegaConf
-from src.utils.notification import send_telegram
+from src.utils.notification import send_telegram, generate_tg_message
 from src.utils.cleanup_memory import cleanup_memory
 
 class SAR2OPTGANLightningModule(pl.LightningModule):
@@ -56,8 +56,9 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
         # ========== ОБУЧЕНИЕ ДИСКРИМИНАТОРА ==========
         opt_d.zero_grad(set_to_none=True)
         with autocast(device_type=self.device.type, enabled=self.trainer.precision == 16):
-            # Генерируем fake изображения (detach чтобы не обучать G)
-            fake_opt = self.netG(real_sar).detach()
+            # Генерируем fake изображения (torch.no_grad() чтобы не обучать G)
+            with torch.no_grad():
+                fake_opt = self.netG(real_sar)
 
             # Дискриминатор смотрит на РЕАЛЬНЫЕ оптические изображения
             d_real, _ = self.netD(real_opt)
@@ -85,13 +86,12 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
             fake_opt = self.netG(real_sar)  # Генерируем fake изображения (БЕЗ detach!)
 
             d_fake, fake_feats = self.netD(fake_opt)  # Дискриминатор оценивает fake (для adversarial loss)
-            _, real_feats = self.netD(real_opt)  # Дискриминатор оценивает real (для feature matching loss)
+            with torch.no_grad(): # Так как потом все равно detach
+                _, real_feats = self.netD(real_opt)  # Дискриминатор оценивает real (для feature matching loss)
 
-            loss_gan = 0.5 * sum(self.criterions['GAN'](pf, True) for pf in d_fake)
-            loss_fm = self.criterions['FM'](
-                [feat.detach() for feat in real_feats],
-                [feat for feat in fake_feats]
-            )
+            num_scales = len(d_fake)
+            loss_gan = sum(self.criterions['GAN'](pf, True) for pf in d_fake) / num_scales
+            loss_fm = self.criterions["FM"](real_feats, fake_feats)
             loss_l1 = self.criterions['L1'](fake_opt, real_opt)
 
             g_loss = (
@@ -120,6 +120,8 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
         # Losses
         loss_l1 = self.criterions['L1'](fake_opt, real_opt)
         self.log('val/loss_l1', loss_l1, prog_bar=True, on_step=False, on_epoch=True)
+        # Для корректного вывода в название чекпоинт-файла
+        self.log("val_loss_l1", loss_l1, prog_bar=True, on_step=False, on_epoch=True)
 
         # Metrics
         psnr = self.psnr(fake_opt, real_opt)
@@ -137,6 +139,14 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
         return [optD, optG], [schedD, schedG]
     
     def on_train_epoch_end(self):
+        schedD, schedG = self.lr_schedulers()
+        schedD.step()
+        schedG.step()
+
+        opt_d, opt_g = self.optimizers()
+        self.log("lr/d", opt_d.param_groups[0]["lr"], prog_bar=False, on_step=False, on_epoch=True)
+        self.log("lr/g", opt_g.param_groups[0]["lr"], prog_bar=False, on_step=False, on_epoch=True)
+
         if self.fixed_sar is None:
             return
         
@@ -154,7 +164,8 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
                     path, max_rows=6, mode='quality',
                     title=f"Epoch {self.current_epoch+1}"
                 )
-                send_telegram(image_path=path, message=f'[{str(self.cfg.system.tb_version).upper()}]\nEpoch {self.current_epoch + 1}/{str(self.cfg.system.max_epochs)}')
+                tg_message = generate_tg_message(self)
+                send_telegram(image_path=path, message=tg_message)
 
     def on_train_start(self):
         send_telegram(message=f"[{str(self.cfg.system.tb_version).upper()}] Обучение началось")
@@ -197,8 +208,8 @@ if __name__ == "__main__":
     logger = TensorBoardLogger(save_dir=cfg.system.output_dir, name="cfrwd")
     checkpoint_callback = ModelCheckpoint(
         dirpath=f"{cfg.system.checkpoints_dir}/{cfg.system.tb_version}",
-        filename="epoch{epoch:03d}-{val_l1:.4f}",
-        monitor="val_l1",
+        filename="epoch{epoch:03d}-{val_loss_l1:.4f}",
+        monitor="val/loss_l1",
         mode="min",
         save_top_k=3,
         save_last=True

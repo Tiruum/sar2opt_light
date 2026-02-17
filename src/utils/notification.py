@@ -1,6 +1,7 @@
 import os
 from dotenv import load_dotenv
 import telebot
+import torch
 
 load_dotenv()
 
@@ -22,7 +23,7 @@ def send_telegram(message="", image_path=None):
         if image_path:
             # Проверяем существование файла
             if not os.path.exists(image_path):
-                print(f"❌ Файл не найден: {image_path}")
+                print(f"❌ [TG BOT] Файл не найден: {image_path}")
                 return
 
             # Открываем файл и отправляем фото
@@ -35,4 +36,40 @@ def send_telegram(message="", image_path=None):
             bot.send_message(TELEGRAM_RECIEVER_USER_ID, message)
 
     except Exception as e:
-        print(f"❌ Произошла ошибка при отправке: {e}")
+        print(f"❌ [TG BOT] Произошла ошибка при отправке: {e}")
+
+from pytorch_lightning.utilities.rank_zero import rank_zero_only
+@rank_zero_only
+def _t(self, k): # Для отправки метрик через telegram бота
+    v = self.trainer.callback_metrics.get(k)
+    if v is None:
+        return "—"
+    if torch.is_tensor(v):
+        v = v.detach().cpu().item()
+    return f"{float(v):.6f}"
+
+def generate_tg_message(self):
+    return (
+            f"[{str(self.cfg.system.tb_version).upper()}]\n"
+            f"Epoch: {self.current_epoch + 1}/{self.cfg.system.max_epochs}\n\n"
+
+            f"Train:\n"
+            f"g_loss = {_t(self,'train/g_loss')}\n"
+            f"loss_fm = {_t(self,'train/loss_fm')}\n"
+            f"loss_gan = {_t(self,'train/loss_gan')}\n"
+            f"loss_d = {_t(self,'train/loss_d')}\n"
+            f"loss_l1 = {_t(self,'train/loss_l1')}\n\n"
+
+            f"Val:\n"
+            f"loss_l1 = {_t(self,'val/loss_l1')}\n"
+            f"psnr = {_t(self,'val/psnr')}\n"
+            f"ssim = {_t(self,'val/ssim')}\n\n"
+
+            f"Feats:\n"
+            f"real = {_t(self,'feats/d_real_mean')}\n"
+            f"fake = {_t(self,'feats/d_fake_mean')}\n\n"
+
+            f"LR:\n"
+            f"gen = {_t(self,'lr/g')}\n"
+            f"dis = {_t(self,'lr/d')}"
+        )
