@@ -541,12 +541,7 @@ class CFRWDGenerator(nn.Module):
         super(CFRWDGenerator, self).__init__()
         self.cfr_branch = CFRBranch(in_channels=in_channels)
         self.hfcf_branch = HFCFBranch(in_channels=in_channels)
-        # Learnable fusion coefficient initialized to 1.0 as described in the paper
         self.fusion_coeff = nn.Parameter(torch.tensor(1.0))
-        self.fuse_cfr_hfcf = nn.Sequential(
-            nn.Conv2d(3, 3, kernel_size=1, stride=1, padding=0),
-            nn.Tanh()
-        )
 
         self._initialize_weights()
 
@@ -570,10 +565,8 @@ class CFRWDGenerator(nn.Module):
     def forward(self, x):
         cfr_out = self.cfr_branch(x)
         hfcf_out = self.hfcf_branch(x)
-        fusion_weight = self.fusion_coeff
-        logger.debug(f"CFR out shape: {cfr_out.shape}, HFCF out shape: {hfcf_out.shape}, Fusion weight: {fusion_weight.item()}")
-        alpha = torch.sigmoid(self.fusion_coeff)
-        out = alpha * cfr_out + (1 - alpha) * hfcf_out
+        logger.debug(f"CFR out shape: {cfr_out.shape}, HFCF out shape: {hfcf_out.shape}, Fusion weight: {self.fusion_coeff.item()}")
+        out = self.fusion_coeff * cfr_out + (1 - self.fusion_coeff) * hfcf_out
         return out
 
 
