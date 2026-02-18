@@ -40,7 +40,7 @@ system:
   device: "cuda"
   precision: 32
   deterministic: false
-  benchmark: false
+  benchmark: true
   use_amp: false
   max_epochs: 300
   checkpoints_dir: "checkpoints/cfrwd"
@@ -49,7 +49,24 @@ system:
   images_dir: "./output/cfrwd/images"
   profiler_dir: "./output/cfrwd/profiler"
   summary_dir: "./output/cfrwd/summary"
-  limit_train_batches: 0.1
-  limit_val_batches: 0.1
-  tb_version: 'cfrwd-26'
+  limit_train_batches: 1.0
+  limit_val_batches: 1.0
+  tb_version: 'cfrwd-27'
   debug: false
+
+  # Добавить лог alpha, проверить его вывод и обучение
+
+  # Добавить эту хуйню если нужно
+  # def set_requires_grad(self, net, flag: bool):
+  #       for p in net.parameters():
+  #           p.requires_grad_(flag)
+
+  # Проверить корректность no_grad()
+
+  # Проверить разбиение датасета, мб сделать Subset
+
+  # Проверить какие картинки попадают в картинки по эпохам, обучаются ли на них сети
+
+  # Проверить корректность gen, dis, dataset
+
+  # Попробовать фьюзить не картинки целиком, а отдельные части или вообще фичи
