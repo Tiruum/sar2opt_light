@@ -187,7 +187,7 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
 
 if __name__ == "__main__":
     from pytorch_lightning import Trainer
-    from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
+    from pytorch_lightning.callbacks import ModelCheckpoint
     from pytorch_lightning.loggers import TensorBoardLogger
     from src.data.sen12.datamodule import SEN12Datamodule
     from src.utils.logger import Logger
@@ -227,15 +227,14 @@ if __name__ == "__main__":
         monitor="val/psnr",
         mode="max",
         save_top_k=3,
-        save_last=True
+        save_last=True,
         auto_insert_metric_name=False
     )
-    lr_monitor = LearningRateMonitor(logging_interval='epoch')
 
     trainer = Trainer(
         max_epochs=10,
         logger=logger,
-        callbacks=[checkpoint_callback, lr_monitor],
+        callbacks=[checkpoint_callback],
         accelerator=cfg.system.device,
         devices=1,
         limit_train_batches=0.1,
