@@ -59,7 +59,9 @@ if __name__ == "__main__":
             os.makedirs(os.path.join(cfg.system.summary_dir), exist_ok=True)
             with open(f"{cfg.system.summary_dir}/{cfg.system.tb_version}.txt", "w") as f:
                 f.write(str(ModelSummary(model, max_depth=-1)))
-        # model = torch.compile(model)
+        if getattr(cfg.system, 'compile', False):
+            terminal_logger.info("torch.compile() включён — первая эпоха будет медленнее")
+            model = torch.compile(model)
 
         # 6) Logger и Callbacks
         tb_logger = TensorBoardLogger(
@@ -108,7 +110,10 @@ if __name__ == "__main__":
         )
 
         # 8) Запуск обучения
-        trainer.fit(model, datamodule=dm)
+        ckpt_path = getattr(cfg.system, 'resume_ckpt', None)
+        if ckpt_path:
+            terminal_logger.info(f"Возобновление с чекпоинта: {ckpt_path}")
+        trainer.fit(model, datamodule=dm, ckpt_path=ckpt_path)
     except KeyboardInterrupt:
         terminal_logger.warning("Обучение прервано (Ctrl+C). Выполняем очистку...")
     except Exception as e:
