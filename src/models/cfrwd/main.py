@@ -124,8 +124,6 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
         # Losses
         loss_l1 = self.criterions['L1'](fake_opt, real_opt)
         self.log('val/loss_l1', loss_l1, prog_bar=True, on_step=False, on_epoch=True)
-        # Для корректного вывода в название чекпоинт-файла
-        self.log("val_loss_l1", loss_l1, prog_bar=True, on_step=False, on_epoch=True)
 
         # Metrics
         psnr = self.psnr(fake_opt, real_opt)
@@ -225,11 +223,12 @@ if __name__ == "__main__":
     logger = TensorBoardLogger(save_dir=cfg.system.output_dir, name="cfrwd")
     checkpoint_callback = ModelCheckpoint(
         dirpath=f"{cfg.system.checkpoints_dir}/{cfg.system.tb_version}",
-        filename="epoch{epoch:03d}-{val_loss_l1:.4f}",
-        monitor="val/loss_l1",
-        mode="min",
+        filename="epoch{epoch:03d}-{val/psnr:.4f}",
+        monitor="val/psnr",
+        mode="max",
         save_top_k=3,
         save_last=True
+        auto_insert_metric_name=False
     )
     lr_monitor = LearningRateMonitor(logging_interval='epoch')
 
