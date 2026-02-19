@@ -5,7 +5,6 @@ import os
 import torch.nn as nn
 import torch
 import pytorch_lightning as pl
-from torch.amp import autocast
 from src.models.cfrwd.factory import build_models, build_optimizers, build_criterions, build_lr_schedulers
 from src.utils.visualize import visualize_batch
 from torchmetrics.image import PeakSignalNoiseRatio, StructuralSimilarityIndexMeasure, SpectralAngleMapper #, LearnedPerceptualImagePatchSimilarity
@@ -57,50 +56,50 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
 
         # ========== ОБУЧЕНИЕ ДИСКРИМИНАТОРА ==========
         opt_d.zero_grad(set_to_none=True)
-        with autocast(device_type=self.device.type, enabled=self.trainer.precision == 16):
-            # Генерируем fake изображения (torch.no_grad() чтобы не обучать G)
-            with torch.no_grad():
-                fake_opt = self.netG(real_sar)
 
-            # Дискриминатор смотрит на РЕАЛЬНЫЕ оптические изображения
-            d_real, _ = self.netD(real_opt)
-            # Дискриминатор смотрит на FAKE оптические изображения
-            d_fake, _ = self.netD(fake_opt)
+        # Генерируем fake изображения (torch.no_grad() чтобы не обучать G)
+        with torch.no_grad():
+            fake_opt = self.netG(real_sar)
 
-            num_scales = len(d_real)
-            d_loss = 0.0
-            for real_out, fake_out in zip(d_real, d_fake):
-                real_loss = self.criterions['GAN'](real_out, target_is_real=True)
-                fake_loss = self.criterions['GAN'](fake_out, target_is_real=False)
-                d_loss += 0.5 * (real_loss + fake_loss)
-            d_loss /= num_scales
+        # Дискриминатор смотрит на РЕАЛЬНЫЕ оптические изображения
+        d_real, _ = self.netD(real_opt)
+        # Дискриминатор смотрит на FAKE оптические изображения
+        d_fake, _ = self.netD(fake_opt)
 
-            # Статистика для логирования
-            real_means = torch.stack([real_out.detach().mean() for real_out in d_real])
-            fake_means = torch.stack([fake_out.detach().mean() for fake_out in d_fake])
+        num_scales = len(d_real)
+        d_loss = 0.0
+        for real_out, fake_out in zip(d_real, d_fake):
+            real_loss = self.criterions['GAN'](real_out, target_is_real=True)
+            fake_loss = self.criterions['GAN'](fake_out, target_is_real=False)
+            d_loss += 0.5 * (real_loss + fake_loss)
+        d_loss /= num_scales
+
+        # Статистика для логирования
+        real_means = torch.stack([real_out.detach().mean() for real_out in d_real])
+        fake_means = torch.stack([fake_out.detach().mean() for fake_out in d_fake])
 
         self.manual_backward(d_loss)
         opt_d.step()
 
         # ========== ОБУЧЕНИЕ ГЕНЕРАТОРА ==========
         opt_g.zero_grad(set_to_none=True)
-        with autocast(device_type=self.device.type, enabled=self.trainer.precision == 16):
-            fake_opt = self.netG(real_sar)  # Генерируем fake изображения (БЕЗ detach!)
 
-            d_fake, fake_feats = self.netD(fake_opt)  # Дискриминатор оценивает fake (для adversarial loss)
-            with torch.no_grad(): # Так как потом все равно detach
-                _, real_feats = self.netD(real_opt)  # Дискриминатор оценивает real (для feature matching loss)
+        fake_opt = self.netG(real_sar)  # Генерируем fake изображения (БЕЗ detach!)
 
-            num_scales = len(d_fake)
-            loss_gan = sum(self.criterions['GAN'](pf, True) for pf in d_fake) / num_scales
-            loss_fm = self.criterions["FM"](real_feats, fake_feats)
-            loss_l1 = self.criterions['L1'](fake_opt, real_opt)
+        d_fake, fake_feats = self.netD(fake_opt)  # Дискриминатор оценивает fake (для adversarial loss)
+        with torch.no_grad():  # Так как потом все равно detach
+            _, real_feats = self.netD(real_opt)  # Дискриминатор оценивает real (для feature matching loss)
 
-            g_loss = (
-                loss_gan * self.loss_weights['gan'] +
-                loss_fm * self.loss_weights['fm'] +
-                loss_l1 * self.loss_weights['l1']
-            )
+        num_scales = len(d_fake)
+        loss_gan = sum(self.criterions['GAN'](pf, True) for pf in d_fake) / num_scales
+        loss_fm = self.criterions["FM"](real_feats, fake_feats)
+        loss_l1 = self.criterions['L1'](fake_opt, real_opt)
+
+        g_loss = (
+            loss_gan * self.loss_weights['gan'] +
+            loss_fm * self.loss_weights['fm'] +
+            loss_l1 * self.loss_weights['l1']
+        )
 
         self.manual_backward(g_loss)
         opt_g.step()
@@ -121,15 +120,19 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
         real_sar, real_opt = batch
         fake_opt = self(real_sar)
 
+        # Кастим в fp32 для метрик (некоторые не поддерживают bf16)
+        fake_opt_f32 = fake_opt.float()
+        real_opt_f32 = real_opt.float()
+
         # Losses
-        loss_l1 = self.criterions['L1'](fake_opt, real_opt)
+        loss_l1 = self.criterions['L1'](fake_opt_f32, real_opt_f32)
         self.log('val/loss_l1', loss_l1, prog_bar=True, on_step=False, on_epoch=True)
 
         # Metrics
-        psnr = self.psnr(fake_opt, real_opt)
-        ssim = self.ssim(fake_opt, real_opt)
-        rmse = self.rmse(fake_opt, real_opt)
-        sam = self.sam(fake_opt, real_opt)
+        psnr = self.psnr(fake_opt_f32, real_opt_f32)
+        ssim = self.ssim(fake_opt_f32, real_opt_f32)
+        rmse = self.rmse(fake_opt_f32, real_opt_f32)
+        sam = self.sam(fake_opt_f32, real_opt_f32)
 
         self.log('val/psnr', psnr, prog_bar=True, on_step=False, on_epoch=True)
         self.log('val/ssim', ssim, prog_bar=True, on_step=False, on_epoch=True)
@@ -155,8 +158,6 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
 
         if self.fixed_sar is None:
             return
-        
-        cleanup_memory()
         
         if (self.cfg.system.image_freq != 0):
             if (self.current_epoch + 1) % self.cfg.system.image_freq == 0:

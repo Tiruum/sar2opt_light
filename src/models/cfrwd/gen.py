@@ -599,9 +599,6 @@ class CFRWDGenerator(nn.Module):
         cfr_out = self.cfr_branch(x)
         hfcf_out = self.hfcf_branch(x)
         alpha = self.fusion_coeff  # sigmoid → [0, 1]
-        logger.debug(
-            f"CFR out shape: {cfr_out.shape}, HFCF out shape: {hfcf_out.shape}, Fusion α: {alpha.item():.4f}"
-        )
         out = alpha * cfr_out + (1 - alpha) * hfcf_out
         return out
 
