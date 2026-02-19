@@ -4,12 +4,6 @@ import gc
 def cleanup_memory(log: bool = False):
     """Основная функция очистки памяти"""
 
-    global model, dm
-    if 'model' in globals():
-        del model
-    if 'dm' in globals():
-        del dm
-
     # Сборка мусора Python
     gc.collect()
     

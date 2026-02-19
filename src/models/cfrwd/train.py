@@ -34,8 +34,6 @@ if __name__ == "__main__":
     terminal_logger = Logger(cfg_path='src/models/cfrwd/config.yaml')
     try:
         terminal_logger.info("Начинаем обучение...")
-        # 1) Загрузить и валидировать конфиг
-        cfg = OmegaConf.load('src/models/cfrwd/config.yaml')
         print(OmegaConf.to_yaml(cfg))
 
         # 2) Фиксируем сиды и включаем оптимизацию матмуль
@@ -57,7 +55,8 @@ if __name__ == "__main__":
             prefetch_factor=getattr(cfg.data, "prefetch_factor", 2),
             train_val_split_ratio=cfg.data.train_val_split_ratio,
             seed=cfg.data.seed,
-            sar_channels=cfg.data.sar_channels
+            sar_channels=cfg.data.sar_channels,
+            use_augmentation=getattr(cfg.data, "use_train_common_transform", True)
         )
 
         # 5) LightningModule

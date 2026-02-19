@@ -2,8 +2,6 @@
 
 import torch
 import torch.nn as nn
-from omegaconf import OmegaConf
-cfg = OmegaConf.load('src/models/cfrwd/config.yaml')
 
 class GANLoss(nn.Module):
     def __init__(self, use_lsgan=True):

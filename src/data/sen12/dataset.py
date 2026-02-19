@@ -17,7 +17,10 @@ class SEN12(Dataset):
         input_specific: transform for model input (SAR, 3ch)
         optical_specific: transform for model output (optical, 3ch)
         resize_transform: resize transform applied before augmentation
+        classes: optional precomputed class names with s1/s2 folders
+        items: optional precomputed (class, s1_filename, s2_filename) pairs
     """
+    _ALLOWED_EXT = frozenset({'.png', '.jpg', '.jpeg', '.tif', '.tiff', '.bmp'})
     def __init__(
         self,
         root_dir: str,
@@ -25,10 +28,25 @@ class SEN12(Dataset):
         input_specific: Optional[Callable] = None,
         optical_specific: Optional[Callable] = None,
         resize_transform: Optional[Callable] = None,
-        sar_channels: int = 1
+        sar_channels: int = 1,
+        classes: Optional[List[str]] = None,
+        items: Optional[List[Tuple[str, str, str]]] = None,
     ):
+        if sar_channels not in (1, 3):
+            raise ValueError(f"sar_channels must be 1 or 3, got {sar_channels}")
+        if not os.path.isdir(root_dir):
+            raise FileNotFoundError(f"root_dir does not exist: {root_dir}")
+
         self.root_dir = root_dir
-        self.classes = ['agri', 'barrenland', 'grassland', 'urban']
+        if classes is None:
+            self.classes = [
+                d for d in sorted(os.listdir(self.root_dir))
+                if os.path.isdir(os.path.join(self.root_dir, d))
+                and os.path.isdir(os.path.join(self.root_dir, d, 's1'))
+                and os.path.isdir(os.path.join(self.root_dir, d, 's2'))
+            ]
+        else:
+            self.classes = list(classes)
 
         self.common_transform = common_transform
         self.input_specific = input_specific
@@ -36,59 +54,109 @@ class SEN12(Dataset):
         self.resize_transform = resize_transform
         self.sar_channels = sar_channels
 
-        self.items: List[Tuple[str, str]] = self._collect_items()
+        self.items: List[Tuple[str, str, str]] = self._collect_items() if items is None else list(items)
 
-    def _collect_items(self) -> List[Tuple[str, str]]:
+    @staticmethod
+    def _to_tensor(image: np.ndarray) -> torch.Tensor:
+        if image.ndim == 2:
+            image = image[..., None]
+        image = image.astype(np.float32, copy=False)
+        return torch.from_numpy(np.transpose(image, (2, 0, 1))).contiguous()
+
+    @staticmethod
+    def _build_s2_name(s1_name: str) -> str:
+        if '_s1_' in s1_name:
+            return s1_name.replace('_s1_', '_s2_')
+        if s1_name.startswith('s1_'):
+            return 's2_' + s1_name[3:]
+        if 's1' in s1_name:
+            return s1_name.replace('s1', 's2', 1)
+        return s1_name
+
+    def _collect_items(self) -> List[Tuple[str, str, str]]:
         items = []
+        _isfile = os.path.isfile
+        _join = os.path.join
+        _build = self._build_s2_name
+        _ext = self._ALLOWED_EXT
         for cls in self.classes:
-            s1_dir = os.path.join(self.root_dir, cls, 's1')
-            s2_dir = os.path.join(self.root_dir, cls, 's2')
-            if not os.path.isdir(s1_dir) or not os.path.isdir(s2_dir):
-                continue
-            s1_files = sorted([f for f in os.listdir(s1_dir) if not f.startswith('.') and os.path.isfile(os.path.join(s1_dir, f))])
+            s1_dir = _join(self.root_dir, cls, 's1')
+            s2_dir = _join(self.root_dir, cls, 's2')
+            s1_files = sorted(
+                f for f in os.listdir(s1_dir)
+                if not f.startswith('.')
+                and _isfile(_join(s1_dir, f))
+                and os.path.splitext(f)[1].lower() in _ext
+            )
             for fname in s1_files:
-                # Заменяем s1 на s2 в имени файла
-                s2_fname = fname.replace('_s1_', '_s2_')
-                if os.path.isfile(os.path.join(s2_dir, s2_fname)):
-                    items.append((cls, fname))
+                s2_fname = _build(fname)
+                if _isfile(_join(s2_dir, s2_fname)):
+                    items.append((cls, fname, s2_fname))
         return items
 
     def __len__(self) -> int:
         return len(self.items)
 
+    def __repr__(self) -> str:
+        return (
+            f"{self.__class__.__name__}("
+            f"root_dir='{self.root_dir}', "
+            f"len={len(self)}, "
+            f"classes={self.classes}, "
+            f"sar_channels={self.sar_channels})"
+        )
+
     def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor]:
-        cls, fname = self.items[idx]
+        cls, s1_fname, s2_fname = self.items[idx]
 
-        sar_path = os.path.join(self.root_dir, cls, 's1', fname)
-        optical_path = os.path.join(self.root_dir, cls, 's2', fname.replace('_s1_', '_s2_'))
+        sar_path = os.path.join(self.root_dir, cls, 's1', s1_fname)
+        optical_path = os.path.join(self.root_dir, cls, 's2', s2_fname)
 
-        sar = cv2.imread(sar_path, cv2.IMREAD_COLOR)
-        sar = cv2.cvtColor(sar, cv2.COLOR_BGR2RGB)  # Предполагаем, что SAR хранится как RGB
+        # --- Чтение оптического изображения (всегда RGB, uint8) ---
         opt = cv2.imread(optical_path, cv2.IMREAD_COLOR)
+        if opt is None:
+            raise FileNotFoundError(f"Cannot read optical image: {optical_path}")
         opt = cv2.cvtColor(opt, cv2.COLOR_BGR2RGB)
 
+        # --- Чтение SAR: сразу в нужном формате ---
+        if self.sar_channels == 1:
+            sar = cv2.imread(sar_path, cv2.IMREAD_GRAYSCALE)
+        else:
+            sar = cv2.imread(sar_path, cv2.IMREAD_COLOR)
+        if sar is None:
+            raise FileNotFoundError(f"Cannot read SAR image: {sar_path}")
+        if self.sar_channels == 3 and sar.ndim == 3:
+            sar = cv2.cvtColor(sar, cv2.COLOR_BGR2RGB)
+
+        # --- Resize ---
         if self.resize_transform:
             sar = self.resize_transform(image=sar)['image']
             opt = self.resize_transform(image=opt)['image']
 
+        # --- Синхронные геометрические аугментации ---
         if self.common_transform:
-            aug = self.common_transform(
-                image=sar,
-                optical=opt
-            )
-            sar_aug = aug['image']
-            opt_aug = aug['optical']
-        else:
-            sar_aug, opt_aug = sar, opt
+            aug = self.common_transform(image=sar, optical=opt)
+            sar = aug['image']
+            opt = aug['optical']
 
+        # --- Подготовка SAR: нужная размерность каналов ---
         if self.sar_channels == 1:
-            sar_gray = cv2.cvtColor(sar_aug, cv2.COLOR_RGB2GRAY)  # (H, W)
-            inp_np = sar_gray[..., None]
+            inp_np = sar[..., np.newaxis] if sar.ndim == 2 else sar[..., :1]
         else:
-            inp_np = sar_aug  # (H, W, 3)
+            if sar.ndim == 2:
+                inp_np = np.stack([sar, sar, sar], axis=-1)
+            else:
+                inp_np = sar[..., :3]
 
-        inp = self.input_specific(image=inp_np)['image']     # Tensor [1, H, W]
-        out = self.optical_specific(image=opt_aug)['image']  # Tensor [3, H, W]
+        # --- Гарантируем 3 канала для оптики ---
+        if opt.ndim == 2:
+            opt = np.stack([opt, opt, opt], axis=-1)
+        elif opt.shape[2] > 3:
+            opt = opt[..., :3]
+
+        # --- Нормализация и конвертация в тензор ---
+        inp = self.input_specific(image=inp_np)['image'] if self.input_specific else self._to_tensor(inp_np)
+        out = self.optical_specific(image=opt)['image'] if self.optical_specific else self._to_tensor(opt)
 
         return inp, out
 
@@ -102,7 +170,7 @@ if __name__ == "__main__":
         input_specific=get_input_specific(),
         optical_specific=get_optical_specific(),
         resize_transform=get_resize_transform(256),
-        sar_channels=3
+        sar_channels=1
     )
     print(f"Dataset length: {len(dataset)}")
     if len(dataset) == 0:

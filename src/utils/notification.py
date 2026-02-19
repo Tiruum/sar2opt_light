@@ -39,13 +39,14 @@ def send_telegram(message="", image_path=None):
         print(f"❌ [TG BOT] Произошла ошибка при отправке: {e}")
 
 from pytorch_lightning.utilities.rank_zero import rank_zero_only
+
 @rank_zero_only
-def _t(self, k): # Для отправки метрик через telegram бота
+def _t(self, k):
     v = self.trainer.callback_metrics.get(k)
     if v is None:
         return "—"
     if torch.is_tensor(v):
-        v = v.detach().cpu().item()
+        v = v.item()
     return f"{float(v):.6f}"
 
 def generate_tg_message(self):

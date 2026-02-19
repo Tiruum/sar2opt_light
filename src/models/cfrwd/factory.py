@@ -4,27 +4,31 @@ from src.models.cfrwd.dis import CFRWDPatchDis
 from src.models.cfrwd.gen import CFRWDGenerator
 from src.models.cfrwd.losses import FeatureMatchingLoss, GANLoss, L1Loss
 import torch.nn as nn
+from functools import lru_cache
 from omegaconf import OmegaConf
 
-cfg = OmegaConf.load('src/models/cfrwd/config.yaml')
+_CFG_PATH = 'src/models/cfrwd/config.yaml'
+
+@lru_cache(maxsize=1)
+def _load_cfg():
+    return OmegaConf.load(_CFG_PATH)
 
 def build_models():
-    """Builds the generator and discriminator models for the GAN architecture.
-        
-    Returns:
-        tuple: A tuple containing the generator and discriminator models.
-    """
-
+    cfg = _load_cfg()
     netG = CFRWDGenerator(in_channels=cfg.model.gen.in_channels)
     netD = CFRWDPatchDis(in_channels=cfg.model.dis.in_channels, ndf=cfg.model.dis.ndf, return_features=True)
-
     return netG, netD
 
 def build_optimizers(netG, netD,
-                     lr_g: float = cfg.optimizer.lr_g,
-                     lr_d: float = cfg.optimizer.lr_d,
-                     beta1: float = cfg.optimizer.beta1,
-                     beta2: float = cfg.optimizer.beta2):
+                     lr_g: float = None,
+                     lr_d: float = None,
+                     beta1: float = None,
+                     beta2: float = None):
+    cfg = _load_cfg()
+    lr_g = lr_g or cfg.optimizer.lr_g
+    lr_d = lr_d or cfg.optimizer.lr_d
+    beta1 = beta1 or cfg.optimizer.beta1
+    beta2 = beta2 or cfg.optimizer.beta2
     optG = optim.Adam(netG.parameters(), lr=lr_g, betas=(beta1, beta2))
     optD = optim.Adam(netD.parameters(), lr=lr_d, betas=(beta1, beta2))
     return optG, optD
@@ -37,7 +41,43 @@ def build_criterions() -> dict[Literal['GAN', 'FM'], nn.Module]:
     return crits
 
 def build_lr_schedulers(optG, optD,
-                        eta_min: float = cfg.scheduler.eta_min):
-    scheduler_G = optim.lr_scheduler.CosineAnnealingLR(optG, T_max=cfg.system.max_epochs, eta_min=eta_min)
-    scheduler_D = optim.lr_scheduler.CosineAnnealingLR(optD, T_max=cfg.system.max_epochs, eta_min=eta_min)
+                        eta_min: float = None,
+                        decay_last_epochs: int = None):
+    cfg = _load_cfg()
+    if eta_min is None:
+        eta_min = cfg.scheduler.eta_min
+    if decay_last_epochs is None:
+        decay_last_epochs = cfg.scheduler.linear_decay_epochs
+    total_epochs = max(int(cfg.system.max_epochs), 1)
+    decay_epochs = min(max(int(decay_last_epochs), 0), total_epochs)
+    start_decay_epoch = total_epochs - decay_epochs
+
+    def _linear_decay_lambda(initial_lr: float):
+        if initial_lr <= 0 or decay_epochs == 0:
+            return lambda epoch: 1.0
+
+        min_factor = max(0.0, min(1.0, eta_min / initial_lr))
+
+        def lr_lambda(epoch: int):
+            clamped_epoch = min(max(int(epoch), 0), total_epochs - 1)
+
+            if clamped_epoch < start_decay_epoch:
+                return 1.0
+
+            if decay_epochs == 1:
+                return min_factor
+
+            progress = (clamped_epoch - start_decay_epoch) / (decay_epochs - 1)
+            return (1.0 - progress) * (1.0 - min_factor) + min_factor
+
+        return lr_lambda
+
+    scheduler_G = optim.lr_scheduler.LambdaLR(
+        optG,
+        lr_lambda=[_linear_decay_lambda(pg['lr']) for pg in optG.param_groups],
+    )
+    scheduler_D = optim.lr_scheduler.LambdaLR(
+        optD,
+        lr_lambda=[_linear_decay_lambda(pg['lr']) for pg in optD.param_groups],
+    )
     return scheduler_G, scheduler_D
