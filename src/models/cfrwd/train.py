@@ -7,31 +7,25 @@ import pytorch_lightning as pl
 from pytorch_lightning import Trainer, seed_everything
 from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
 from pytorch_lightning.profilers import SimpleProfiler
-from pytorch_lightning.loggers import TensorBoardLogger
+from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger
 from pytorch_lightning.utilities.model_summary import ModelSummary
-import gc
 
 
 from src.models.cfrwd.main import SAR2OPTGANLightningModule
 from src.data.sen12.datamodule import SEN12Datamodule
+from src.utils.cleanup_memory import full_cleanup, cleanup_memory
 
 os.environ["NO_ALBUMENTATIONS_UPDATE"] = "1"  # disable albumentations update
-
-def cleanup():
-    """Функция для освобождения оперативной памяти и кэша."""
-    global model, dm
-    if 'model' in globals():
-        del model
-    if 'dm' in globals():
-        del dm
-    gc.collect()
-    if torch.cuda.is_available():
-        torch.cuda.empty_cache()
 
 if __name__ == "__main__":
     cfg = OmegaConf.load('src/models/cfrwd/config.yaml')
     from src.utils.logger import Logger
     terminal_logger = Logger(cfg_path='src/models/cfrwd/config.yaml')
+
+    model = None
+    dm = None
+    trainer = None
+
     try:
         terminal_logger.info("Начинаем обучение...")
         print(OmegaConf.to_yaml(cfg))
@@ -74,6 +68,11 @@ if __name__ == "__main__":
             name='tb_logs',
             default_hp_metric=False
         )
+        csv_logger = CSVLogger(
+            save_dir=cfg.system.output_dir,
+            version=cfg.system.tb_version,
+            name='csv_logs')
+        
         checkpoints = ModelCheckpoint(
             dirpath=f"{cfg.system.checkpoints_dir}/{cfg.system.tb_version}",
             filename="epoch={epoch:03d}-psnr={val/psnr:.4f}",
@@ -87,7 +86,7 @@ if __name__ == "__main__":
 
         # 7) Trainer
         trainer = Trainer(
-            logger=tb_logger,
+            logger=[tb_logger, csv_logger],
             profiler=SimpleProfiler(dirpath=cfg.system.profiler_dir, filename=cfg.system.tb_version),
 
             callbacks=[checkpoints, lr_monitor],
@@ -110,10 +109,10 @@ if __name__ == "__main__":
 
         # 8) Запуск обучения
         trainer.fit(model, datamodule=dm)
+    except KeyboardInterrupt:
+        terminal_logger.warning("Обучение прервано (Ctrl+C). Выполняем очистку...")
     except Exception as e:
         terminal_logger.error(f"Произошла ошибка: {e}. Выполняем очистку...")
-        cleanup()
-        raise  # Перевыбрасываем исключение
+        raise
     finally:
-        torch.cuda.empty_cache()
-        cleanup()
+        full_cleanup(trainer=trainer, model=model, datamodule=dm, log=True)

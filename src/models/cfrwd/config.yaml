@@ -24,7 +24,7 @@ model:
 
 optimizer:
   lr_g: 2e-4
-  lr_d: 1e-4
+  lr_d: 2e-4 # Статья: одинаковый lr=0.0002 для G и D
   beta1: 0.5
   beta2: 0.999
 
@@ -43,14 +43,14 @@ system:
   deterministic: false
   benchmark: true
   use_amp: false
-  max_epochs: 300
+  max_epochs: 200 # Статья: 200 (100 fixed + 100 decay)
   checkpoints_dir: "checkpoints/cfrwd"
   image_freq: 10 # 0 to disable
   output_dir: "./output/cfrwd"
   images_dir: "./output/cfrwd/images"
   profiler_dir: "./output/cfrwd/profiler"
   summary_dir: "./output/cfrwd/summary"
-  limit_train_batches: 1.0
-  limit_val_batches: 1.0
+  limit_train_batches: 1.0 # 0.1 for quick testing, 1.0 for full training
+  limit_val_batches: 1.0 # 0.1 for quick testing, 1.0 for full validation
   tb_version: 'cfrwd-27'
   debug: false

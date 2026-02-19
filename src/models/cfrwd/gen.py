@@ -398,11 +398,9 @@ class WDResBlock(nn.Module):
     def __init__(self, channels, projection=False):
         super(WDResBlock, self).__init__()
         
-        # Внутренние каналы. В ResNet обычно channels // 4. 
-        # Но у нас каналов мало (напр. 64), делить на 4 (16) может быть узко.
-        # Давайте сделаем channels // 2 или оставим channels.
-        # Для HFCF (детали) лучше сохранить поток: mid = channels.
-        mid_channels = channels 
+        # ResNet101 bottleneck: expansion=4, mid = channels // 4
+        # При channels=64 → mid=16 (стандартный bottleneck)
+        mid_channels = max(channels // 4, 16)
         
         self.main_branch = nn.Sequential(
             # 1x1
@@ -546,34 +544,65 @@ class CFRWDGenerator(nn.Module):
         super(CFRWDGenerator, self).__init__()
         self.cfr_branch = CFRBranch(in_channels=in_channels)
         self.hfcf_branch = HFCFBranch(in_channels=in_channels)
-        self.fusion_coeff = nn.Parameter(torch.tensor(0.7), requires_grad=True)
+        # Статья: "We set the initial fuse coefficient to 1"
+        # Храним в logit-пространстве, sigmoid гарантирует [0, 1].
+        # sigmoid(4.6) ≈ 0.99 — начинаем с доминирования CFR-ветки.
+        self._fusion_logit = nn.Parameter(torch.tensor(4.6), requires_grad=True)
 
         self._initialize_weights()
 
+    @property
+    def fusion_coeff(self):
+        """Текущий коэффициент фьюжна в диапазоне [0, 1]."""
+        return torch.sigmoid(self._fusion_logit)
+
     def _initialize_weights(self):
+        # 1. Общая инициализация: Kaiming для Conv, единицы/нули для BN
         for m in self.modules():
             if isinstance(m, (nn.Conv2d, nn.ConvTranspose2d)):
-                # Kaiming init
-                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                # fan_in сохраняет дисперсию сигнала в forward (лучше для генераторов)
+                # a=0.2 соответствует LeakyReLU(0.2) в энкодере и ResBlock
+                nn.init.kaiming_normal_(m.weight, a=0.2, mode='fan_in', nonlinearity='leaky_relu')
                 if m.bias is not None:
                     nn.init.constant_(m.bias, 0)
-                    
             elif isinstance(m, nn.BatchNorm2d):
                 if m.weight is not None:
                     nn.init.constant_(m.weight, 1)
                 if m.bias is not None:
                     nn.init.constant_(m.bias, 0)
 
-        logger.info("Веса инициализированы (wavelet-конволюции сохранены, остальные Conv/ConvTranspose = fan_out, нормализации = 1/0).")
+        # 2. Xavier для финальных Conv перед Tanh (gain подобран под tanh)
+        for m in self.modules():
+            if isinstance(m, FinalDecoderBlock):
+                for sub in m.modules():
+                    if isinstance(sub, nn.Conv2d):
+                        nn.init.xavier_normal_(sub.weight, gain=nn.init.calculate_gain('tanh'))
+
+        # 3. Zero-gamma: последний BN в residual-блоках → weight=0
+        #    Блок стартует как identity, стабилизирует начало обучения
+        #    (Bag of Tricks for Image Classification, He et al.)
+        for m in self.modules():
+            if isinstance(m, ResBlock):
+                # block[-1] = BatchNorm2d (последний слой в Sequential)
+                nn.init.constant_(m.block[-1].weight, 0)
+            elif isinstance(m, WDResBlock):
+                # main_branch[-1] = BatchNorm2d
+                nn.init.constant_(m.main_branch[-1].weight, 0)
+            elif isinstance(m, RedBlock):
+                # main_branch[-1] = BatchNorm2d
+                nn.init.constant_(m.main_branch[-1].weight, 0)
+
+        logger.info("Веса инициализированы (Kaiming fan_in + zero-gamma + Xavier/Tanh).")
 
 
     def forward(self, x):
         cfr_out = self.cfr_branch(x)
         hfcf_out = self.hfcf_branch(x)
+        alpha = self.fusion_coeff  # sigmoid → [0, 1]
         logger.debug(
-            f"CFR out shape: {cfr_out.shape}, HFCF out shape: {hfcf_out.shape}, Fusion weight: {self.fusion_coeff.detach()}"
+            f"CFR out shape: {cfr_out.shape}, HFCF out shape: {hfcf_out.shape}, Fusion α: {alpha.item():.4f}"
         )
-        out = self.fusion_coeff * cfr_out + (1 - self.fusion_coeff) * hfcf_out
+        out = alpha * cfr_out + (1 - alpha) * hfcf_out
         return out
 
 
