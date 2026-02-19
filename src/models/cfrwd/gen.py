@@ -199,10 +199,11 @@ class CFRBlock(nn.Module):
         logger.debug(f'a1 shape: {a1.shape}, p1 shape: {p1.shape}', once=True)
         logger.debug(f'a2 shape: {a2.shape}, p2 shape: {p2.shape}', once=True)
 
-        # Cross-fusion 1
+        # Cross-fusion 1 (кэшируем промежуточные down/up)
+        p1_d = self.down(p1)
         b1 = self.fuse1_to2_1(torch.cat([p1, self.up(p2)], dim=1))
-        b2 = self.fuse1_to2_2(torch.cat([self.down(p1), p2], dim=1))
-        b3 = self.fuse1_to2_3(torch.cat([self.down(self.down(p1)), self.down(p2)], dim=1))
+        b2 = self.fuse1_to2_2(torch.cat([p1_d, p2], dim=1))
+        b3 = self.fuse1_to2_3(torch.cat([self.down(p1_d), self.down(p2)], dim=1))
 
         # Stage 2
         q1 = self.n21(b1)
@@ -214,11 +215,14 @@ class CFRBlock(nn.Module):
         logger.debug(f'b2 shape: {b2.shape}, q2 shape: {q2.shape}', once=True)
         logger.debug(f'b3 shape: {b3.shape}, q3 shape: {q3.shape}', once=True)
 
-        # Cross-fusion 2
-        c1 = self.fuse2_to3_1(torch.cat([q1, self.up(q2), self.up(self.up(q3))], dim=1))
-        c2 = self.fuse2_to3_2(torch.cat([self.down(q1), q2, self.up(q3)], dim=1))
-        c3 = self.fuse2_to3_3(torch.cat([self.down(self.down(q1)), self.down(q2), q3], dim=1))
-        c4 = self.fuse2_to3_4(torch.cat([self.down(self.down(self.down(q1))), self.down(self.down(q2)), self.down(q3)], dim=1))
+        # Cross-fusion 2 (кэшируем промежуточные down/up)
+        q1_d = self.down(q1)
+        q2_d = self.down(q2)
+        q3_u = self.up(q3)
+        c1 = self.fuse2_to3_1(torch.cat([q1, self.up(q2), self.up(q3_u)], dim=1))
+        c2 = self.fuse2_to3_2(torch.cat([q1_d, q2, q3_u], dim=1))
+        c3 = self.fuse2_to3_3(torch.cat([self.down(q1_d), q2_d, q3], dim=1))
+        c4 = self.fuse2_to3_4(torch.cat([self.down(self.down(q1_d)), self.down(q2_d), self.down(q3)], dim=1))
 
         # Stage 3
         k1 = self.n31(c1)
@@ -233,7 +237,8 @@ class CFRBlock(nn.Module):
         logger.debug(f'c4 shape: {c4.shape}, k4 shape: {k4.shape}', once=True)
 
         # Final fusion
-        d = self.fuse3_to4(torch.cat([self.down(k1), k2, self.up(k3), self.up(self.up(k4))], dim=1))
+        k4_u = self.up(k4)
+        d = self.fuse3_to4(torch.cat([self.down(k1), k2, self.up(k3), self.up(k4_u)], dim=1))
         logger.debug(f'CFRBlock output shape: {d.shape}', once=True)
 
         return d
@@ -300,7 +305,7 @@ class HaarDown(nn.Module):
         B, C, H, W = x.shape
         x_reshaped = torch.nn.functional.pixel_unshuffle(x, 2)
         x_reshaped = x_reshaped.view(B, C, 4, H // 2, W // 2)
-        weights = self.haar_weights.to(x.device)
+        weights = self.haar_weights
         out = torch.einsum('bcihw, oi -> bcohw', x_reshaped, weights)
         return out[:, :, 0], out[:, :, 1], out[:, :, 2], out[:, :, 3]
     
@@ -515,13 +520,13 @@ class HFCFBranch(nn.Module):
         self.final = FinalDecoderBlock(32, 3, kernel_size=7)
 
     def forward(self, x):
-        g1, g2, g3 = self.dwt(x)
+        _, g2, g3 = self.dwt(x)
 
         logger.debug('DWT shapes:', once=True)
-        logger.debug(f'g1.shape: {g1.shape}, g2.shape: {g2.shape}, g3.shape: {g3.shape}', once=True)
+        logger.debug(f'g2.shape: {g2.shape}, g3.shape: {g3.shape}', once=True)
 
-        hfcf_g2_in = self.pre_top(g2).to(g2.device)
-        hfcf_g3 = self.pre_bot(g3).to(g3.device)
+        hfcf_g2_in = self.pre_top(g2)
+        hfcf_g3 = self.pre_bot(g3)
 
         hfcf_g2 = hfcf_g2_in + hfcf_g3
 
@@ -541,7 +546,7 @@ class CFRWDGenerator(nn.Module):
         super(CFRWDGenerator, self).__init__()
         self.cfr_branch = CFRBranch(in_channels=in_channels)
         self.hfcf_branch = HFCFBranch(in_channels=in_channels)
-        self.fusion_coeff = nn.Parameter(torch.tensor(1.0))
+        self.fusion_coeff = nn.Parameter(torch.tensor(0.7), requires_grad=True)
 
         self._initialize_weights()
 
@@ -553,7 +558,7 @@ class CFRWDGenerator(nn.Module):
                 if m.bias is not None:
                     nn.init.constant_(m.bias, 0)
                     
-            elif isinstance(m, (nn.BatchNorm2d, nn.BatchNorm2d)):
+            elif isinstance(m, nn.BatchNorm2d):
                 if m.weight is not None:
                     nn.init.constant_(m.weight, 1)
                 if m.bias is not None:
@@ -565,14 +570,17 @@ class CFRWDGenerator(nn.Module):
     def forward(self, x):
         cfr_out = self.cfr_branch(x)
         hfcf_out = self.hfcf_branch(x)
-        logger.debug(f"CFR out shape: {cfr_out.shape}, HFCF out shape: {hfcf_out.shape}, Fusion weight: {self.fusion_coeff.item()}")
+        logger.debug(
+            f"CFR out shape: {cfr_out.shape}, HFCF out shape: {hfcf_out.shape}, Fusion weight: {self.fusion_coeff.detach()}"
+        )
         out = self.fusion_coeff * cfr_out + (1 - self.fusion_coeff) * hfcf_out
         return out
 
 
-import matplotlib.pyplot as plt
-import cv2
 if __name__ == "__main__":
+    import cv2
+    import matplotlib.pyplot as plt
+
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     input_array = None #  cv2.imread('C:/Users/tiruu/Desktop/sar2opt_light/data/sen12/agri/s1/ROIs1868_summer_s1_59_p2.png', cv2.IMREAD_COLOR)
     if input_array is None:
@@ -588,7 +596,8 @@ if __name__ == "__main__":
         input_tensor = input_tensor.unsqueeze(0).to(device)  # Добавляем batch-размер -> [1, 3, 256, 256]
 
     gen = CFRWDGenerator(in_channels=1).to(device)
-    out = gen(input_tensor)
+    with torch.no_grad():
+        out = gen(input_tensor)
 
     plt.subplot(1, 2, 1)
     plt.imshow(input_tensor.squeeze().detach().cpu().numpy())

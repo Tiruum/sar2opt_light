@@ -41,7 +41,7 @@ class CFRWDPatchDisBranch(nn.Module):
         return out
 
 class CFRWDPatchDis(nn.Module):
-    """Двухмасштабный PatchGAN-дискриминатор для пар (fake_opt, real_opt)."""
+    """Двухмасштабный PatchGAN-дискриминатор для условных пар (SAR, optical)."""
 
     def __init__(self, in_channels: int = 3, ndf: int = 64, return_features: bool = True):
         super().__init__()
@@ -55,8 +55,15 @@ class CFRWDPatchDis(nn.Module):
 
     def forward(self, x: torch.Tensor):
         """
-        x: оптическое изображение [B, 3, H, W] (реальное или фейковое)
+        x: конкатенированная пара [B, C_sar + C_opt, H, W]
         """
+        if x.ndim != 4:
+            raise ValueError(f"Ожидался 4D тензор [B, C, H, W], получено: {tuple(x.shape)}")
+        if x.shape[1] != self.in_channels:
+            raise ValueError(
+                f"Неверное число каналов: ожидалось {self.in_channels}, получено {x.shape[1]}. "
+                f"Проверьте конкатенацию входной пары и cfg.model.dis.in_channels."
+            )
 
         if self.return_features:
             large_output, large_features = self.large_scale_branch(x)
@@ -82,12 +89,16 @@ class CFRWDPatchDis(nn.Module):
 if __name__ == "__main__":
     batch_size = 4
     height, width = 256, 256
+    sar = torch.randn(batch_size, 1, height, width)
     fake_optical = torch.randn(batch_size, 3, height, width)
     real_optical = torch.randn(batch_size, 3, height, width)
+    fake_pair = torch.cat([sar, fake_optical], dim=1)
+    real_pair = torch.cat([sar, real_optical], dim=1)
 
-    discriminator = CFRWDPatchDis(in_channels=3, ndf=64, return_features=True)
-    (real_large, real_small), real_feats = discriminator(real_optical)
-    (fake_large, fake_small), fake_feats = discriminator(fake_optical)
+    discriminator = CFRWDPatchDis(in_channels=4, ndf=64, return_features=True)
+    with torch.no_grad():
+        (real_large, real_small), real_feats = discriminator(real_pair)
+        (fake_large, fake_small), fake_feats = discriminator(fake_pair)
 
     print('Real:')
     print(f"\tLarge scale output shape: {real_large.shape}")

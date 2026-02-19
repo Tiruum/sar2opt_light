@@ -21,7 +21,6 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
         
         # Инициализация моделей и критерионов
         self.netG, self.netD = build_models()
-        self.netG.to(self.cfg.system.device)
         self.criterions = build_criterions()
         
         # Веса лоссов
@@ -154,7 +153,8 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
         
         if (self.cfg.system.image_freq != 0):
             if (self.current_epoch + 1) % self.cfg.system.image_freq == 0:
-                fake_opt = self.netG(self.fixed_sar)
+                with torch.no_grad():
+                    fake_opt = self.netG(self.fixed_sar)
                 os.makedirs(os.path.join(self.cfg.system.images_dir, self.cfg.system.tb_version), exist_ok=True)
                 path = f"{self.cfg.system.images_dir}/{self.cfg.system.tb_version}/epoch_{self.current_epoch+1}.png"
                 visualize_batch(
@@ -175,16 +175,15 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
         send_telegram(message=f"[{str(self.cfg.system.tb_version).upper()}] Обучение завершено")
 
 
-from pytorch_lightning import Trainer
-from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
-from pytorch_lightning.loggers import TensorBoardLogger
-
-from src.data.sen12.datamodule import SEN12Datamodule
-from src.utils.logger import Logger
-terminal_logger = Logger(cfg_path='src/models/cfrwd/config.yaml')
-cfg = OmegaConf.load("src/models/cfrwd/config.yaml")
-
 if __name__ == "__main__":
+    from pytorch_lightning import Trainer
+    from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
+    from pytorch_lightning.loggers import TensorBoardLogger
+    from src.data.sen12.datamodule import SEN12Datamodule
+    from src.utils.logger import Logger
+
+    cfg = OmegaConf.load("src/models/cfrwd/config.yaml")
+    terminal_logger = Logger(cfg_path='src/models/cfrwd/config.yaml')
     pl.seed_everything(42, workers=True)
     torch.set_float32_matmul_precision('high')
 
@@ -200,7 +199,8 @@ if __name__ == "__main__":
         prefetch_factor=cfg.data.prefetch_factor,
         train_val_split_ratio=cfg.data.train_val_split_ratio,
         seed=cfg.data.seed,
-        sar_channels=cfg.data.sar_channels
+        sar_channels=cfg.data.sar_channels,
+        use_augmentation=getattr(cfg.data, "use_train_common_transform", True)
     )
 
     model = SAR2OPTGANLightningModule(cfg)

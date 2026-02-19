@@ -5,11 +5,11 @@ data:
     sen12: "./data/sen12"
   batch_size: 8
   image_size: 256
-  num_workers: 10
+  num_workers: 3
   train_val_split_ratio: 0.8
-  prefetch_factor: 1
+  prefetch_factor: 2
   persistent_workers: true
-  use_train_common_transform: false
+  use_train_common_transform: true
   seed: 42
   sar_channels: 1
 
@@ -30,6 +30,7 @@ optimizer:
 
 scheduler:
   eta_min: 1e-6
+  linear_decay_epochs: 100
 
 loss:
   l1_weight: 0
@@ -53,20 +54,3 @@ system:
   limit_val_batches: 1.0
   tb_version: 'cfrwd-27'
   debug: false
-
-  # Добавить лог alpha, проверить его вывод и обучение
-
-  # Добавить эту хуйню если нужно
-  # def set_requires_grad(self, net, flag: bool):
-  #       for p in net.parameters():
-  #           p.requires_grad_(flag)
-
-  # Проверить корректность no_grad()
-
-  # Проверить разбиение датасета, мб сделать Subset
-
-  # Проверить какие картинки попадают в картинки по эпохам, обучаются ли на них сети
-
-  # Проверить корректность gen, dis, dataset
-
-  # Попробовать фьюзить не картинки целиком, а отдельные части или вообще фичи
