@@ -64,7 +64,9 @@ def generate_tg_message(self):
             f"Val:\n"
             f"loss_l1 = {_t(self,'val/loss_l1')}\n"
             f"psnr = {_t(self,'val/psnr')}\n"
-            f"ssim = {_t(self,'val/ssim')}\n\n"
+            f"ssim = {_t(self,'val/ssim')}\n"
+            f"rmse = {_t(self,'val/rmse')}\n"
+            f"sam = {_t(self,'val/sam')}\n\n"
 
             f"Feats:\n"
             f"real = {_t(self,'feats/d_real_mean')}\n"
@@ -72,5 +74,9 @@ def generate_tg_message(self):
 
             f"LR:\n"
             f"gen = {_t(self,'lr/g')}\n"
-            f"dis = {_t(self,'lr/d')}"
+            f"dis = {_t(self,'lr/d')}\n\n"
+
+            f"Fusion:\n"
+            f"fusion_coeff = {_t(self,'fusion/fusion_coeff')}\n"
+            f"fusion_logit = {_t(self,'fusion/fusion_logit')}"
         )

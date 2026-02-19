@@ -8,10 +8,11 @@ import pytorch_lightning as pl
 from torch.amp import autocast
 from src.models.cfrwd.factory import build_models, build_optimizers, build_criterions, build_lr_schedulers
 from src.utils.visualize import visualize_batch
-from torchmetrics.image import PeakSignalNoiseRatio, StructuralSimilarityIndexMeasure
+from torchmetrics.image import PeakSignalNoiseRatio, StructuralSimilarityIndexMeasure, SpectralAngleMapper #, LearnedPerceptualImagePatchSimilarity
+from torchmetrics.regression import MeanSquaredError
 from omegaconf import OmegaConf
 from src.utils.notification import send_telegram, generate_tg_message
-from src.utils.cleanup_memory import cleanup_memory
+from src.utils.cleanup_memory import cleanup_memory, kill_dataloader_workers
 
 class SAR2OPTGANLightningModule(pl.LightningModule):
     def __init__(self, config):
@@ -32,6 +33,8 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
 
         self.psnr = PeakSignalNoiseRatio(data_range=2.0)
         self.ssim = StructuralSimilarityIndexMeasure(data_range=2.0)
+        self.rmse = MeanSquaredError(squared=False)
+        self.sam = SpectralAngleMapper()
         
         self.fixed_sar = None
         self.fixed_opt = None
@@ -110,6 +113,8 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
             'train/loss_l1': loss_l1,
             'feats/d_real_mean': real_means.mean(),
             'feats/d_fake_mean': fake_means.mean(),
+            'fusion/fusion_coeff': self.netG.fusion_coeff.detach().cpu(),
+            'fusion/fusion_logit': self.netG._fusion_logit.detach().cpu(),
         }, prog_bar=False, on_step=False, on_epoch=True)
     
     def validation_step(self, batch, batch_idx):
@@ -125,9 +130,13 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
         # Metrics
         psnr = self.psnr(fake_opt, real_opt)
         ssim = self.ssim(fake_opt, real_opt)
+        rmse = self.rmse(fake_opt, real_opt)
+        sam = self.sam(fake_opt, real_opt)
 
         self.log('val/psnr', psnr, prog_bar=True, on_step=False, on_epoch=True)
         self.log('val/ssim', ssim, prog_bar=True, on_step=False, on_epoch=True)
+        self.log('val/rmse', rmse, prog_bar=False, on_step=False, on_epoch=True)
+        self.log('val/sam', sam, prog_bar=False, on_step=False, on_epoch=True)
 
     def test_step(self, batch, batch_idx):
         pass
@@ -171,6 +180,9 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
         send_telegram(message=f"[{str(self.cfg.system.tb_version).upper()}] Обучение началось")
 
     def on_train_end(self):
+        # Освобождаем фиксированные тензоры
+        self.fixed_sar = None
+        self.fixed_opt = None
         cleanup_memory()
         send_telegram(message=f"[{str(self.cfg.system.tb_version).upper()}] Обучение завершено")
 
@@ -181,6 +193,7 @@ if __name__ == "__main__":
     from pytorch_lightning.loggers import TensorBoardLogger
     from src.data.sen12.datamodule import SEN12Datamodule
     from src.utils.logger import Logger
+    from src.utils.cleanup_memory import full_cleanup
 
     cfg = OmegaConf.load("src/models/cfrwd/config.yaml")
     terminal_logger = Logger(cfg_path='src/models/cfrwd/config.yaml')
@@ -189,6 +202,10 @@ if __name__ == "__main__":
 
     os.makedirs(cfg.system.output_dir, exist_ok=True)
     os.makedirs(cfg.system.checkpoints_dir, exist_ok=True)
+
+    model = None
+    dm = None
+    trainer = None
 
     dm = SEN12Datamodule(
         data_dir=cfg.data.data_dir.sen12,
@@ -233,11 +250,8 @@ if __name__ == "__main__":
         trainer.fit(model, datamodule=dm)
     except KeyboardInterrupt:
         terminal_logger.warning("Обучение прервано пользователем. Выполняем очистку...")
-        cleanup_memory()
-        raise  # Перевыбрасываем исключение
     except Exception as e:
         terminal_logger.error(f"Произошла ошибка: {e}. Выполняем очистку...")
-        cleanup_memory()
-        raise  # Перевыбрасываем исключение
+        raise
     finally:
-        cleanup_memory()
+        full_cleanup(trainer=trainer, model=model, datamodule=dm, log=True)
