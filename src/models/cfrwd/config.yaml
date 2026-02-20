@@ -53,5 +53,5 @@ system:
   limit_train_batches: 1.0 # 0.1 for quick testing, 1.0 for full training
   limit_val_batches: 1.0 # 0.1 for quick testing, 1.0 for full validation
   tb_version: 'cfrwd-28'
-  resume_ckpt: null # путь к .ckpt для возобновления, null = с нуля
+  resume_ckpt: "./checkpoints/cfrwd/cfrwd-28/last.ckpt" # путь к .ckpt для возобновления, null = с нуля
   debug: false
