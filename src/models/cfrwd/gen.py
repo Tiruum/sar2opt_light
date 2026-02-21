@@ -13,11 +13,11 @@ class ResBlock(nn.Module):
         self.block = nn.Sequential(
             nn.ReflectionPad2d(1),
             nn.Conv2d(channels, channels, kernel_size=3, stride=1, padding=0, bias=False),
-            nn.BatchNorm2d(channels, affine=True),
+            nn.InstanceNorm2d(channels, affine=True),
             nn.LeakyReLU(0.2, inplace=True),
             nn.ReflectionPad2d(1),
             nn.Conv2d(channels, channels, kernel_size=3, stride=1, padding=0, bias=False),
-            nn.BatchNorm2d(channels, affine=True)
+            nn.InstanceNorm2d(channels, affine=True)
         )
         
     def forward(self, x):
@@ -31,7 +31,7 @@ class EncoderBlock(nn.Module):
         self.block = nn.Sequential(
             nn.ReflectionPad2d(1), # Вообще по статье ReflectionPad используется один раз в начале, а затем, видимо, в Conv2d padding=1
             nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding=0, bias=False),
-            nn.BatchNorm2d(out_channels, affine=True),
+            nn.InstanceNorm2d(out_channels, affine=True),
             nn.LeakyReLU(negative_slope=0.2, inplace=True)
         )
 
@@ -50,8 +50,7 @@ class DecoderBlock(nn.Module):
         layers.extend([
             nn.ReflectionPad2d(1),
             nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=1, padding=0, bias=False),
-            # nn.BatchNorm2d(out_channels, affine=True),
-            nn.BatchNorm2d(out_channels, affine=True),
+            nn.InstanceNorm2d(out_channels, affine=True),
             nn.ReLU(inplace=True)
         ])
         # В энкодере LeakyReLU нужен, чтобы градиенты не "умирали" при сжатии информации.
@@ -356,7 +355,7 @@ class HFCFPreprocess(nn.Module):
         layers = [
             nn.ReflectionPad2d(padding),
             nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride),
-            nn.BatchNorm2d(out_channels, affine=True),
+            nn.InstanceNorm2d(out_channels, affine=True),
             nn.ReLU(inplace=True)
         ]
 
@@ -368,7 +367,7 @@ class HFCFPreprocess(nn.Module):
             layers.extend([
                 nn.ReflectionPad2d(1),
                 nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=2, bias=False),
-                nn.BatchNorm2d(out_channels, affine=True),
+                nn.InstanceNorm2d(out_channels, affine=True),
                 nn.ReLU(inplace=True)
             ])
         else:
@@ -376,7 +375,7 @@ class HFCFPreprocess(nn.Module):
             layers.extend([
                 nn.ReflectionPad2d(1),
                 nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, bias=False),
-                nn.BatchNorm2d(out_channels, affine=True),
+                nn.InstanceNorm2d(out_channels, affine=True),
                 nn.ReLU(inplace=True)
             ])
             
@@ -405,25 +404,25 @@ class WDResBlock(nn.Module):
         self.main_branch = nn.Sequential(
             # 1x1
             nn.Conv2d(channels, mid_channels, kernel_size=1, bias=False),
-            nn.BatchNorm2d(mid_channels, affine=True),
+            nn.InstanceNorm2d(mid_channels, affine=True),
             nn.ReLU(inplace=True),
             
             # 3x3
             nn.ReflectionPad2d(1),
             nn.Conv2d(mid_channels, mid_channels, kernel_size=3, stride=1, padding=0, bias=False),
-            nn.BatchNorm2d(mid_channels, affine=True),
+            nn.InstanceNorm2d(mid_channels, affine=True),
             nn.ReLU(inplace=True),
             
             # 1x1
             nn.Conv2d(mid_channels, channels, kernel_size=1, bias=False),
-            nn.BatchNorm2d(channels, affine=True)
+            nn.InstanceNorm2d(channels, affine=True)
         )
         
         # Skip connection
         if projection:
             self.skip_branch = nn.Sequential(
                 nn.Conv2d(channels, channels, kernel_size=1, bias=False),
-                nn.BatchNorm2d(channels, affine=True)
+                nn.InstanceNorm2d(channels, affine=True)
             )
         else:
             self.skip_branch = nn.Identity()
@@ -445,12 +444,12 @@ class RedBlock(nn.Module):
         self.main_branch = nn.Sequential(
             nn.ReflectionPad2d(1),
             nn.Conv2d(channels, channels, kernel_size=3, stride=1, bias=False),
-            nn.BatchNorm2d(channels, affine=True),
+            nn.InstanceNorm2d(channels, affine=True),
             nn.ReLU(inplace=True),
             
             nn.ReflectionPad2d(1),
             nn.Conv2d(channels, channels, kernel_size=3, stride=1, bias=False),
-            nn.BatchNorm2d(channels, affine=True)
+            nn.InstanceNorm2d(channels, affine=True)
         )
         self.final_relu = nn.ReLU(inplace=True)
 
@@ -497,7 +496,7 @@ class HFCFBranch(nn.Module):
         # 1x1 Conv для смешивания каналов после Concat (128 -> 64)
         self.fusion_conv = nn.Sequential(
             nn.Conv2d(hidden_dim * 2, hidden_dim, kernel_size=1, bias=False),
-            nn.BatchNorm2d(hidden_dim, affine=True),
+            nn.InstanceNorm2d(hidden_dim, affine=True),
             nn.ReLU(inplace=True)
         )
 
@@ -545,19 +544,13 @@ class CFRWDGenerator(nn.Module):
         self.cfr_branch = CFRBranch(in_channels=in_channels)
         self.hfcf_branch = HFCFBranch(in_channels=in_channels)
         # Статья: "We set the initial fuse coefficient to 1"
-        # Храним в logit-пространстве, sigmoid гарантирует [0, 1].
-        # sigmoid(4.6) ≈ 0.99 — начинаем с доминирования CFR-ветки.
-        self._fusion_logit = nn.Parameter(torch.tensor(4.6), requires_grad=True)
+        # Используем nn.Parameter для обучаемого веса
+        self.fusion_weight = nn.Parameter(torch.tensor(1.0), requires_grad=True)
 
         self._initialize_weights()
 
-    @property
-    def fusion_coeff(self):
-        """Текущий коэффициент фьюжна в диапазоне [0, 1]."""
-        return torch.sigmoid(self._fusion_logit)
-
     def _initialize_weights(self):
-        # 1. Общая инициализация: Kaiming для Conv, единицы/нули для BN
+        # 1. Общая инициализация: Kaiming для Conv, единицы/нули для InstanceNorm
         for m in self.modules():
             if isinstance(m, (nn.Conv2d, nn.ConvTranspose2d)):
                 # fan_in сохраняет дисперсию сигнала в forward (лучше для генераторов)
@@ -565,7 +558,7 @@ class CFRWDGenerator(nn.Module):
                 nn.init.kaiming_normal_(m.weight, a=0.2, mode='fan_in', nonlinearity='leaky_relu')
                 if m.bias is not None:
                     nn.init.constant_(m.bias, 0)
-            elif isinstance(m, nn.BatchNorm2d):
+            elif isinstance(m, nn.InstanceNorm2d):
                 if m.weight is not None:
                     nn.init.constant_(m.weight, 1)
                 if m.bias is not None:
@@ -578,28 +571,18 @@ class CFRWDGenerator(nn.Module):
                     if isinstance(sub, nn.Conv2d):
                         nn.init.xavier_normal_(sub.weight, gain=nn.init.calculate_gain('tanh'))
 
-        # 3. Zero-gamma: последний BN в residual-блоках → weight=0
-        #    Блок стартует как identity, стабилизирует начало обучения
-        #    (Bag of Tricks for Image Classification, He et al.)
-        for m in self.modules():
-            if isinstance(m, ResBlock):
-                # block[-1] = BatchNorm2d (последний слой в Sequential)
-                nn.init.constant_(m.block[-1].weight, 0)
-            elif isinstance(m, WDResBlock):
-                # main_branch[-1] = BatchNorm2d
-                nn.init.constant_(m.main_branch[-1].weight, 0)
-            elif isinstance(m, RedBlock):
-                # main_branch[-1] = BatchNorm2d
-                nn.init.constant_(m.main_branch[-1].weight, 0)
-
-        logger.info("Веса инициализированы (Kaiming fan_in + zero-gamma + Xavier/Tanh).")
+        logger.info("Веса инициализированы (Kaiming fan_in + Xavier/Tanh).")
 
 
-    def forward(self, x):
+    def forward(self, x, return_branches=False):
         cfr_out = self.cfr_branch(x)
         hfcf_out = self.hfcf_branch(x)
-        alpha = self.fusion_coeff  # sigmoid → [0, 1]
-        out = alpha * cfr_out + (1 - alpha) * hfcf_out
+        # Статья: "The output from the branch with CFR structure is fused with the WD branch output through a learnable coefficient."
+        # Инициализируется 1, поэтому CFR + 1 * WD
+        out = cfr_out + self.fusion_weight * hfcf_out
+        
+        if return_branches:
+            return out, cfr_out, hfcf_out
         return out
 
 

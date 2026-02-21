@@ -1,6 +1,6 @@
 from typing import Literal
 import torch.optim as optim
-from src.models.cfrwd.dis import CFRWDPatchDis
+from src.models.cfrwd.discriminator import CFRWDPatchDis
 from src.models.cfrwd.gen import CFRWDGenerator
 from src.models.cfrwd.losses import FeatureMatchingLoss, GANLoss, L1Loss
 import torch.nn as nn

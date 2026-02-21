@@ -9,7 +9,8 @@ def visualize_batch(
     real_sar, fake_optical, real_optical,
     save_path='results/batch_output.png',
     max_rows=8, cmap='inferno', mode: Literal['quality', 'fast'] = 'quality',
-    title: str = None
+    title: str = None,
+    cfr_out=None, hfcf_out=None, fusion_weight=None
 ):
     batch_size = min(real_sar.size(0), max_rows)
 
@@ -25,14 +26,22 @@ def visualize_batch(
         all_diffs = torch.stack(diff_maps)
         vmin, vmax = all_diffs.min().item(), all_diffs.max().item()
 
-        fig = plt.figure(figsize=(8, batch_size * 2))
+        # Если переданы промежуточные выходы, добавляем 2 колонки
+        show_branches = cfr_out is not None and hfcf_out is not None
+        num_cols = 7 if show_branches else 5
+        width_ratios = [1, 1, 1, 1, 1, 1, 0.05] if show_branches else [1, 1, 1, 1, 0.05]
+        fig_width = 12 if show_branches else 8
+
+        fig = plt.figure(figsize=(fig_width, batch_size * 2))
 
         if title:
-            fig.suptitle(title, fontsize=14, y=0.99)
+            if show_branches and fusion_weight is not None:
+                title += f" | Fusion Weight: {fusion_weight:.4f}"
+            fig.suptitle(title, fontsize=14, y=0.99) # ⬅️ Вернул заголовок наверх
 
         gs = gridspec.GridSpec(
-            batch_size, 5,
-            width_ratios=[1, 1, 1, 1, 0.05],
+            batch_size, num_cols,
+            width_ratios=width_ratios,
             wspace=0.01,    # ⬅️ почти склеить по горизонтали
             hspace=0.15     # ⬅️ небольшой вертикальный отступ
         )
@@ -49,25 +58,36 @@ def visualize_batch(
                 TF.to_pil_image(gt_img)
             ]
             titles = ['SAR', 'Generated', 'Ground Truth', 'Difference']
+            
+            if show_branches:
+                cfr_img = (cfr_out[idx].cpu() + 1) / 2.0
+                hfcf_img = (hfcf_out[idx].cpu() + 1) / 2.0
+                # Вставляем CFR и HFCF между SAR и Generated
+                images.insert(1, TF.to_pil_image(cfr_img))
+                images.insert(2, TF.to_pil_image(hfcf_img))
+                titles.insert(1, 'CFR Branch')
+                titles.insert(2, 'HFCF Branch')
 
-            for j in range(3):
+            num_image_cols = 5 if show_branches else 3
+
+            for j in range(num_image_cols):
                 ax = fig.add_subplot(gs[idx, j])
                 ax.imshow(images[j])
                 ax.axis('off')
                 if idx == 0:
                     ax.set_title(titles[j], fontsize=10)
 
-            ax = fig.add_subplot(gs[idx, 3])
+            ax = fig.add_subplot(gs[idx, num_image_cols])
             im = ax.imshow(diff_gray, cmap=cmap, vmin=vmin, vmax=vmax)
             ax.axis('off')
             if idx == 0:
-                ax.set_title(titles[3], fontsize=10)
+                ax.set_title(titles[-1], fontsize=10)
 
-        cbar_ax = fig.add_subplot(gs[:, 4])
+        cbar_ax = fig.add_subplot(gs[:, num_cols - 1])
         fig.colorbar(im, cax=cbar_ax)
         cbar_ax.set_title('Diff', fontsize=9)
 
-        # Минимальные отступы по краям
+        # Сильно увеличиваем верхний отступ (top_margin), чтобы картинки уехали вниз
         top_margin = 0.94 if title else 0.97
         plt.subplots_adjust(left=0.01, right=0.94, top=top_margin, bottom=0.03)
 

@@ -77,6 +77,5 @@ def generate_tg_message(self):
             f"dis = {_t(self,'lr/d')}\n\n"
 
             f"Fusion:\n"
-            f"fusion_coeff = {_t(self,'fusion/fusion_coeff')}\n"
-            f"fusion_logit = {_t(self,'fusion/fusion_logit')}"
+            f"fusion_weight = {_t(self,'fusion/fusion_weight')}"
         )

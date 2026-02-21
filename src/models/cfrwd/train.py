@@ -5,7 +5,7 @@ from omegaconf import OmegaConf
 import torch
 import pytorch_lightning as pl
 from pytorch_lightning import Trainer, seed_everything
-from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
+from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.profilers import SimpleProfiler
 from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger
 from pytorch_lightning.utilities.model_summary import ModelSummary
@@ -14,6 +14,7 @@ from pytorch_lightning.utilities.model_summary import ModelSummary
 from src.models.cfrwd.main import SAR2OPTGANLightningModule
 from src.data.sen12.datamodule import SEN12Datamodule
 from src.utils.cleanup_memory import full_cleanup, cleanup_memory
+from src.utils.callbacks import EMAWeightAveraging
 
 os.environ["NO_ALBUMENTATIONS_UPDATE"] = "1"  # disable albumentations update
 
@@ -84,14 +85,22 @@ if __name__ == "__main__":
             save_last=True,
             auto_insert_metric_name=False
         )
-        lr_monitor = LearningRateMonitor(logging_interval='epoch')
+
+        callbacks = [checkpoints]
+        if getattr(cfg, 'ema', None) and getattr(cfg.ema, 'use_ema', False):
+            ema_callback = EMAWeightAveraging(
+                decay=cfg.ema.decay,
+                start_epoch=cfg.ema.start_epoch
+            )
+            callbacks.append(ema_callback)
+            terminal_logger.info(f"EMA включен (decay={cfg.ema.decay}, start_epoch={cfg.ema.start_epoch})")
 
         # 7) Trainer
         trainer = Trainer(
             logger=[tb_logger, csv_logger],
             profiler=SimpleProfiler(dirpath=cfg.system.profiler_dir, filename=cfg.system.tb_version),
 
-            callbacks=[checkpoints, lr_monitor],
+            callbacks=callbacks,
             accelerator=cfg.system.device,
             devices=1,
 
