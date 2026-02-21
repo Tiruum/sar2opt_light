@@ -61,10 +61,10 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
         with torch.no_grad():
             fake_opt = self.netG(real_sar)
 
-        # Дискриминатор смотрит на РЕАЛЬНЫЕ оптические изображения
-        d_real, _ = self.netD(real_opt)
-        # Дискриминатор смотрит на FAKE оптические изображения
-        d_fake, _ = self.netD(fake_opt)
+        # Дискриминатор смотрит на РЕАЛЬНЫЕ оптические изображения (условие + реал)
+        d_real, real_feats = self.netD(torch.cat([real_sar, real_opt], dim=1))
+        # Дискриминатор смотрит на FAKE оптические изображения (условие + фейк)
+        d_fake, _ = self.netD(torch.cat([real_sar, fake_opt.detach()], dim=1))
 
         num_scales = len(d_real)
         d_loss = 0.0
@@ -84,15 +84,18 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
         # ========== ОБУЧЕНИЕ ГЕНЕРАТОРА ==========
         opt_g.zero_grad(set_to_none=True)
 
-        fake_opt = self.netG(real_sar)  # Генерируем fake изображения (БЕЗ detach!)
+        # Генерируем fake изображения заново (чтобы граф градиентов был привязан к G)
+        fake_opt = self.netG(real_sar)
 
-        d_fake, fake_feats = self.netD(fake_opt)  # Дискриминатор оценивает fake (для adversarial loss)
-        with torch.no_grad():  # Так как потом все равно detach
-            _, real_feats = self.netD(real_opt)  # Дискриминатор оценивает real (для feature matching loss)
+        d_fake, fake_feats = self.netD(torch.cat([real_sar, fake_opt], dim=1))  # Дискриминатор оценивает fake (для adversarial loss)
 
         num_scales = len(d_fake)
         loss_gan = sum(self.criterions['GAN'](pf, True) for pf in d_fake) / num_scales
-        loss_fm = self.criterions["FM"](real_feats, fake_feats)
+        
+        # Feature matching loss (используем real_feats, полученные при обучении D, но отвязанные от графа D)
+        real_feats_detached = [f.detach() for f in real_feats]
+        loss_fm = self.criterions["FM"](real_feats_detached, fake_feats)
+        
         loss_l1 = self.criterions['L1'](fake_opt, real_opt)
 
         g_loss = (
@@ -104,7 +107,7 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
         self.manual_backward(g_loss)
         opt_g.step()
 
-        self.log('train/g_loss', g_loss, prog_bar=True, on_step=False, on_epoch=True)
+        self.log('train/g_loss', g_loss, prog_bar=True, on_step=False, on_epoch=True, batch_size=real_sar.size(0))
         self.log_dict({
             'train/loss_fm': loss_fm,
             'train/loss_gan': loss_gan,
@@ -112,9 +115,8 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
             'train/loss_l1': loss_l1,
             'feats/d_real_mean': real_means.mean(),
             'feats/d_fake_mean': fake_means.mean(),
-            'fusion/fusion_coeff': self.netG.fusion_coeff.detach().cpu(),
-            'fusion/fusion_logit': self.netG._fusion_logit.detach().cpu(),
-        }, prog_bar=False, on_step=False, on_epoch=True)
+            'fusion/fusion_weight': self.netG.fusion_weight.item()
+        }, prog_bar=False, on_step=False, on_epoch=True, batch_size=real_sar.size(0))
     
     def validation_step(self, batch, batch_idx):
         real_sar, real_opt = batch
@@ -126,7 +128,7 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
 
         # Losses
         loss_l1 = self.criterions['L1'](fake_opt_f32, real_opt_f32)
-        self.log('val/loss_l1', loss_l1, prog_bar=True, on_step=False, on_epoch=True)
+        self.log('val/loss_l1', loss_l1, prog_bar=True, on_step=False, on_epoch=True, batch_size=real_sar.size(0))
 
         # Metrics
         psnr = self.psnr(fake_opt_f32, real_opt_f32)
@@ -134,10 +136,10 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
         rmse = self.rmse(fake_opt_f32, real_opt_f32)
         sam = self.sam(fake_opt_f32, real_opt_f32)
 
-        self.log('val/psnr', psnr, prog_bar=True, on_step=False, on_epoch=True)
-        self.log('val/ssim', ssim, prog_bar=True, on_step=False, on_epoch=True)
-        self.log('val/rmse', rmse, prog_bar=False, on_step=False, on_epoch=True)
-        self.log('val/sam', sam, prog_bar=False, on_step=False, on_epoch=True)
+        self.log('val/psnr', psnr, prog_bar=True, on_step=False, on_epoch=True, batch_size=real_sar.size(0))
+        self.log('val/ssim', ssim, prog_bar=True, on_step=False, on_epoch=True, batch_size=real_sar.size(0))
+        self.log('val/rmse', rmse, prog_bar=False, on_step=False, on_epoch=True, batch_size=real_sar.size(0))
+        self.log('val/sam', sam, prog_bar=False, on_step=False, on_epoch=True, batch_size=real_sar.size(0))
 
     def test_step(self, batch, batch_idx):
         pass
@@ -162,7 +164,7 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
         if (self.cfg.system.image_freq != 0):
             if (self.current_epoch + 1) % self.cfg.system.image_freq == 0:
                 with torch.no_grad():
-                    fake_opt = self.netG(self.fixed_sar)
+                    fake_opt, cfr_out, hfcf_out = self.netG(self.fixed_sar, return_branches=True)
                 os.makedirs(os.path.join(self.cfg.system.images_dir, self.cfg.system.tb_version), exist_ok=True)
                 path = f"{self.cfg.system.images_dir}/{self.cfg.system.tb_version}/epoch_{self.current_epoch+1}.png"
                 visualize_batch(
@@ -170,7 +172,10 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
                     fake_opt.cpu().detach(),
                     self.fixed_opt.cpu().detach(),
                     path, max_rows=6, mode='quality',
-                    title=f"Epoch {self.current_epoch+1}"
+                    title=f"Epoch {self.current_epoch+1}",
+                    cfr_out=cfr_out.cpu().detach(),
+                    hfcf_out=hfcf_out.cpu().detach(),
+                    fusion_weight=self.netG.fusion_weight.item()
                 )
                 tg_message = generate_tg_message(self)
                 send_telegram(image_path=path, message=tg_message)
@@ -246,7 +251,7 @@ if __name__ == "__main__":
 
     try:
         terminal_logger.info("Начинаем обучение...")
-        trainer.fit(model, datamodule=dm)
+        trainer.fit(model, datamodule=dm, ckpt_path=cfg.system.resume_ckpt)
     except KeyboardInterrupt:
         terminal_logger.warning("Обучение прервано пользователем. Выполняем очистку...")
     except Exception as e:

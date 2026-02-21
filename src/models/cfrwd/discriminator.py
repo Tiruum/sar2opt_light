@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+from torch.nn.utils import spectral_norm
 
 class CFRWDPatchDisBranch(nn.Module):
     def __init__(self, in_channels: int = 3, ndf: int = 64, return_features: bool = True):
@@ -8,22 +9,19 @@ class CFRWDPatchDisBranch(nn.Module):
         self.return_features = return_features
 
         layers = [
-            nn.Conv2d(self.in_channels, ndf, kernel_size=4, stride=2, padding=1),
+            spectral_norm(nn.Conv2d(self.in_channels, ndf, kernel_size=4, stride=2, padding=1)),
             nn.LeakyReLU(0.2, inplace=True),
 
-            nn.Conv2d(ndf, ndf * 2, kernel_size=4, stride=2, padding=1, bias=False),
-            nn.InstanceNorm2d(ndf * 2, affine=True),
+            spectral_norm(nn.Conv2d(ndf, ndf * 2, kernel_size=4, stride=2, padding=1)),
             nn.LeakyReLU(0.2, inplace=True),
 
-            nn.Conv2d(ndf * 2, ndf * 4, kernel_size=4, stride=2, padding=1, bias=False),
-            nn.InstanceNorm2d(ndf * 4, affine=True),
+            spectral_norm(nn.Conv2d(ndf * 2, ndf * 4, kernel_size=4, stride=2, padding=1)),
             nn.LeakyReLU(0.2, inplace=True),
 
-            nn.Conv2d(ndf * 4, ndf * 8, kernel_size=4, stride=2, padding=1, bias=False),
-            nn.InstanceNorm2d(ndf * 8, affine=True),
+            spectral_norm(nn.Conv2d(ndf * 4, ndf * 8, kernel_size=4, stride=2, padding=1)),
             nn.LeakyReLU(0.2, inplace=True),
 
-            nn.Conv2d(ndf * 8, 1, kernel_size=4, stride=1, padding=1),
+            spectral_norm(nn.Conv2d(ndf * 8, 1, kernel_size=4, stride=1, padding=1)),
         ]
 
         self.main = nn.ModuleList(layers)
