@@ -35,7 +35,7 @@ scheduler:
 ema:
   use_ema: true
   decay: 0.999
-  start_epoch: 1 # Начинаем усреднение после 1-й эпохи (даем модели "разогреться")
+  start_epoch: 30 # Увеличили с 10 до 30, так как новая архитектура требует больше времени на "разогрев"
 
 loss:
   l1_weight: 0
@@ -50,13 +50,13 @@ system:
   compile: false # torch.compile() — только Linux (Triton не поддерживает Windows)
   max_epochs: 200 # Статья: 200 при BS=1. При BS=4 → 800 для эквивалентного числа шагов
   checkpoints_dir: "checkpoints/cfrwd"
-  image_freq: 10 # 0 to disable
+  image_freq: 10
   output_dir: "./output/cfrwd"
   images_dir: "./output/cfrwd/images"
   profiler_dir: "./output/cfrwd/profiler"
   summary_dir: "./output/cfrwd/summary"
   limit_train_batches: 1.0 # 0.1 for quick testing, 1.0 for full training
   limit_val_batches: 1.0 # 0.1 for quick testing, 1.0 for full validation
-  tb_version: 'cfrwd-31'
-  resume_ckpt: null # новая архитектура (InstanceNorm), обучение с нуля
+  tb_version: 'cfrwd-32'
+  resume_ckpt: null
   debug: false

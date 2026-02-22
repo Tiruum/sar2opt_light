@@ -3,12 +3,12 @@
 import os
 from omegaconf import OmegaConf
 import torch
-import pytorch_lightning as pl
-from pytorch_lightning import Trainer, seed_everything
-from pytorch_lightning.callbacks import ModelCheckpoint
-from pytorch_lightning.profilers import SimpleProfiler
-from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger
-from pytorch_lightning.utilities.model_summary import ModelSummary
+import lightning.pytorch as pl
+from lightning.pytorch import Trainer, seed_everything
+from lightning.pytorch.callbacks import ModelCheckpoint
+from lightning.pytorch.profilers import SimpleProfiler
+from lightning.pytorch.loggers import TensorBoardLogger, CSVLogger
+from lightning.pytorch.utilities.model_summary import ModelSummary
 
 
 from src.models.cfrwd.main import SAR2OPTGANLightningModule
@@ -90,7 +90,7 @@ if __name__ == "__main__":
         if getattr(cfg, 'ema', None) and getattr(cfg.ema, 'use_ema', False):
             ema_callback = EMAWeightAveraging(
                 decay=cfg.ema.decay,
-                start_epoch=cfg.ema.start_epoch
+                update_starting_at_epoch=cfg.ema.start_epoch
             )
             callbacks.append(ema_callback)
             terminal_logger.info(f"EMA включен (decay={cfg.ema.decay}, start_epoch={cfg.ema.start_epoch})")
