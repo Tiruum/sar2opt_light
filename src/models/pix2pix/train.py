@@ -2,11 +2,11 @@
 
 import os
 import torch
-import pytorch_lightning as pl
-from pytorch_lightning import Trainer, seed_everything
-from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
-from pytorch_lightning.profilers import SimpleProfiler
-from pytorch_lightning.loggers import TensorBoardLogger
+import lightning.pytorch as pl
+from lightning.pytorch import Trainer, seed_everything
+from lightning.pytorch.callbacks import ModelCheckpoint, LearningRateMonitor
+from lightning.pytorch.profilers import SimpleProfiler
+from lightning.pytorch.loggers import TensorBoardLogger
 
 
 from src.models.pix2pix.main import SAR2OPTGANLightningModule

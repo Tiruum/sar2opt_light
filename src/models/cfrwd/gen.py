@@ -72,8 +72,8 @@ class FinalDecoderBlock(nn.Module):
         self.final_block = nn.Sequential(
             nn.ReflectionPad2d(pad),
             # Важно: bias=True, так как нет нормализации после этой свертки
-            nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=1, padding=0, bias=True),
-            nn.Tanh() # Выход в диапазоне [-1, 1]
+            nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=1, padding=0, bias=True)
+            # Tanh убран отсюда, чтобы делать fusion до нелинейности
         )
         
     def forward(self, x):
@@ -86,100 +86,84 @@ class CFRBlock(nn.Module):
         super(CFRBlock, self).__init__()
         logger.debug('CFR Block INIT')
 
-        # a1 = B C W H          p1 = B C/4 W H
-        # a2 = B C W/2 H/2      p2 = B C/2 W/2 H/2
+        # Базовые каналы для веток (как в HRNet: 16, 32, 64, 128)
+        # Это дает сети емкость на глубоких слоях и экономит память на высоких разрешениях
+        c1, c2, c3, c4 = channels // 4, channels // 2, channels, channels * 2
 
-        # b1 = Conv(cat(p1, U(p2)))
-        # b2 = Conv(cat(D(p1), p2))
-        # b3 = Conv(cat(D(D(p1)), D(p2)))
+        # --- Stage 1 ---
+        # a1 = B C W H          p1 = B c1 W H
+        # a2 = B C W/2 H/2      p2 = B c2 W/2 H/2
+        
+        # Сначала понижаем каналы, чтобы ResBlock работал быстро
+        self.proj11 = nn.Conv2d(channels, c1, kernel_size=1, bias=False)
+        self.proj12 = nn.Conv2d(channels, c2, kernel_size=1, bias=False)
 
-        self.n11 = nn.Sequential(
-            *[ResBlock(channels) for _ in range(3)],
-            nn.Conv2d(channels, channels // 4, kernel_size=1, stride=1)
-        )
+        self.n11 = nn.Sequential(*[ResBlock(c1) for _ in range(3)])
+        self.n12 = nn.Sequential(*[ResBlock(c2) for _ in range(3)])
 
-        self.n12 = nn.Sequential(
-            *[ResBlock(channels) for _ in range(3)],
-            nn.Conv2d(channels, channels // 2, kernel_size=1, stride=1)
-        )
-
+        # Cross-fusion 1
         self.fuse1_to2_1 = nn.Sequential(
             nn.ReflectionPad2d(1),
-            nn.Conv2d((channels // 4 + channels // 2), channels // 8, kernel_size=3, stride=1)
-            # Дополнительно можно обернуть их в лёгкий Conv+Norm+LeakyReLU (InstanceNorm/BN + LeakyReLU),
-            # чтобы смешивание масштабов было более выразительным.
-            # Это уже инженерный апгрейд, а не строгое следование статье.
-            # Аналогично для fuse1_to2_2, fuse1_to2_3, fuse2_to3_1..4
-            # Если позже добавить BatchNorm2d после этих fusion‑свёрток,
-            # тогда в них стоит поменять на bias=False,
-            # чтобы не плодить бесполезные параметры.
+            nn.Conv2d(c1 + c2, c1, kernel_size=3, stride=1, bias=False),
+            nn.InstanceNorm2d(c1, affine=True),
+            nn.LeakyReLU(0.2, inplace=True)
         )
         self.fuse1_to2_2 = nn.Sequential(
             nn.ReflectionPad2d(1),
-            nn.Conv2d((channels // 4 + channels // 2), channels // 4, kernel_size=3, stride=1)
+            nn.Conv2d(c1 + c2, c2, kernel_size=3, stride=1, bias=False),
+            nn.InstanceNorm2d(c2, affine=True),
+            nn.LeakyReLU(0.2, inplace=True)
         )
         self.fuse1_to2_3 = nn.Sequential(
             nn.ReflectionPad2d(1),
-            nn.Conv2d((channels // 4 + channels // 2), channels // 2, kernel_size=3, stride=1)
+            nn.Conv2d(c1 + c2, c3, kernel_size=3, stride=1, bias=False),
+            nn.InstanceNorm2d(c3, affine=True),
+            nn.LeakyReLU(0.2, inplace=True)
         )
 
-        # b1 = B C/8 W H        q1 = B C/8 W H
-        # b2 = B C/4 W/2 H/2    q2 = B C/4 W/2 H/2
-        # b3 = B C/2 W/4 H/4    q3 = B C/2 W/4 H/4
+        # --- Stage 2 ---
+        self.n21 = nn.Sequential(*[ResBlock(c1) for _ in range(3)])
+        self.n22 = nn.Sequential(*[ResBlock(c2) for _ in range(3)])
+        self.n23 = nn.Sequential(*[ResBlock(c3) for _ in range(3)])
 
-        # c1 = Conv(cat(q1, U(q2), U(U(q3))))
-        # c2 = Conv(cat(D(q1), q2, U(q3)))
-        # c3 = Conv(cat(D(D(q1)), D(q2), q3))
-        # c4 = Conv(cat(D(D(D(q1))), D(D(q2)), D(q3)))
-
-        self.n21 = nn.Sequential(
-            *[ResBlock(channels // 8) for _ in range(3)],
-        )
-        self.n22 = nn.Sequential(
-            *[ResBlock(channels // 4) for _ in range(3)],
-        )
-        self.n23 = nn.Sequential(
-            *[ResBlock(channels // 2) for _ in range(3)],
-        )
-
+        # Cross-fusion 2
         self.fuse2_to3_1 = nn.Sequential(
             nn.ReflectionPad2d(1),
-            nn.Conv2d((channels // 8 + channels // 4 + channels // 2), channels // 16, kernel_size=3, stride=1)
+            nn.Conv2d(c1 + c2 + c3, c1, kernel_size=3, stride=1, bias=False),
+            nn.InstanceNorm2d(c1, affine=True),
+            nn.LeakyReLU(0.2, inplace=True)
         )
         self.fuse2_to3_2 = nn.Sequential(
             nn.ReflectionPad2d(1),
-            nn.Conv2d((channels // 8 + channels // 4 + channels // 2), channels // 8, kernel_size=3, stride=1)
+            nn.Conv2d(c1 + c2 + c3, c2, kernel_size=3, stride=1, bias=False),
+            nn.InstanceNorm2d(c2, affine=True),
+            nn.LeakyReLU(0.2, inplace=True)
         )
         self.fuse2_to3_3 = nn.Sequential(
             nn.ReflectionPad2d(1),
-            nn.Conv2d((channels // 8 + channels // 4 + channels // 2), channels // 4, kernel_size=3, stride=1)
+            nn.Conv2d(c1 + c2 + c3, c3, kernel_size=3, stride=1, bias=False),
+            nn.InstanceNorm2d(c3, affine=True),
+            nn.LeakyReLU(0.2, inplace=True)
         )
         self.fuse2_to3_4 = nn.Sequential(
             nn.ReflectionPad2d(1),
-            nn.Conv2d((channels // 8 + channels // 4 + channels // 2), channels // 2, kernel_size=3, stride=1)
+            nn.Conv2d(c1 + c2 + c3, c4, kernel_size=3, stride=1, bias=False),
+            nn.InstanceNorm2d(c4, affine=True),
+            nn.LeakyReLU(0.2, inplace=True)
         )
 
-        # c1 = B C/16 W H       k1 = B C/16 W H
-        # c2 = B C/8 W/2 H/2    k2 = B C/8 W/2 H/2
-        # c3 = B C/4 W/4 H/4    k3 = B C/4 W/4 H/4
-        # c4 = B C/2 W/8 H/8    k4 = B C/2 W/8 H/8
+        # --- Stage 3 ---
+        self.n31 = nn.Sequential(*[ResBlock(c1) for _ in range(3)])
+        self.n32 = nn.Sequential(*[ResBlock(c2) for _ in range(3)])
+        self.n33 = nn.Sequential(*[ResBlock(c3) for _ in range(3)])
+        self.n34 = nn.Sequential(*[ResBlock(c4) for _ in range(3)])
 
-        # d = Conv(cat(D(k1), k2, U(k3), U(U(k4))))
-
-        self.n31 = nn.Sequential(
-            *[ResBlock(channels // 16) for _ in range(3)],
+        # Final fusion (Сливаем все на максимальном разрешении W H)
+        self.fuse3_to4 = nn.Sequential(
+            nn.Conv2d(c1 + c2 + c3 + c4, channels, kernel_size=1, stride=1, bias=False),
+            nn.InstanceNorm2d(channels, affine=True),
+            nn.LeakyReLU(0.2, inplace=True)
         )
-        self.n32 = nn.Sequential(
-            *[ResBlock(channels // 8) for _ in range(3)],
-        )
-        self.n33 = nn.Sequential(
-            *[ResBlock(channels // 4) for _ in range(3)],
-        )
-        self.n34 = nn.Sequential(
-            *[ResBlock(channels // 2) for _ in range(3)],
-        )
-
-        self.fuse3_to4 = nn.Conv2d((channels // 16 + channels // 8 + channels // 4 + channels // 2), channels // 4, kernel_size=1, stride=1)
 
         self.up = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
         self.down = nn.AvgPool2d(kernel_size=2, stride=2)
@@ -191,14 +175,14 @@ class CFRBlock(nn.Module):
         a2 = self.down(a1)
 
         # Stage 1
-        p1 = self.n11(a1)
-        p2 = self.n12(a2)
+        p1 = self.n11(self.proj11(a1))
+        p2 = self.n12(self.proj12(a2))
 
         logger.debug('Stage 1', once=True)
         logger.debug(f'a1 shape: {a1.shape}, p1 shape: {p1.shape}', once=True)
         logger.debug(f'a2 shape: {a2.shape}, p2 shape: {p2.shape}', once=True)
 
-        # Cross-fusion 1 (кэшируем промежуточные down/up)
+        # Cross-fusion 1
         p1_d = self.down(p1)
         b1 = self.fuse1_to2_1(torch.cat([p1, self.up(p2)], dim=1))
         b2 = self.fuse1_to2_2(torch.cat([p1_d, p2], dim=1))
@@ -214,7 +198,7 @@ class CFRBlock(nn.Module):
         logger.debug(f'b2 shape: {b2.shape}, q2 shape: {q2.shape}', once=True)
         logger.debug(f'b3 shape: {b3.shape}, q3 shape: {q3.shape}', once=True)
 
-        # Cross-fusion 2 (кэшируем промежуточные down/up)
+        # Cross-fusion 2
         q1_d = self.down(q1)
         q2_d = self.down(q2)
         q3_u = self.up(q3)
@@ -235,9 +219,12 @@ class CFRBlock(nn.Module):
         logger.debug(f'c3 shape: {c3.shape}, k3 shape: {k3.shape}', once=True)
         logger.debug(f'c4 shape: {c4.shape}, k4 shape: {k4.shape}', once=True)
 
-        # Final fusion
-        k4_u = self.up(k4)
-        d = self.fuse3_to4(torch.cat([self.down(k1), k2, self.up(k3), self.up(k4_u)], dim=1))
+        # Final fusion (Сливаем все на максимальном разрешении k1)
+        k2_u = self.up(k2)
+        k3_u = self.up(self.up(k3))
+        k4_u = self.up(self.up(self.up(k4)))
+        
+        d = self.fuse3_to4(torch.cat([k1, k2_u, k3_u, k4_u], dim=1))
         logger.debug(f'CFRBlock output shape: {d.shape}', once=True)
 
         return d
@@ -259,18 +246,15 @@ class CFRBranch(nn.Module):
         logger.debug(f"Conv:\t\t{' -> '.join(map(str, [in_channels, 16, 32, base_cfr_ch, base_cfr_ch]))}")
 
         self.CFR = CFRBlock(base_cfr_ch)
-        logger.debug(f'CFRBlock:\t{base_cfr_ch} -> {base_cfr_ch // 4}')
+        logger.debug(f'CFRBlock:\t{base_cfr_ch} -> {base_cfr_ch}')
 
         self.decoder = nn.Sequential(
-            # Шаг 1: Восстанавливаем разрешение 128 -> 256.
-            # Расширяем каналы 16 -> 64, чтобы дать модели пространство для генерации деталей.
-            DecoderBlock(in_channels=base_cfr_ch // 4, out_channels=64, upsample=True),
-            
-            # Шаг 2: Дополнительный слой обработки на полном разрешении (256x256).
+            # Шаг 1: Дополнительный слой обработки на полном разрешении (256x256).
             # Сжимаем каналы 64 -> 32 перед финалом.
-            DecoderBlock(in_channels=64, out_channels=32, upsample=False),
+            # Upsample больше не нужен, так как CFRBlock возвращает полное разрешение.
+            DecoderBlock(in_channels=base_cfr_ch, out_channels=32, upsample=False),
             
-            # Шаг 3: Финальная проекция в RGB с большим ядром (7x7).
+            # Шаг 2: Финальная проекция в RGB с большим ядром (7x7).
             # 32 -> 3 канала.
             FinalDecoderBlock(in_channels=32, out_channels=3, kernel_size=7)
         )
@@ -575,14 +559,17 @@ class CFRWDGenerator(nn.Module):
 
 
     def forward(self, x, return_branches=False):
-        cfr_out = self.cfr_branch(x)
-        hfcf_out = self.hfcf_branch(x)
+        cfr_out_logits = self.cfr_branch(x)
+        hfcf_out_logits = self.hfcf_branch(x)
+        
         # Статья: "The output from the branch with CFR structure is fused with the WD branch output through a learnable coefficient."
-        # Инициализируется 1, поэтому CFR + 1 * WD
-        out = cfr_out + self.fusion_weight * hfcf_out
+        # Лучшая практика: смешивать логиты (до Tanh), чтобы сумма не выходила за пределы [-1, 1]
+        fused_logits = cfr_out_logits + self.fusion_weight * hfcf_out_logits
+        out = torch.tanh(fused_logits)
         
         if return_branches:
-            return out, cfr_out, hfcf_out
+            # Возвращаем также ветки, пропущенные через Tanh, для визуализации
+            return out, torch.tanh(cfr_out_logits), torch.tanh(hfcf_out_logits)
         return out
 
 

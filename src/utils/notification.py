@@ -38,7 +38,7 @@ def send_telegram(message="", image_path=None):
     except Exception as e:
         print(f"❌ [TG BOT] Произошла ошибка при отправке: {e}")
 
-from pytorch_lightning.utilities.rank_zero import rank_zero_only
+from lightning.pytorch.utilities.rank_zero import rank_zero_only
 
 @rank_zero_only
 def _t(self, k):

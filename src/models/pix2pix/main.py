@@ -2,7 +2,7 @@
 
 import gc
 import torch
-import pytorch_lightning as pl
+import lightning.pytorch as pl
 from torch.amp import autocast
 from src.models.pix2pix.spade_generator import UNetGenerator
 from src.models.pix2pix.factory import build_models, build_optimizers, build_criterions, build_lr_schedulers
@@ -144,10 +144,9 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
         )
 
 
-from pytorch_lightning import Trainer
-from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
-from pytorch_lightning.loggers import TensorBoardLogger
-
+from lightning.pytorch import Trainer
+from lightning.pytorch.callbacks import ModelCheckpoint, LearningRateMonitor
+from lightning.pytorch.loggers import TensorBoardLogger
 from src.data.labeled.datamodule import SAR2OPTDataModule
 import os
 from omegaconf import OmegaConf

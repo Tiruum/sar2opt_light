@@ -4,7 +4,7 @@ import gc
 import os
 import torch.nn as nn
 import torch
-import pytorch_lightning as pl
+import lightning.pytorch as pl
 from src.models.cfrwd.factory import build_models, build_optimizers, build_criterions, build_lr_schedulers
 from src.utils.visualize import visualize_batch
 from torchmetrics.image import PeakSignalNoiseRatio, StructuralSimilarityIndexMeasure, SpectralAngleMapper #, LearnedPerceptualImagePatchSimilarity
@@ -192,9 +192,9 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
 
 
 if __name__ == "__main__":
-    from pytorch_lightning import Trainer
-    from pytorch_lightning.callbacks import ModelCheckpoint
-    from pytorch_lightning.loggers import TensorBoardLogger
+    from lightning.pytorch import Trainer
+    from lightning.pytorch.callbacks import ModelCheckpoint
+    from lightning.pytorch.loggers import TensorBoardLogger
     from src.data.sen12.datamodule import SEN12Datamodule
     from src.utils.logger import Logger
     from src.utils.cleanup_memory import full_cleanup

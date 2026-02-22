@@ -1,6 +1,6 @@
 import optuna
-from pytorch_lightning import Trainer
-from pytorch_lightning.loggers import TensorBoardLogger
+from lightning.pytorch import Trainer
+from lightning.pytorch.loggers import TensorBoardLogger
 from src.data.sen12.datamodule import SEN12Datamodule
 from models.cfrwd.main import SAR2OPTGANLightningModule
 from src.utils.config_loader import load_config
