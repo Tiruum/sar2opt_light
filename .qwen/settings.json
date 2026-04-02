@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(py *)",
+      "Bash(copy *)"
+    ]
+  },
+  "$version": 3
+}

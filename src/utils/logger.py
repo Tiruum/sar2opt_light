@@ -6,6 +6,17 @@ from pathlib import Path
 from colorama import init, Fore, Style
 from omegaconf import OmegaConf
 
+# Включаем поддержку UTF-8 в Windows console
+if sys.platform == 'win32':
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+        sys.stderr.reconfigure(encoding='utf-8')
+    except AttributeError:
+        # Python < 3.7
+        import codecs
+        sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, 'strict')
+        sys.stderr = codecs.getwriter('utf-8')(sys.stderr.buffer, 'strict')
+
 init(autoreset=True)
 
 class Logger:

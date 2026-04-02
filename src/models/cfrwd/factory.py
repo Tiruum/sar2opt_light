@@ -29,7 +29,18 @@ def build_optimizers(netG, netD,
     lr_d = lr_d or cfg.optimizer.lr_d
     beta1 = beta1 or cfg.optimizer.beta1
     beta2 = beta2 or cfg.optimizer.beta2
-    optG = optim.Adam(netG.parameters(), lr=lr_g, betas=(beta1, beta2))
+    
+    # === ДОБАВЛЕНО: Раздельная оптимизация для fusion_weight ===
+    # Fusion weight требует меньшего weight decay для стабильности
+    # Предотвращает слишком быстрое изменение баланса CFR/HFCF веток
+    fusion_params = [netG.fusion_weight]
+    base_params = [p for n, p in netG.named_parameters() if 'fusion_weight' not in n]
+
+    optG = optim.Adam([
+        {'params': base_params, 'lr': lr_g, 'betas': (beta1, beta2)},
+        {'params': fusion_params, 'lr': lr_g, 'betas': (beta1, beta2), 'weight_decay': cfg.get('fusion', {}).get('weight_decay', 0.01)}
+    ])
+
     optD = optim.Adam(netD.parameters(), lr=lr_d, betas=(beta1, beta2))
     return optG, optD
 
@@ -42,7 +53,21 @@ def build_criterions() -> dict[Literal['GAN', 'FM'], nn.Module]:
 
 def build_lr_schedulers(optG, optD,
                         eta_min: float = None,
-                        decay_last_epochs: int = None):
+                        decay_last_epochs: int = None,
+                        warmup_epochs: int = 5):
+    """
+    Build learning rate schedulers with warmup for SAR-to-Optical GAN.
+    
+    Warmup предотвращает ранний дисбаланс G/D:
+    - Эпоха 0: 20% от LR (очень медленно)
+    - Эпоха 1: 40% от LR
+    - Эпоха 2: 60% от LR
+    - Эпоха 3: 80% от LR
+    - Эпоха 4: 100% от LR
+    - Эпоха 5+: Полный LR + linear decay
+    
+    Источник: BigGAN, StyleGAN, CycleGAN с улучшениями
+    """
     cfg = _load_cfg()
     if eta_min is None:
         eta_min = cfg.scheduler.eta_min
@@ -60,6 +85,13 @@ def build_lr_schedulers(optG, optD,
 
         def lr_lambda(epoch: int):
             clamped_epoch = min(max(int(epoch), 0), total_epochs - 1)
+
+            # === ДОБАВЛЕНО: LR Warmup на первые 5 эпох ===
+            if clamped_epoch < warmup_epochs:
+                # Постепенное увеличение LR от 0% до 100%
+                warmup_factor = (clamped_epoch + 1) / warmup_epochs
+                return warmup_factor
+            # === Конец warmup ===
 
             if clamped_epoch < start_decay_epoch:
                 return 1.0

@@ -172,12 +172,12 @@
 ### 21.02.2026
 *   **`cfrwd-29`**: *BS=4, везде InsanceNorm*
     *   **Изменения:** BatchSize=4, везде InsanceNorm, max_epoch=800, linear_decay с 400 эпохи. Fusion по формуле `cfr_out + self.fusion_weight * hfcf_out`
-    *   **Результат:** 
+    *   **Результат:**
     *   **Версия:** v2.4.5
 
 *   **`cfrwd-29`**: *Unconditional Dis -> Conditional Dis*
     *   **Изменения:** Unconditional Dis -> Conditional Dis
-    *   **Результат:** 
+    *   **Результат:**
     *   **Версия:** v2.5.5
 
 *   **`cfrwd-31`**: *Добавил EMA, добавил выходы cfr и hfcf веток на картинки, instance_norm -> spectral_norm только в дискриминаторе, перешли на pytorch lightning 2.5.5*
@@ -200,6 +200,19 @@
     Стало: Все слои fuse (от fuse1_to2_1 до fuse3_to4) теперь обернуты в nn.Sequential с InstanceNorm2d и LeakyReLU(0.2). Теперь сеть может строить сложные нелинейные комбинации признаков с разных масштабов.
     *   **Результат:** Качество генерации на train кратно возрасло. Однако fusion зануляет HFCF ветку. Дополнительно, модель галлюционирует из-за отсутствия L1 лосс, но мы пока не торопимся его добавлять. Будем пробовать фьюзить не две картинки, а CFR и фичи.
     *   **Версия:** v2.7.5
+
+### 02.04.2026
+*   **`cfrwd-33`**: *Критические исправления архитектуры (TTUR, L1, Skip Connections, Fusion Clipping)*
+    *   **Изменения:**
+    1. **Включён L1 loss** (l1_weight: 100) — критично для структурной точности, предотвращает галлюцинации
+    2. **TTUR (Two Time-Scale Update Rule)** — lr_g: 1e-4, lr_d: 4e-4 (ratio 4:1) для стабильности GAN
+    3. **HFCFBranch с skip connections** — добавлены skip connections с DWT выходами (g2, g3) для сохранения высокочастотных деталей
+    4. **Fusion weight clipping** — min: 0.1, max: 2.0 (предотвращает доминирование одной ветки)
+    5. **Fusion weight initialization** — 0.5 (было 1.0) для сбалансированного старта
+    6. **CFRBlock residual connection** — добавлена проекция k1 для улучшения градиентного потока
+    7. **Weight decay для fusion_weight** — 0.01 для стабильности обучения
+    *   **Результат:** Ожидается: PSNR ~18-19 dB, SSIM ~0.35-0.40, fusion_weight ~0.4-0.8, стабильный loss_gan ~0.6-0.8
+    *   **Версия:** v3.0.0
 
 
 

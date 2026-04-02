@@ -164,6 +164,9 @@ class CFRBlock(nn.Module):
             nn.InstanceNorm2d(channels, affine=True),
             nn.LeakyReLU(0.2, inplace=True)
         )
+        
+        # Проекция для residual connection (k1: c1 -> channels)
+        self.k1_res_proj = nn.Conv2d(c1, channels, kernel_size=1, bias=False)
 
         self.up = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
         self.down = nn.AvgPool2d(kernel_size=2, stride=2)
@@ -223,10 +226,19 @@ class CFRBlock(nn.Module):
         k2_u = self.up(k2)
         k3_u = self.up(self.up(k3))
         k4_u = self.up(self.up(self.up(k4)))
-        
-        d = self.fuse3_to4(torch.cat([k1, k2_u, k3_u, k4_u], dim=1))
-        logger.debug(f'CFRBlock output shape: {d.shape}', once=True)
 
+        # Concat и fusion
+        fused = torch.cat([k1, k2_u, k3_u, k4_u], dim=1)
+        d = self.fuse3_to4(fused)
+
+        # === ДОБАВЛЕНО: Residual connection для улучшения градиентов ===
+        # k1 имеет c1=channels//4 каналов, а d имеет channels каналов
+        # Добавляем проекцию 1x1 для k1 перед residual connection
+        # Это обеспечивает прямой градиентный поток к ветке максимального разрешения
+        k1_res = self.k1_res_proj(k1)
+        d = d + k1_res * 0.1  # Scaling factor 0.1 предотвращает доминирование residual
+
+        logger.debug(f'CFRBlock output shape: {d.shape}', once=True)
         return d
     
 class CFRBranch(nn.Module):
@@ -447,7 +459,7 @@ class HFCFBranch(nn.Module):
 
         # --- DWT ---
         self.dwt = DWTBlock(in_channels=in_channels)
-        freq_c = 3 * in_channels # 3 канала вейвлетов
+        freq_c = 3 * in_channels  # 3 канала вейвлетов
 
         # --- 1. Preprocess (SOTA: Strided Conv) ---
         # Upper (G2, 64x64): Не сжимаем
@@ -467,16 +479,15 @@ class HFCFBranch(nn.Module):
             WDResBlock(hidden_dim, projection=False),
             WDResBlock(hidden_dim, projection=False)
         )
-        
+
         # Bottom Stream (Red -> Basic Blocks)
         # Red -> Red
         self.bot_stream = nn.Sequential(
             RedBlock(hidden_dim),
             RedBlock(hidden_dim)
         )
-        
+
         # --- 3. Fusion & Transition ---
-        # Оставим Conv+Norm+ReLU для стабильности,
         # 1x1 Conv для смешивания каналов после Concat (128 -> 64)
         self.fusion_conv = nn.Sequential(
             nn.Conv2d(hidden_dim * 2, hidden_dim, kernel_size=1, bias=False),
@@ -484,20 +495,28 @@ class HFCFBranch(nn.Module):
             nn.ReLU(inplace=True)
         )
 
-        # --- 4. Decoder (SOTA: Upsample + Conv) ---
-        self.decoder = nn.Sequential(
-            # 64 -> 128
-            DecoderBlock(hidden_dim, 64, upsample=True),
-            # Refine at 128
-            DecoderBlock(64, 64, upsample=False),
-            
-            # 128 -> 256
-            DecoderBlock(64, 32, upsample=True),
-            # Refine at 256
-            DecoderBlock(32, 32, upsample=False)
+        # --- 4. Skip connections для сохранения высокочастотных деталей ---
+        # Проекция g2 (64x64) для skip connection на уровне 128x128
+        self.skip_conv_g2 = nn.Sequential(
+            nn.Conv2d(freq_c, hidden_dim // 2, kernel_size=1, bias=False),
+            nn.InstanceNorm2d(hidden_dim // 2, affine=True),
+            nn.ReLU(inplace=True)
         )
-        
-        # --- 5. Final Output ---
+        # Проекция g3 (128x128) для skip connection на уровне 256x256
+        self.skip_conv_g3 = nn.Sequential(
+            nn.Conv2d(freq_c, hidden_dim // 4, kernel_size=1, bias=False),
+            nn.InstanceNorm2d(hidden_dim // 4, affine=True),
+            nn.ReLU(inplace=True)
+        )
+
+        # --- 5. Decoder с skip connections (ИСПРАВЛЕНО) ---
+        # Явно разделяем слои для добавления skip connections
+        self.decoder_up1 = DecoderBlock(hidden_dim, 64, upsample=True)      # 64 → 128
+        self.decoder_refine1 = DecoderBlock(64 + hidden_dim // 2, 64, upsample=False)  # Fusion + refine на 128x128
+        self.decoder_up2 = DecoderBlock(64, 32, upsample=True)              # 128 → 256
+        self.decoder_refine2 = DecoderBlock(32 + hidden_dim // 4, 32, upsample=False)  # Fusion + refine на 256x256
+
+        # --- 6. Final Output ---
         self.final = FinalDecoderBlock(32, 3, kernel_size=7)
 
     def forward(self, x):
@@ -506,20 +525,41 @@ class HFCFBranch(nn.Module):
         logger.debug('DWT shapes:', once=True)
         logger.debug(f'g2.shape: {g2.shape}, g3.shape: {g3.shape}', once=True)
 
+        # Preprocess
         hfcf_g2_in = self.pre_top(g2)
         hfcf_g3 = self.pre_bot(g3)
-
         hfcf_g2 = hfcf_g2_in + hfcf_g3
 
+        # Streams
         out_g2 = self.top_stream(hfcf_g2)
         out_g3 = self.bot_stream(hfcf_g3)
 
-        merged = torch.cat([out_g2, out_g3], dim=1) # 64+64=128 ch
-        merged = self.fusion_conv(merged) # -> 64 ch
+        # Fusion основных веток
+        merged = torch.cat([out_g2, out_g3], dim=1)  # 64+64=128 ch
+        merged = self.fusion_conv(merged)  # → 64 ch
 
-        dec = self.decoder(merged)
+        # Decoder с skip connections
+        # Шаг 1: Upsample 64 → 128
+        dec = self.decoder_up1(merged)  # dec: [B, 64, 128, 128]
+
+        # Шаг 2: Skip fusion 1 — добавляем g2 features (высокочастотные детали)
+        # g2: [B, 3, 64, 64] → нужно сделать upsample до 128x128
+        skip_g2 = self.skip_conv_g2(g2)  # [B, 32, 64, 64]
+        skip_g2 = torch.nn.functional.interpolate(skip_g2, scale_factor=2, mode='bilinear', align_corners=False)  # [B, 32, 128, 128]
+        dec = torch.cat([dec, skip_g2], dim=1)  # 64 + 32 = 96
+        dec = self.decoder_refine1(dec)  # Refine на 128x128
+
+        # Шаг 3: Upsample 128 → 256
+        dec = self.decoder_up2(dec)  # [B, 32, 256, 256]
+
+        # Шаг 4: Skip fusion 2 — добавляем g3 features (среднечастотные детали)
+        # g3: [B, 3, 128, 128] → уже имеет размер 128x128, но нужно 256x256
+        skip_g3 = self.skip_conv_g3(g3)  # [B, 16, 128, 128]
+        skip_g3 = torch.nn.functional.interpolate(skip_g3, scale_factor=2, mode='bilinear', align_corners=False)  # [B, 16, 256, 256]
+        dec = torch.cat([dec, skip_g3], dim=1)  # 32 + 16 = 48
+        dec = self.decoder_refine2(dec)  # Refine на 256x256
+
         out = self.final(dec)
-
         return out
     
 class CFRWDGenerator(nn.Module):
@@ -527,11 +567,22 @@ class CFRWDGenerator(nn.Module):
         super(CFRWDGenerator, self).__init__()
         self.cfr_branch = CFRBranch(in_channels=in_channels)
         self.hfcf_branch = HFCFBranch(in_channels=in_channels)
-        # Статья: "We set the initial fuse coefficient to 1"
-        # Используем nn.Parameter для обучаемого веса
-        self.fusion_weight = nn.Parameter(torch.tensor(1.0), requires_grad=True)
+        
+        # === ИСПРАВЛЕНО: Fusion weight с правильным init и clipping ===
+        # Статья: "initial fuse coefficient = 1", но для стабильности начинаем с 0.5
+        # Это даёт сбалансированный старт (CFR доминирует, но HFCF влияет)
+        self.fusion_weight = nn.Parameter(torch.tensor(0.5), requires_grad=True)
+        
+        # Clip bounds (из config.yaml, но задаём здесь для автономности)
+        self.fusion_min = 0.1
+        self.fusion_max = 2.0
 
         self._initialize_weights()
+
+    def _clip_fusion_weight(self):
+        """Ограничивает fusion_weight для стабильности обучения"""
+        with torch.no_grad():
+            self.fusion_weight.data.clamp_(self.fusion_min, self.fusion_max)
 
     def _initialize_weights(self):
         # 1. Общая инициализация: Kaiming для Conv, единицы/нули для InstanceNorm
@@ -561,12 +612,15 @@ class CFRWDGenerator(nn.Module):
     def forward(self, x, return_branches=False):
         cfr_out_logits = self.cfr_branch(x)
         hfcf_out_logits = self.hfcf_branch(x)
-        
+
         # Статья: "The output from the branch with CFR structure is fused with the WD branch output through a learnable coefficient."
         # Лучшая практика: смешивать логиты (до Tanh), чтобы сумма не выходила за пределы [-1, 1]
         fused_logits = cfr_out_logits + self.fusion_weight * hfcf_out_logits
         out = torch.tanh(fused_logits)
-        
+
+        # Clip fusion weight после каждого forward pass (стабильность обучения)
+        self._clip_fusion_weight()
+
         if return_branches:
             # Возвращаем также ветки, пропущенные через Tanh, для визуализации
             return out, torch.tanh(cfr_out_logits), torch.tanh(hfcf_out_logits)

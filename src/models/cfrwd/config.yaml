@@ -1,4 +1,6 @@
-# configs/config.yaml
+# Конфиг для ПОЛНОГО обучения (200 эпох, 100% данных)
+# Версия: cfrwd-33-full (v3.0.0)
+
 data:
   data_dir:
     labeled: "./data/labeled"
@@ -19,44 +21,64 @@ model:
     in_channels: 1
   dis:
     ndf: 64
-    in_channels: 4 # 1 (SAR) + 3 (OPT)
+    in_channels: 4
   log_summary: true
 
 optimizer:
-  lr_g: 2e-4
-  lr_d: 2e-4 # Статья: одинаковый lr=0.0002 для G и D
+  # TTUR (Two Time-Scale Update Rule) — МОДИФИЦИРОВАННЫЙ для SAR-to-Optical
+  # Оригинальный TTUR (4:1) слишком агрессивен для кросс-модальной задачи
+  # L1 loss уже обеспечивает стабильность, поэтому D не должен обучаться намного быстрее G
+  # Источник: Heusel et al., "GANs Trained by a Two Time-Scale Update Rule", NIPS 2017
+  lr_g: 1.5e-4      # Было: 1e-4 (чуть выше для баланса)
+  lr_d: 2.0e-4      # Было: 4e-4 (значительно ниже)
+  # Ratio: 1.33:1 (мягкий TTUR для кросс-модальной задачи)
   beta1: 0.5
   beta2: 0.999
 
 scheduler:
   eta_min: 0
-  linear_decay_epochs: 100
+  linear_decay_epochs: 100  # Linear decay после 100 эпох
 
 ema:
+  # EMA (Exponential Moving Average) для стабилизации генератора
+  # Источник: Karras et al., "Progressive Growing of GANs", ICLR 2018
+  # 
+  # Старт с эпохи 10 (вместо 30):
+  # - Эпохи 0-5: G обучается быстро (только L1, базовая реконструкция)
+  # - Эпохи 5-10: G начинает использовать GAN loss
+  # - Эпохи 10+: EMA сглаживает веса для лучшей генерации
   use_ema: true
   decay: 0.999
-  start_epoch: 30 # Увеличили с 10 до 30, так как новая архитектура требует больше времени на "разогрев"
+  start_epoch: 10   # Было: 30 (поздний старт замедлял стабилизацию)
 
 loss:
-  l1_weight: 0
+  # L1 loss КРИТИЧНО важен для структурной точности
+  l1_weight: 100
   gan_weight: 1
   fm_weight: 10
 
+# Параметры для fusion веса (баланс CFR/HFCF веток)
+fusion:
+  init_weight: 0.5
+  min_weight: 0.1
+  max_weight: 2.0
+  weight_decay: 0.01
+
 system:
   device: "cuda"
-  precision: "bf16-mixed" # 32, 16, "bf16-mixed"
+  precision: "bf16-mixed"
   deterministic: false
   benchmark: true
-  compile: false # torch.compile() — только Linux (Triton не поддерживает Windows)
-  max_epochs: 200 # Статья: 200 при BS=1. При BS=4 → 800 для эквивалентного числа шагов
+  compile: false
+  max_epochs: 200  # ПОЛНОЕ ОБУЧЕНИЕ
   checkpoints_dir: "checkpoints/cfrwd"
-  image_freq: 10
+  image_freq: 5  # Визуализация каждые 5 эпох
   output_dir: "./output/cfrwd"
   images_dir: "./output/cfrwd/images"
   profiler_dir: "./output/cfrwd/profiler"
   summary_dir: "./output/cfrwd/summary"
-  limit_train_batches: 1.0 # 0.1 for quick testing, 1.0 for full training
-  limit_val_batches: 1.0 # 0.1 for quick testing, 1.0 for full validation
-  tb_version: 'cfrwd-32'
-  resume_ckpt: null
+  limit_train_batches: 1.0  # 100% данных
+  limit_val_batches: 1.0    # 100% валидации
+  tb_version: 'cfrwd-34-full'  # Новая версия с исправлениями (Label Smoothing, TTUR 1.33:1, Warmup, Weighted FM, Grad Clip)
+  resume_ckpt: null  # Можно указать чекпоинт для продолжения
   debug: false

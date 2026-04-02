@@ -1,7 +1,14 @@
 import torch
 import gc
 import multiprocessing
+import sys
 
+# Включаем поддержку UTF-8 для Windows console
+if sys.platform == 'win32':
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except AttributeError:
+        pass
 
 def cleanup_memory(log: bool = False):
     """Очистка GPU-кэша и сборка мусора Python."""

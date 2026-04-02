@@ -4,6 +4,14 @@ import torch
 import torch.nn as nn
 
 class GANLoss(nn.Module):
+    """
+    LSGAN Loss with Adaptive Label Smoothing for SAR-to-Optical Translation.
+    
+    Label smoothing предотвращает "переуверенность" дискриминатора,
+    что критично для кросс-модальной трансляции (SAR→Optical).
+    
+    Источник: Salimans et al., "Improved Techniques for Training GANs", NIPS 2016
+    """
     def __init__(self, use_lsgan=True):
         super(GANLoss, self).__init__()
         if use_lsgan:
@@ -11,13 +19,25 @@ class GANLoss(nn.Module):
         else:
             self.loss = nn.BCEWithLogitsLoss()
 
-    def get_target_tensor(self, prediction, target_is_real, real_label_smooth=1.0, fake_label_smooth=0.0):
+    def get_target_tensor(self, prediction, target_is_real, real_label_smooth=0.85, fake_label_smooth=0.05):
+        """
+        Адаптивное сглаживание меток для SAR-to-Optical задачи.
+        
+        Args:
+            real_label_smooth: 0.85 (вместо 1.0) — D должен сомневаться в real
+            fake_label_smooth: 0.05 (вместо 0.0) — G должен частично обманывать D
+        
+        Обоснование:
+        - Кросс-модальная трансляция имеет большой semantic gap
+        - Если D слишком уверен (d_real → 1.0), G не получает полезных градиентов
+        - Более мягкие метки (0.85/0.05) обеспечивают лучший баланс
+        """
         if target_is_real:
             return torch.full_like(prediction, real_label_smooth)
         else:
             return torch.full_like(prediction, fake_label_smooth)
 
-    def forward(self, prediction, target_is_real, real_label_smooth=1.0, fake_label_smooth=0.0):
+    def forward(self, prediction, target_is_real, real_label_smooth=0.85, fake_label_smooth=0.05):
         target_tensor = self.get_target_tensor(
             prediction,
             target_is_real,

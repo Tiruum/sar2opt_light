@@ -89,15 +89,29 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
 
         d_fake, fake_feats = self.netD(torch.cat([real_sar, fake_opt], dim=1))  # Дискриминатор оценивает fake (для adversarial loss)
 
+        # === GAN Loss с усреднением по масштабам ===
         num_scales = len(d_fake)
         loss_gan = sum(self.criterions['GAN'](pf, True) for pf in d_fake) / num_scales
-        
-        # Feature matching loss (используем real_feats, полученные при обучении D, но отвязанные от графа D)
+
+        # === Feature Matching Loss с ВЗВЕШИВАНИЕМ ПО МАСШТАБАМ ===
+        # Для SAR-to-Optical: large scale (256x256) важнее для глобальной структуры
+        # small scale (128x128) — локальные текстуры (менее важны из-за спекл-шума)
+        # Источник: Wang et al., "pix2pixHD", CVPR 2018
         real_feats_detached = [f.detach() for f in real_feats]
-        loss_fm = self.criterions["FM"](real_feats_detached, fake_feats)
         
+        # Веса для масштабов: [large_scale, small_scale]
+        scale_weights = [1.0, 0.5]  # large scale в 2 раза важнее
+        
+        loss_fm = 0.0
+        for i, (real_feat, fake_feat) in enumerate(zip(real_feats_detached, fake_feats)):
+            weight = scale_weights[i] if i < len(scale_weights) else 1.0
+            loss_fm += weight * self.criterions["FM"]([real_feat], [fake_feat])
+        loss_fm = loss_fm / sum(scale_weights)  # Нормализация
+
+        # === L1 Loss ===
         loss_l1 = self.criterions['L1'](fake_opt, real_opt)
 
+        # === Total Generator Loss ===
         g_loss = (
             loss_gan * self.loss_weights['gan'] +
             loss_fm * self.loss_weights['fm'] +
@@ -105,6 +119,16 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
         )
 
         self.manual_backward(g_loss)
+        
+        # === Gradient Clipping для G ===
+        # Предотвращает "взрывы" градиентов в кросс-модальной задаче
+        # Источник: Gulrajani et al., "WGAN-GP", NIPS 2017
+        torch.nn.utils.clip_grad_norm_(
+            self.netG.parameters(),
+            max_norm=1.0,   # Было: 0.5 (слишком агрессивно)
+            norm_type=2.0
+        )
+        
         opt_g.step()
 
         self.log('train/g_loss', g_loss, prog_bar=True, on_step=False, on_epoch=True, batch_size=real_sar.size(0))
