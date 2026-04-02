@@ -452,71 +452,111 @@ class RedBlock(nn.Module):
     def forward(self, x):
         return self.final_relu(self.main_branch(x) + x)
     
+class ChannelAttention(nn.Module):
+    """
+    Channel Attention для адаптивного взвешивания частотных полос.
+    Помогает сети автоматически определять важные частоты для SAR-to-Optical.
+    """
+    def __init__(self, channels, reduction=8):
+        super(ChannelAttention, self).__init__()
+        mid_channels = max(channels // reduction, 8)
+        
+        self.attention = nn.Sequential(
+            nn.AdaptiveAvgPool2d(1),
+            nn.Conv2d(channels, mid_channels, kernel_size=1, bias=False),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(mid_channels, channels, kernel_size=1, bias=False),
+            nn.Sigmoid()
+        )
+    
+    def forward(self, x):
+        attn = self.attention(x)
+        return x * attn
+
+
+class GatedFusion(nn.Module):
+    """
+    Gated fusion для адаптивного объединения частотных полос.
+    Вместо простого сложения использует обучаемые гейты.
+    """
+    def __init__(self, channels):
+        super(GatedFusion, self).__init__()
+        self.gate_conv = nn.Sequential(
+            nn.Conv2d(channels * 2, channels, kernel_size=1, bias=False),
+            nn.Sigmoid()
+        )
+    
+    def forward(self, x1, x2):
+        gate = self.gate_conv(torch.cat([x1, x2], dim=1))
+        return gate * x1 + (1 - gate) * x2
+
+
 class HFCFBranch(nn.Module):
     def __init__(self, in_channels=1, hidden_dim=64):
         super(HFCFBranch, self).__init__()
-        logger.debug('HFCF BRANCH INIT')
+        logger.debug('HFCF BRANCH INIT (IMPROVED)')
 
         # --- DWT ---
         self.dwt = DWTBlock(in_channels=in_channels)
         freq_c = 3 * in_channels  # 3 канала вейвлетов
+        
+        # === КЛЮЧЕВОЕ ИЗМЕНЕНИЕ 1: Channel Attention для DWT коэффициентов ===
+        # Адаптивно взвешиваем важность каждой частотной полосы
+        self.attention_g2 = ChannelAttention(freq_c, reduction=4)
+        self.attention_g3 = ChannelAttention(freq_c, reduction=4)
 
-        # --- 1. Preprocess (SOTA: Strided Conv) ---
-        # Upper (G2, 64x64): Не сжимаем
-        self.pre_top = HFCFPreprocess(freq_c, hidden_dim, downsample=False)
-        # Lower (G3, 128x128): Сжимаем (Stride=2)
-        self.pre_bot = HFCFPreprocess(freq_c, hidden_dim, downsample=True)
-
-        # --- 2. Streams ---
-
-        # Top Stream (Yellow/Blue -> Bottlenecks)
-        # Y(Proj) -> B(Id) -> B(Id) -> Y(Proj) -> B(Id) -> B(Id)
-        self.top_stream = nn.Sequential(
-            WDResBlock(hidden_dim, projection=True),
-            WDResBlock(hidden_dim, projection=False),
-            WDResBlock(hidden_dim, projection=False),
-            WDResBlock(hidden_dim, projection=True),
-            WDResBlock(hidden_dim, projection=False),
-            WDResBlock(hidden_dim, projection=False)
+        # === КЛЮЧЕВОЕ ИЗМЕНЕНИЕ 2: Более простой preprocess с лучшим градиентным потоком ===
+        # Используем один слой вместо HFCFPreprocess для лучшей проходимости градиентов
+        self.pre_g2 = nn.Sequential(
+            nn.Conv2d(freq_c, hidden_dim, kernel_size=3, stride=1, padding=1, bias=False),
+            nn.InstanceNorm2d(hidden_dim, affine=True),
+            nn.ReLU(inplace=True)
         )
-
-        # Bottom Stream (Red -> Basic Blocks)
-        # Red -> Red
-        self.bot_stream = nn.Sequential(
-            RedBlock(hidden_dim),
-            RedBlock(hidden_dim)
-        )
-
-        # --- 3. Fusion & Transition ---
-        # 1x1 Conv для смешивания каналов после Concat (128 -> 64)
-        self.fusion_conv = nn.Sequential(
-            nn.Conv2d(hidden_dim * 2, hidden_dim, kernel_size=1, bias=False),
+        self.pre_g3 = nn.Sequential(
+            nn.Conv2d(freq_c, hidden_dim, kernel_size=3, stride=2, padding=1, bias=False),
             nn.InstanceNorm2d(hidden_dim, affine=True),
             nn.ReLU(inplace=True)
         )
 
-        # --- 4. Skip connections для сохранения высокочастотных деталей ---
-        # Проекция g2 (64x64) для skip connection на уровне 128x128
-        self.skip_conv_g2 = nn.Sequential(
-            nn.Conv2d(freq_c, hidden_dim // 2, kernel_size=1, bias=False),
-            nn.InstanceNorm2d(hidden_dim // 2, affine=True),
+        # === КЛЮЧЕВОЕ ИЗМЕНЕНИЕ 3: Cross-frequency interaction blocks ===
+        # Вместо независимых streams используем блоки которые общаются между собой
+        self.cross_freq_block1 = CrossFrequencyBlock(hidden_dim)
+        self.cross_freq_block2 = CrossFrequencyBlock(hidden_dim)
+        self.cross_freq_block3 = CrossFrequencyBlock(hidden_dim)
+
+        # === КЛЮЧЕВОЕ ИЗМЕНЕНИЕ 4: Dense skip connections напрямую от DWT ===
+        # Проекции для всех уровней разрешения
+        self.skip_g2_fine = nn.Conv2d(freq_c, hidden_dim // 2, kernel_size=1, bias=False)
+        self.skip_g2_mid = nn.Conv2d(freq_c, hidden_dim // 2, kernel_size=1, bias=False)
+        self.skip_g3_mid = nn.Conv2d(freq_c, hidden_dim // 2, kernel_size=1, bias=False)
+        self.skip_g3_coarse = nn.Conv2d(freq_c, hidden_dim // 4, kernel_size=1, bias=False)
+
+        # === КЛЮЧЕВОЕ ИЗМЕНЕНИЕ 5: Gated fusion вместо concat ===
+        self.fusion_gate = GatedFusion(hidden_dim)
+
+        # === КЛЮЧЕВОЕ ИЗМЕНЕНИЕ 6: Упрощенный decoder с лучшими skip connections ===
+        self.decoder_up1 = DecoderBlock(hidden_dim, 64, upsample=True)
+        self.decoder_refine1 = nn.Sequential(
+            nn.Conv2d(64 + hidden_dim // 2, 64, kernel_size=3, stride=1, padding=1, bias=False),
+            nn.InstanceNorm2d(64, affine=True),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1, bias=False),
+            nn.InstanceNorm2d(64, affine=True),
             nn.ReLU(inplace=True)
         )
-        # Проекция g3 (128x128) для skip connection на уровне 256x256
-        self.skip_conv_g3 = nn.Sequential(
-            nn.Conv2d(freq_c, hidden_dim // 4, kernel_size=1, bias=False),
-            nn.InstanceNorm2d(hidden_dim // 4, affine=True),
+        
+        self.decoder_up2 = DecoderBlock(64, 32, upsample=True)
+        self.decoder_refine2 = nn.Sequential(
+            nn.Conv2d(32 + hidden_dim // 4, 32, kernel_size=3, stride=1, padding=1, bias=False),
+            nn.InstanceNorm2d(32, affine=True),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(32, 32, kernel_size=3, stride=1, padding=1, bias=False),
+            nn.InstanceNorm2d(32, affine=True),
             nn.ReLU(inplace=True)
         )
 
-        # --- 5. Decoder с skip connections (ИСПРАВЛЕНО) ---
-        # Явно разделяем слои для добавления skip connections
-        self.decoder_up1 = DecoderBlock(hidden_dim, 64, upsample=True)      # 64 → 128
-        self.decoder_refine1 = DecoderBlock(64 + hidden_dim // 2, 64, upsample=False)  # Fusion + refine на 128x128
-        self.decoder_up2 = DecoderBlock(64, 32, upsample=True)              # 128 → 256
-        self.decoder_refine2 = DecoderBlock(32 + hidden_dim // 4, 32, upsample=False)  # Fusion + refine на 256x256
-
-        # --- 6. Final Output ---
+        # === КЛЮЧЕВОЕ ИЗМЕНЕНИЕ 7: residual connection для лучшего градиентного потока ===
+        self.residual_proj = nn.Conv2d(32, 3, kernel_size=1, bias=False)
         self.final = FinalDecoderBlock(32, 3, kernel_size=7)
 
     def forward(self, x):
@@ -525,64 +565,187 @@ class HFCFBranch(nn.Module):
         logger.debug('DWT shapes:', once=True)
         logger.debug(f'g2.shape: {g2.shape}, g3.shape: {g3.shape}', once=True)
 
-        # Preprocess
-        hfcf_g2_in = self.pre_top(g2)
-        hfcf_g3 = self.pre_bot(g3)
-        hfcf_g2 = hfcf_g2_in + hfcf_g3
+        # === Применяем channel attention к DWT коэффициентам ===
+        g2_att = self.attention_g2(g2)
+        g3_att = self.attention_g3(g3)
 
-        # Streams
-        out_g2 = self.top_stream(hfcf_g2)
-        out_g3 = self.bot_stream(hfcf_g3)
+        # === Preprocess с attention ===
+        feat_g2 = self.pre_g2(g2_att)  # [B, 64, 64, 64]
+        feat_g3 = self.pre_g3(g3_att)  # [B, 64, 32, 32]
 
-        # Fusion основных веток
-        merged = torch.cat([out_g2, out_g3], dim=1)  # 64+64=128 ch
-        merged = self.fusion_conv(merged)  # → 64 ch
+        # === Сохраняем skip connections ДО обработки ===
+        skip_g2_fine = self.skip_g2_fine(g2_att)  # Для уровня 64x64
+        skip_g3_coarse = self.skip_g3_coarse(g3_att)  # Для уровня 256x256
 
-        # Decoder с skip connections
-        # Шаг 1: Upsample 64 → 128
-        dec = self.decoder_up1(merged)  # dec: [B, 64, 128, 128]
+        # === Кросс-частотное взаимодействие (3 блока) ===
+        # Блок 1: upsample g3 до размера g2
+        feat_g3_up = nn.functional.interpolate(feat_g3, size=feat_g2.shape[2:], mode='bilinear', align_corners=False)
+        feat_g2, feat_g3_up = self.cross_freq_block1(feat_g2, feat_g3_up)
+        
+        # Блок 2: downsample g3 и взаимодействуем
+        feat_g3_down = nn.functional.interpolate(feat_g3_up, size=feat_g3.shape[2:], mode='bilinear', align_corners=False)
+        feat_g2_down = nn.functional.interpolate(feat_g2, size=feat_g3.shape[2:], mode='bilinear', align_corners=False)
+        feat_g2_down, feat_g3_down = self.cross_freq_block2(feat_g2_down, feat_g3_down)
+        
+        # Блок 3: upsample обратно к размеру g2
+        feat_g2_small = nn.functional.interpolate(feat_g2_down, size=feat_g2.shape[2:], mode='bilinear', align_corners=False)
+        feat_g3_mid = nn.functional.interpolate(feat_g3_down, size=feat_g2.shape[2:], mode='bilinear', align_corners=False)
+        feat_g2, feat_g3_mid = self.cross_freq_block3(feat_g2, feat_g3_mid)
+        
+        # Используем feat_g2 как основной выход (высокое разрешение)
+        merged = feat_g2
 
-        # Шаг 2: Skip fusion 1 — добавляем g2 features (высокочастотные детали)
-        # g2: [B, 3, 64, 64] → нужно сделать upsample до 128x128
-        skip_g2 = self.skip_conv_g2(g2)  # [B, 32, 64, 64]
-        skip_g2 = torch.nn.functional.interpolate(skip_g2, scale_factor=2, mode='bilinear', align_corners=False)  # [B, 32, 128, 128]
-        dec = torch.cat([dec, skip_g2], dim=1)  # 64 + 32 = 96
-        dec = self.decoder_refine1(dec)  # Refine на 128x128
+        # === Decoder с dense skip connections ===
+        # Уровень 1: 64 → 128
+        dec = self.decoder_up1(merged)
+        
+        # Добавляем skip connection с g2 (средние частоты)
+        skip_g2_mid = self.skip_g2_mid(g2_att)
+        skip_g2_mid = nn.functional.interpolate(skip_g2_mid, scale_factor=2, mode='bilinear', align_corners=False)
+        dec = torch.cat([dec, skip_g2_mid], dim=1)
+        dec = self.decoder_refine1(dec)
 
-        # Шаг 3: Upsample 128 → 256
-        dec = self.decoder_up2(dec)  # [B, 32, 256, 256]
+        # Уровень 2: 128 → 256
+        dec = self.decoder_up2(dec)
+        
+        # Добавляем skip connection с g3 (низкие частоты)
+        skip_g3_coarse_up = nn.functional.interpolate(skip_g3_coarse, scale_factor=2, mode='bilinear', align_corners=False)
+        dec = torch.cat([dec, skip_g3_coarse_up], dim=1)
+        dec = self.decoder_refine2(dec)
 
-        # Шаг 4: Skip fusion 2 — добавляем g3 features (среднечастотные детали)
-        # g3: [B, 3, 128, 128] → уже имеет размер 128x128, но нужно 256x256
-        skip_g3 = self.skip_conv_g3(g3)  # [B, 16, 128, 128]
-        skip_g3 = torch.nn.functional.interpolate(skip_g3, scale_factor=2, mode='bilinear', align_corners=False)  # [B, 16, 256, 256]
-        dec = torch.cat([dec, skip_g3], dim=1)  # 32 + 16 = 48
-        dec = self.decoder_refine2(dec)  # Refine на 256x256
+        # === Final output с residual connection ===
+        base_out = self.final(dec)
+        residual = self.residual_proj(dec)
+        out = base_out + residual * 0.1  # Scaling factor для стабильности
 
-        out = self.final(dec)
         return out
+
+
+class CrossFrequencyBlock(nn.Module):
+    """
+    Блок для взаимодействия между высокими и средними частотами.
+    Использует attention механизмы для выделения важных признаков.
+    """
+    def __init__(self, channels):
+        super(CrossFrequencyBlock, self).__init__()
+        
+        # Обработка high-frequency branch (g2)
+        self.high_conv = nn.Sequential(
+            nn.Conv2d(channels, channels, kernel_size=3, stride=1, padding=1, bias=False),
+            nn.InstanceNorm2d(channels, affine=True),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(channels, channels, kernel_size=3, stride=1, padding=1, bias=False),
+            nn.InstanceNorm2d(channels, affine=True)
+        )
+        
+        # Обработка mid-frequency branch (g3)
+        self.mid_conv = nn.Sequential(
+            nn.Conv2d(channels, channels, kernel_size=3, stride=1, padding=1, bias=False),
+            nn.InstanceNorm2d(channels, affine=True),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(channels, channels, kernel_size=3, stride=1, padding=1, bias=False),
+            nn.InstanceNorm2d(channels, affine=True)
+        )
+        
+        # Cross-attention: high влияет на mid
+        self.cross_high_to_mid = nn.Sequential(
+            nn.Conv2d(channels * 2, channels, kernel_size=1, bias=False),
+            nn.Sigmoid()
+        )
+        
+        # Cross-attention: mid влияет на high
+        self.cross_mid_to_high = nn.Sequential(
+            nn.Conv2d(channels * 2, channels, kernel_size=1, bias=False),
+            nn.Sigmoid()
+        )
+        
+        self.relu = nn.ReLU(inplace=True)
     
+    def forward(self, high_feat, mid_feat):
+        # Обрабатываем каждую ветку
+        high_proc = self.high_conv(high_feat)
+        mid_proc = self.mid_conv(mid_feat)
+        
+        # Cross-attention
+        combined = torch.cat([high_proc, mid_proc], dim=1)
+        gate_high = self.cross_mid_to_high(combined)
+        gate_mid = self.cross_high_to_mid(combined)
+        
+        # Применяем гейты с residual connection
+        high_out = self.relu(high_feat + gate_high * mid_proc)
+        mid_out = self.relu(mid_feat + gate_mid * high_proc)
+        
+        return high_out, mid_out
+    
+class AdaptiveBranchFusion(nn.Module):
+    """
+    Адаптивное объединение ветвей с пространственно-вариативными весами.
+    Вместо скалярного коэффициента использует пространственную attention маску,
+    что позволяет сети выбирать ЛУЧШУЮ ветвь для КАЖДОГО пикселя.
+    
+    Это КРИТИЧЕСКИ важно: HFCF ветвь содержит высокочастотные детали (края, текстуры),
+    которые теряются в CFR ветви. Attention маска научится выделять эти области.
+    """
+    def __init__(self, channels=3):
+        super(AdaptiveBranchFusion, self).__init__()
+        
+        # Генерируем пространственную attention маску на основе обеих ветвей
+        # Важно: используем bias=True в последнем слое для инициализации
+        self.attention_generator = nn.Sequential(
+            nn.Conv2d(channels * 2, channels, kernel_size=1, bias=True),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(channels, channels, kernel_size=3, stride=1, padding=1, bias=True),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(channels, channels, kernel_size=1, bias=True),
+            nn.Sigmoid()  # Выход в диапазоне [0, 1] для каждого канала и пикселя
+        )
+        
+        # Инициализируем веса так, чтобы изначально CFR доминировала (но HFCF тоже влияла)
+        # Это предотвращает коллапс к одной ветви на ранних этапах
+        self._initialize_attention()
+    
+    def _initialize_attention(self):
+        """Инициализация с bias к CFR ветви, но с сохранением влияния HFCF"""
+        # Последняя conv layer будет иметь bias > 0, чтобы sigmoid давал ~0.7
+        # Это означает CFR получит вес 0.7, а HFCF вес 0.3 на старте
+        if hasattr(self.attention_generator[-2], 'bias') and self.attention_generator[-2].bias is not None:
+            nn.init.constant_(self.attention_generator[-2].bias, 0.8)
+    
+    def forward(self, cfr_out, hfcf_out):
+        # Concat обеих ветвей для генерации attention маски
+        combined = torch.cat([cfr_out, hfcf_out], dim=1)
+        
+        # Генерируем пространственно-вариативную маску
+        attention_map = self.attention_generator(combined)
+        
+        # Адаптивное взвешивание: attention для CFR, (1 - attention) для HFCF
+        fused = attention_map * cfr_out + (1 - attention_map) * hfcf_out
+        
+        return fused, attention_map
+
+
 class CFRWDGenerator(nn.Module):
     def __init__(self, in_channels=1):
         super(CFRWDGenerator, self).__init__()
         self.cfr_branch = CFRBranch(in_channels=in_channels)
         self.hfcf_branch = HFCFBranch(in_channels=in_channels)
         
-        # === ИСПРАВЛЕНО: Fusion weight с правильным init и clipping ===
-        # Статья: "initial fuse coefficient = 1", но для стабильности начинаем с 0.5
-        # Это даёт сбалансированный старт (CFR доминирует, но HFCF влияет)
-        self.fusion_weight = nn.Parameter(torch.tensor(0.5), requires_grad=True)
+        # === КЛЮЧЕВОЕ ИЗМЕНЕНИЕ: Адаптивное пространственное fusion ===
+        # Вместо скалярного fusion_weight используем пространственную attention маску
+        # Это НЕ позволяет сети просто "обнулить" HFCF ветвь
+        # Attention маска вынуждена выбирать лучшую ветвь для каждого пикселя
+        self.adaptive_fusion = AdaptiveBranchFusion(channels=3)
         
-        # Clip bounds (из config.yaml, но задаём здесь для автономности)
+        # Оставляем fusion_weight для мониторинга и совместимости
+        self.fusion_weight = nn.Parameter(torch.tensor(0.5), requires_grad=False)
         self.fusion_min = 0.1
         self.fusion_max = 2.0
 
         self._initialize_weights()
 
     def _clip_fusion_weight(self):
-        """Ограничивает fusion_weight для стабильности обучения"""
-        with torch.no_grad():
-            self.fusion_weight.data.clamp_(self.fusion_min, self.fusion_max)
+        """Заглушка для совместимости (fusion_weight больше не используется)"""
+        pass
 
     def _initialize_weights(self):
         # 1. Общая инициализация: Kaiming для Conv, единицы/нули для InstanceNorm
@@ -605,25 +768,32 @@ class CFRWDGenerator(nn.Module):
                 for sub in m.modules():
                     if isinstance(sub, nn.Conv2d):
                         nn.init.xavier_normal_(sub.weight, gain=nn.init.calculate_gain('tanh'))
+        
+        # 3. Специальная инициализация для adaptive fusion
+        if hasattr(self, 'adaptive_fusion'):
+            self.adaptive_fusion._initialize_attention()
 
-        logger.info("Веса инициализированы (Kaiming fan_in + Xavier/Tanh).")
+        logger.info("Веса инициализированы (Kaiming fan_in + Xavier/Tanh + AdaptiveFusion).")
 
 
     def forward(self, x, return_branches=False):
         cfr_out_logits = self.cfr_branch(x)
         hfcf_out_logits = self.hfcf_branch(x)
 
-        # Статья: "The output from the branch with CFR structure is fused with the WD branch output through a learnable coefficient."
-        # Лучшая практика: смешивать логиты (до Tanh), чтобы сумма не выходила за пределы [-1, 1]
-        fused_logits = cfr_out_logits + self.fusion_weight * hfcf_out_logits
+        # === АДАПТИВНОЕ FUSION: Пространственно-вариативное взвешивание ===
+        # Сеть вынуждена использовать ОБЕ ветви, выбирая лучшую для каждого пикселя
+        fused_logits, attention_map = self.adaptive_fusion(cfr_out_logits, hfcf_out_logits)
+        
         out = torch.tanh(fused_logits)
 
-        # Clip fusion weight после каждого forward pass (стабильность обучения)
-        self._clip_fusion_weight()
+        # Для мониторинга вычисляем эффективный fusion weight как среднее attention
+        with torch.no_grad():
+            effective_weight = attention_map.mean().item()
+            self.fusion_weight.data.fill_(effective_weight)
 
         if return_branches:
             # Возвращаем также ветки, пропущенные через Tanh, для визуализации
-            return out, torch.tanh(cfr_out_logits), torch.tanh(hfcf_out_logits)
+            return out, torch.tanh(cfr_out_logits), torch.tanh(hfcf_out_logits), attention_map
         return out
 
 

@@ -10,7 +10,8 @@ def visualize_batch(
     save_path='results/batch_output.png',
     max_rows=8, cmap='inferno', mode: Literal['quality', 'fast'] = 'quality',
     title: str = None,
-    cfr_out=None, hfcf_out=None, fusion_weight=None
+    cfr_out=None, hfcf_out=None, fusion_weight=None,
+    attention_map=None
 ):
     batch_size = min(real_sar.size(0), max_rows)
 
@@ -26,24 +27,40 @@ def visualize_batch(
         all_diffs = torch.stack(diff_maps)
         vmin, vmax = all_diffs.min().item(), all_diffs.max().item()
 
-        # Если переданы промежуточные выходы, добавляем 2 колонки
+        # Если переданы промежуточные выходы, добавляем колонки
         show_branches = cfr_out is not None and hfcf_out is not None
-        num_cols = 7 if show_branches else 5
-        width_ratios = [1, 1, 1, 1, 1, 1, 0.05] if show_branches else [1, 1, 1, 1, 0.05]
-        fig_width = 12 if show_branches else 8
+        show_attention = attention_map is not None
+        
+        # Определяем количество колонок и их пропорции
+        if show_branches and show_attention:
+            num_cols = 9  # SAR, CFR, HFCF, Fused, GT, Attention(R/G/B), Diff, Colorbar
+            width_ratios = [1, 1, 1, 1, 1, 1, 1, 1, 0.05]
+            fig_width = 16
+        elif show_branches:
+            num_cols = 7
+            width_ratios = [1, 1, 1, 1, 1, 1, 0.05]
+            fig_width = 12
+        else:
+            num_cols = 5
+            width_ratios = [1, 1, 1, 1, 0.05]
+            fig_width = 8
 
         fig = plt.figure(figsize=(fig_width, batch_size * 2))
 
         if title:
+            title_text = title
             if show_branches and fusion_weight is not None:
-                title += f" | Fusion Weight: {fusion_weight:.4f}"
-            fig.suptitle(title, fontsize=14, y=0.99) # ⬅️ Вернул заголовок наверх
+                title_text += f" | Fusion Weight: {fusion_weight:.4f}"
+            if show_attention:
+                avg_attn = attention_map.mean().item() if isinstance(attention_map, torch.Tensor) else 0
+                title_text += f" | Attn Mean: {avg_attn:.4f}"
+            fig.suptitle(title_text, fontsize=14, y=0.99)
 
         gs = gridspec.GridSpec(
             batch_size, num_cols,
             width_ratios=width_ratios,
-            wspace=0.01,    # ⬅️ почти склеить по горизонтали
-            hspace=0.15     # ⬅️ небольшой вертикальный отступ
+            wspace=0.01,
+            hspace=0.15
         )
 
         for idx in range(batch_size):
@@ -67,8 +84,18 @@ def visualize_batch(
                 images.insert(2, TF.to_pil_image(hfcf_img))
                 titles.insert(1, 'CFR Branch')
                 titles.insert(2, 'HFCF Branch')
+            
+            if show_attention:
+                # attention_map имеет форму [B, 3, H, W] - по каналу на каждый RGB канал
+                # Визуализируем как RGB изображение где каждый канал показывает weight для соответствующего канала
+                attn_for_vis = attention_map[idx].cpu()
+                # Clamp к [0, 1] и конвертируем
+                attn_for_vis = torch.clamp(attn_for_vis, 0, 1)
+                attn_img = TF.to_pil_image(attn_for_vis)
+                images.insert(4, attn_img)  # После fused, перед GT
+                titles.insert(4, 'Attention Map')
 
-            num_image_cols = 5 if show_branches else 3
+            num_image_cols = 7 if (show_branches and show_attention) else (5 if show_branches else 3)
 
             for j in range(num_image_cols):
                 ax = fig.add_subplot(gs[idx, j])
@@ -87,7 +114,7 @@ def visualize_batch(
         fig.colorbar(im, cax=cbar_ax)
         cbar_ax.set_title('Diff', fontsize=9)
 
-        # Сильно увеличиваем верхний отступ (top_margin), чтобы картинки уехали вниз
+        # Adjust margins
         top_margin = 0.94 if title else 0.97
         plt.subplots_adjust(left=0.01, right=0.94, top=top_margin, bottom=0.03)
 

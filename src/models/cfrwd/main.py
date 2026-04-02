@@ -188,7 +188,14 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
         if (self.cfg.system.image_freq != 0):
             if (self.current_epoch + 1) % self.cfg.system.image_freq == 0:
                 with torch.no_grad():
-                    fake_opt, cfr_out, hfcf_out = self.netG(self.fixed_sar, return_branches=True)
+                    result = self.netG(self.fixed_sar, return_branches=True)
+                    # Новая версия возвращает 4 значения: out, cfr, hfcf, attention_map
+                    if len(result) == 4:
+                        fake_opt, cfr_out, hfcf_out, attention_map = result
+                    else:
+                        fake_opt, cfr_out, hfcf_out = result
+                        attention_map = None
+                        
                 os.makedirs(os.path.join(self.cfg.system.images_dir, self.cfg.system.tb_version), exist_ok=True)
                 path = f"{self.cfg.system.images_dir}/{self.cfg.system.tb_version}/epoch_{self.current_epoch+1}.png"
                 visualize_batch(
@@ -199,7 +206,8 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
                     title=f"Epoch {self.current_epoch+1}",
                     cfr_out=cfr_out.cpu().detach(),
                     hfcf_out=hfcf_out.cpu().detach(),
-                    fusion_weight=self.netG.fusion_weight.item()
+                    fusion_weight=self.netG.fusion_weight.item(),
+                    attention_map=attention_map.cpu().detach() if attention_map is not None else None
                 )
                 tg_message = generate_tg_message(self)
                 send_telegram(image_path=path, message=tg_message)
