@@ -41,7 +41,8 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
         self.automatic_optimization = False
 
     def forward(self, x):
-        return self.netG(x)
+        out, _ = self.netG(x)
+        return out
     
     def setup(self, stage=None):
         dm = self.trainer.datamodule
@@ -59,7 +60,7 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
 
         # Генерируем fake изображения (torch.no_grad() чтобы не обучать G)
         with torch.no_grad():
-            fake_opt = self.netG(real_sar)
+            fake_opt, _ = self.netG(real_sar)
 
         # Дискриминатор смотрит на РЕАЛЬНЫЕ оптические изображения (условие + реал)
         d_real, real_feats = self.netD(torch.cat([real_sar, real_opt], dim=1))
@@ -85,7 +86,7 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
         opt_g.zero_grad(set_to_none=True)
 
         # Генерируем fake изображения заново (чтобы граф градиентов был привязан к G)
-        fake_opt = self.netG(real_sar)
+        fake_opt, fusion_weights = self.netG(real_sar)
 
         d_fake, fake_feats = self.netD(torch.cat([real_sar, fake_opt], dim=1))  # Дискриминатор оценивает fake (для adversarial loss)
 
@@ -115,7 +116,12 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
             'train/loss_l1': loss_l1,
             'feats/d_real_mean': real_means.mean(),
             'feats/d_fake_mean': fake_means.mean(),
-            'fusion/fusion_weight': self.netG.fusion_weight.item()
+            # Метрики вклада веток: w_hfcf → 0.5 означает равный вклад,
+            # → 0.0 означает полную атрофию HFCF, → 1.0 — доминирование HFCF.
+            # spatial_std > 0 означает, что fusion делает per-region решения
+            # (а не одинаковый вес по всему изображению).
+            'fusion/w_hfcf': fusion_weights[:, 1].mean(),
+            'fusion/spatial_std': fusion_weights[:, 1].std(dim=[1, 2]).mean(),
         }, prog_bar=False, on_step=False, on_epoch=True, batch_size=real_sar.size(0))
     
     def validation_step(self, batch, batch_idx):
@@ -164,7 +170,7 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
         if (self.cfg.system.image_freq != 0):
             if (self.current_epoch + 1) % self.cfg.system.image_freq == 0:
                 with torch.no_grad():
-                    fake_opt, cfr_out, hfcf_out = self.netG(self.fixed_sar, return_branches=True)
+                    fake_opt, cfr_out, hfcf_out, _ = self.netG(self.fixed_sar, return_branches=True)
                 os.makedirs(os.path.join(self.cfg.system.images_dir, self.cfg.system.tb_version), exist_ok=True)
                 path = f"{self.cfg.system.images_dir}/{self.cfg.system.tb_version}/epoch_{self.current_epoch+1}.png"
                 visualize_batch(
@@ -175,7 +181,7 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
                     title=f"Epoch {self.current_epoch+1}",
                     cfr_out=cfr_out.cpu().detach(),
                     hfcf_out=hfcf_out.cpu().detach(),
-                    fusion_weight=self.netG.fusion_weight.item()
+                    fusion_weight=None
                 )
                 tg_message = generate_tg_message(self)
                 send_telegram(image_path=path, message=tg_message)

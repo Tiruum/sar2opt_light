@@ -248,15 +248,10 @@ class CFRBranch(nn.Module):
         self.CFR = CFRBlock(base_cfr_ch)
         logger.debug(f'CFRBlock:\t{base_cfr_ch} -> {base_cfr_ch}')
 
+        # Выводим 32ch feature map — финальная проекция в RGB выполняется
+        # в CFRWDGenerator.final (общий для обеих веток).
         self.decoder = nn.Sequential(
-            # Шаг 1: Дополнительный слой обработки на полном разрешении (256x256).
-            # Сжимаем каналы 64 -> 32 перед финалом.
-            # Upsample больше не нужен, так как CFRBlock возвращает полное разрешение.
             DecoderBlock(in_channels=base_cfr_ch, out_channels=32, upsample=False),
-            
-            # Шаг 2: Финальная проекция в RGB с большим ядром (7x7).
-            # 32 -> 3 канала.
-            FinalDecoderBlock(in_channels=32, out_channels=3, kernel_size=7)
         )
 
     def forward(self, x):
@@ -440,96 +435,174 @@ class RedBlock(nn.Module):
     def forward(self, x):
         return self.final_relu(self.main_branch(x) + x)
     
+class CBAM(nn.Module):
+    """
+    Convolutional Block Attention Module (Woo et al., 2018).
+    Последовательно применяет Channel Attention и Spatial Attention.
+
+    В контексте SAR→OPT: подавляет спекл-шум в высокочастотных вейвлет-коэффициентах
+    и усиливает коэффициенты, соответствующие реальным структурам сцены
+    (края зданий, границы полей, русла рек).
+    """
+    def __init__(self, channels, reduction_ratio=4):
+        super(CBAM, self).__init__()
+        reduced = max(channels // reduction_ratio, 4)
+
+        self.avg_pool = nn.AdaptiveAvgPool2d(1)
+        self.max_pool = nn.AdaptiveMaxPool2d(1)
+        # Общий MLP для avg и max ветвей канального внимания
+        self.channel_mlp = nn.Sequential(
+            nn.Conv2d(channels, reduced, kernel_size=1, bias=False),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(reduced, channels, kernel_size=1, bias=False),
+        )
+        # Пространственное внимание: 7×7 (большое рецептивное поле)
+        self.spatial_conv = nn.Sequential(
+            nn.Conv2d(2, 1, kernel_size=7, padding=3, bias=False),
+            nn.Sigmoid(),
+        )
+
+    def forward(self, x):
+        # Channel Attention: avg + max → shared MLP → sigmoid gate
+        ca = self.channel_mlp(self.avg_pool(x)) + self.channel_mlp(self.max_pool(x))
+        x = x * torch.sigmoid(ca)
+        # Spatial Attention: channel-wise avg + max → conv → sigmoid gate
+        avg_out = torch.mean(x, dim=1, keepdim=True)
+        max_out, _ = torch.max(x, dim=1, keepdim=True)
+        x = x * self.spatial_conv(torch.cat([avg_out, max_out], dim=1))
+        return x
+
+
 class HFCFBranch(nn.Module):
+    """
+    Wavelet Decomposition branch с тремя независимыми потоками.
+
+    Исправления по аудиту архитектуры:
+    - Ранняя сумма g2+g3 до потоков устранена: каждая группа обрабатывается независимо.
+    - LL2 добавлен как отдельный Low-поток (структурный контекст), что помогает
+      Mid/High потокам ориентироваться в пространстве и снижает вероятность
+      "затухания" HFCF-ветки (fusion_weight → 0).
+    - CBAM на входе каждого потока фильтрует спекл-шум SAR до ResBlocks.
+
+    Архитектура потоков (все приводятся к W/4 перед слиянием):
+
+      Low  (LL2 @ W/4)       : HFCFPreprocess → CBAM → WDResBlock×2      ──┐
+      Mid  ([LH2,HL2,HH2] W/4): HFCFPreprocess → CBAM → WDResBlock×6 (Y/B)──┤ → merge(1×1) → decoder → 3ch
+      High ([LH1,HL1,HH1] W/2): HFCFPreprocess(↓) → CBAM → RedBlock×2    ──┘
+    """
     def __init__(self, in_channels=1, hidden_dim=64):
         super(HFCFBranch, self).__init__()
         logger.debug('HFCF BRANCH INIT')
+        freq_c = 3 * in_channels  # каналы cat-группы высокочастотных подполос
 
-        # --- DWT ---
         self.dwt = DWTBlock(in_channels=in_channels)
-        freq_c = 3 * in_channels # 3 канала вейвлетов
 
-        # --- 1. Preprocess (SOTA: Strided Conv) ---
-        # Upper (G2, 64x64): Не сжимаем
-        self.pre_top = HFCFPreprocess(freq_c, hidden_dim, downsample=False)
-        # Lower (G3, 128x128): Сжимаем (Stride=2)
-        self.pre_bot = HFCFPreprocess(freq_c, hidden_dim, downsample=True)
-
-        # --- 2. Streams ---
-
-        # Top Stream (Yellow/Blue -> Bottlenecks)
-        # Y(Proj) -> B(Id) -> B(Id) -> Y(Proj) -> B(Id) -> B(Id)
-        self.top_stream = nn.Sequential(
+        # --- Low-freq stream (LL2 @ W/4): структурный контекст сцены ---
+        self.ll_proj   = HFCFPreprocess(in_channels, hidden_dim, downsample=False)
+        self.ll_cbam   = CBAM(hidden_dim)
+        self.ll_stream = nn.Sequential(
             WDResBlock(hidden_dim, projection=True),
             WDResBlock(hidden_dim, projection=False),
-            WDResBlock(hidden_dim, projection=False),
-            WDResBlock(hidden_dim, projection=True),
-            WDResBlock(hidden_dim, projection=False),
-            WDResBlock(hidden_dim, projection=False)
         )
-        
-        # Bottom Stream (Red -> Basic Blocks)
-        # Red -> Red
-        self.bot_stream = nn.Sequential(
+
+        # --- Mid-freq stream ([LH2,HL2,HH2] @ W/4): детали 2-го масштаба ---
+        # Yellow/Blue блоки (ResNet101 bottleneck) — как в оригинальной статье
+        self.mid_proj   = HFCFPreprocess(freq_c, hidden_dim, downsample=False)
+        self.mid_cbam   = CBAM(hidden_dim)
+        self.mid_stream = nn.Sequential(
+            WDResBlock(hidden_dim, projection=True),
+            WDResBlock(hidden_dim, projection=False),
+            WDResBlock(hidden_dim, projection=False),
+            WDResBlock(hidden_dim, projection=True),
+            WDResBlock(hidden_dim, projection=False),
+            WDResBlock(hidden_dim, projection=False),
+        )
+
+        # --- High-freq stream ([LH1,HL1,HH1] @ W/2 → W/4): тонкие края ---
+        # HFCFPreprocess(downsample=True) выполняет W/2 → W/4 через stride=2 Conv
+        # Red блоки (ResNet18 basic) — как в оригинальной статье
+        self.high_proj   = HFCFPreprocess(freq_c, hidden_dim, downsample=True)
+        self.high_cbam   = CBAM(hidden_dim)
+        self.high_stream = nn.Sequential(
             RedBlock(hidden_dim),
-            RedBlock(hidden_dim)
-        )
-        
-        # --- 3. Fusion & Transition ---
-        # Оставим Conv+Norm+ReLU для стабильности,
-        # 1x1 Conv для смешивания каналов после Concat (128 -> 64)
-        self.fusion_conv = nn.Sequential(
-            nn.Conv2d(hidden_dim * 2, hidden_dim, kernel_size=1, bias=False),
-            nn.InstanceNorm2d(hidden_dim, affine=True),
-            nn.ReLU(inplace=True)
+            RedBlock(hidden_dim),
         )
 
-        # --- 4. Decoder (SOTA: Upsample + Conv) ---
-        self.decoder = nn.Sequential(
-            # 64 -> 128
-            DecoderBlock(hidden_dim, 64, upsample=True),
-            # Refine at 128
-            DecoderBlock(64, 64, upsample=False),
-            
-            # 128 -> 256
-            DecoderBlock(64, 32, upsample=True),
-            # Refine at 256
-            DecoderBlock(32, 32, upsample=False)
+        # Слияние трёх потоков: 3×hidden_dim → hidden_dim @ W/4
+        self.merge = nn.Sequential(
+            nn.Conv2d(3 * hidden_dim, hidden_dim, kernel_size=1, bias=False),
+            nn.InstanceNorm2d(hidden_dim, affine=True),
+            nn.ReLU(inplace=True),
         )
-        
-        # --- 5. Final Output ---
-        self.final = FinalDecoderBlock(32, 3, kernel_size=7)
+
+        # Декодер: W/4 → W. Выводим 32ch feature map —
+        # финальная проекция в RGB выполняется в CFRWDGenerator.final.
+        self.decoder = nn.Sequential(
+            DecoderBlock(hidden_dim, 64, upsample=True),   # W/4 → W/2
+            DecoderBlock(64, 64, upsample=False),          # W/2, refine
+            DecoderBlock(64, 32, upsample=True),           # W/2 → W
+            DecoderBlock(32, 32, upsample=False),          # W, refine
+        )
 
     def forward(self, x):
-        _, g2, g3 = self.dwt(x)
+        g1, g2, g3 = self.dwt(x)  # g1=LL2 @ W/4, g2=[LH2,HL2,HH2] @ W/4, g3=[LH1,HL1,HH1] @ W/2
 
-        logger.debug('DWT shapes:', once=True)
-        logger.debug(f'g2.shape: {g2.shape}, g3.shape: {g3.shape}', once=True)
+        logger.debug(f'DWT shapes: g1={g1.shape}, g2={g2.shape}, g3={g3.shape}', once=True)
 
-        hfcf_g2_in = self.pre_top(g2)
-        hfcf_g3 = self.pre_bot(g3)
+        # Три полностью независимых потока — никакого преждевременного смешения
+        ll   = self.ll_stream(self.ll_cbam(self.ll_proj(g1)))
+        mid  = self.mid_stream(self.mid_cbam(self.mid_proj(g2)))
+        high = self.high_stream(self.high_cbam(self.high_proj(g3)))  # W/2 → W/4
 
-        hfcf_g2 = hfcf_g2_in + hfcf_g3
-
-        out_g2 = self.top_stream(hfcf_g2)
-        out_g3 = self.bot_stream(hfcf_g3)
-
-        merged = torch.cat([out_g2, out_g3], dim=1) # 64+64=128 ch
-        merged = self.fusion_conv(merged) # -> 64 ch
-
-        dec = self.decoder(merged)
-        out = self.final(dec)
-
-        return out
+        merged = self.merge(torch.cat([ll, mid, high], dim=1))
+        return self.decoder(merged)
     
+class AdaptiveFusion(nn.Module):
+    """
+    Пространственно-адаптивное слияние CFR и HFCF feature maps.
+
+    Работает на уровне признаков (32ch), а не пиксельных логитов.
+    Это гарантирует, что градиент лосса доходит до обеих веток через
+    общий декодер независимо от весов fusion.
+
+    Карта весов: weights = Softmax(Conv(Cat(cfr_feats, hfcf_feats))) → B×2×H×W
+      w_hfcf ≈ 1 — на краях и текстурах (HFCF незаменима)
+      w_hfcf ≈ 0 — на однородных областях (CFR достаточно)
+
+    Возвращает (fused_feats, weights) — weights используются для логирования
+    вклада веток (fusion/w_hfcf, fusion/spatial_std).
+    """
+    def __init__(self, feat_channels=32):
+        super(AdaptiveFusion, self).__init__()
+        mid = feat_channels * 2  # 64ch
+        self.net = nn.Sequential(
+            nn.ReflectionPad2d(1),
+            nn.Conv2d(mid, mid, kernel_size=3, bias=False),
+            nn.InstanceNorm2d(mid, affine=True),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(mid, 2, kernel_size=1),   # 2 ветки → 2 пространственных веса
+        )
+
+    def forward(self, cfr_feats, hfcf_feats):
+        # weights: B×2×H×W, сумма по dim=1 = 1 в каждом пикселе
+        weights = torch.softmax(
+            self.net(torch.cat([cfr_feats, hfcf_feats], dim=1)),
+            dim=1
+        )
+        fused = cfr_feats * weights[:, 0:1] + hfcf_feats * weights[:, 1:2]
+        return fused, weights
+
+
 class CFRWDGenerator(nn.Module):
     def __init__(self, in_channels=1):
         super(CFRWDGenerator, self).__init__()
         self.cfr_branch = CFRBranch(in_channels=in_channels)
         self.hfcf_branch = HFCFBranch(in_channels=in_channels)
-        # Статья: "We set the initial fuse coefficient to 1"
-        # Используем nn.Parameter для обучаемого веса
-        self.fusion_weight = nn.Parameter(torch.tensor(1.0), requires_grad=True)
+        # Слияние на уровне 32ch feature maps: градиент лосса всегда
+        # проходит через обе ветки через общий self.final.
+        self.adaptive_fusion = AdaptiveFusion(feat_channels=32)
+        # Единственный финальный декодер 32ch → 3ch для всего генератора.
+        self.final = FinalDecoderBlock(32, 3, kernel_size=7)
 
         self._initialize_weights()
 
@@ -537,8 +610,6 @@ class CFRWDGenerator(nn.Module):
         # 1. Общая инициализация: Kaiming для Conv, единицы/нули для InstanceNorm
         for m in self.modules():
             if isinstance(m, (nn.Conv2d, nn.ConvTranspose2d)):
-                # fan_in сохраняет дисперсию сигнала в forward (лучше для генераторов)
-                # a=0.2 соответствует LeakyReLU(0.2) в энкодере и ResBlock
                 nn.init.kaiming_normal_(m.weight, a=0.2, mode='fan_in', nonlinearity='leaky_relu')
                 if m.bias is not None:
                     nn.init.constant_(m.bias, 0)
@@ -548,7 +619,7 @@ class CFRWDGenerator(nn.Module):
                 if m.bias is not None:
                     nn.init.constant_(m.bias, 0)
 
-        # 2. Xavier для финальных Conv перед Tanh (gain подобран под tanh)
+        # 2. Xavier для финального Conv перед Tanh (gain подобран под tanh)
         for m in self.modules():
             if isinstance(m, FinalDecoderBlock):
                 for sub in m.modules():
@@ -557,20 +628,22 @@ class CFRWDGenerator(nn.Module):
 
         logger.info("Веса инициализированы (Kaiming fan_in + Xavier/Tanh).")
 
-
     def forward(self, x, return_branches=False):
-        cfr_out_logits = self.cfr_branch(x)
-        hfcf_out_logits = self.hfcf_branch(x)
-        
-        # Статья: "The output from the branch with CFR structure is fused with the WD branch output through a learnable coefficient."
-        # Лучшая практика: смешивать логиты (до Tanh), чтобы сумма не выходила за пределы [-1, 1]
-        fused_logits = cfr_out_logits + self.fusion_weight * hfcf_out_logits
-        out = torch.tanh(fused_logits)
-        
+        cfr_feats = self.cfr_branch(x)    # B×32×H×W
+        hfcf_feats = self.hfcf_branch(x)  # B×32×H×W
+
+        # Feature-level fusion: градиент идёт в обе ветки через self.final
+        fused_feats, fusion_weights = self.adaptive_fusion(cfr_feats, hfcf_feats)
+        out = torch.tanh(self.final(fused_feats))
+
         if return_branches:
-            # Возвращаем также ветки, пропущенные через Tanh, для визуализации
-            return out, torch.tanh(cfr_out_logits), torch.tanh(hfcf_out_logits)
-        return out
+            # Пропускаем ветки через общий финальный слой для визуализации.
+            # torch.no_grad() — только для диагностики, не влияет на обучение.
+            with torch.no_grad():
+                cfr_out = torch.tanh(self.final(cfr_feats))
+                hfcf_out = torch.tanh(self.final(hfcf_feats))
+            return out, cfr_out, hfcf_out, fusion_weights
+        return out, fusion_weights
 
 
 if __name__ == "__main__":
