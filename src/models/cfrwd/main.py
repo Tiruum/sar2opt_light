@@ -198,7 +198,9 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
         self.log('val/psnr',  self.psnr.compute(),          prog_bar=True)
         self.log('val/ssim',  self.ssim.compute(),          prog_bar=True)
         self.log('val/lpips', self.lpips_metric.compute(),   prog_bar=True)
-        self.log('val/ergas', self.ergas.compute(),         prog_bar=False)
+        ergas_val = self.ergas.compute()
+        if torch.isfinite(ergas_val):
+            self.log('val/ergas', ergas_val, prog_bar=False)
         sam_val = self.sam.compute()
         if not torch.isnan(sam_val):
             self.log('val/sam', sam_val, prog_bar=False)
