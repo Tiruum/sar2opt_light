@@ -2,7 +2,7 @@ from typing import Literal
 import torch.optim as optim
 from src.models.cfrwd.discriminator import CFRWDPatchDis
 from src.models.cfrwd.gen import CFRWDGenerator
-from src.models.cfrwd.losses import FeatureMatchingLoss, GANLoss, L1Loss
+from src.models.cfrwd.losses import FeatureMatchingLoss, GANLoss, L1Loss, FFTLoss, LPIPSLoss
 import torch.nn as nn
 from functools import lru_cache
 from omegaconf import OmegaConf
@@ -20,6 +20,7 @@ def build_models():
     return netG, netD
 
 def build_optimizers(netG, netD,
+                     extra_g_params=None,
                      lr_g: float = None,
                      lr_d: float = None,
                      beta1: float = None,
@@ -29,15 +30,24 @@ def build_optimizers(netG, netD,
     lr_d = lr_d or cfg.optimizer.lr_d
     beta1 = beta1 or cfg.optimizer.beta1
     beta2 = beta2 or cfg.optimizer.beta2
-    optG = optim.Adam(netG.parameters(), lr=lr_g, betas=(beta1, beta2))
+    # extra_g_params: обучаемые параметры не из netG (напр. AdaptiveLoss.eta)
+    g_params = list(netG.parameters())
+    if extra_g_params is not None:
+        g_params += list(extra_g_params)
+    optG = optim.Adam(g_params, lr=lr_g, betas=(beta1, beta2))
     optD = optim.Adam(netD.parameters(), lr=lr_d, betas=(beta1, beta2))
     return optG, optD
 
-def build_criterions() -> dict[Literal['GAN', 'FM'], nn.Module]:
-    crits = {}
-    crits['GAN'] = GANLoss(use_lsgan=True)
-    crits['FM'] = FeatureMatchingLoss()
-    crits['L1'] = L1Loss()
+def build_criterions() -> dict[Literal['GAN', 'FM', 'L1', 'FFT', 'LPIPS'], nn.Module]:
+    cfg = _load_cfg()
+    crits = {
+        'GAN': GANLoss(use_lsgan=True),
+        'FM':  FeatureMatchingLoss(),
+        'L1':  L1Loss(),
+        'FFT': FFTLoss(),
+    }
+    if cfg.loss.get('use_lpips', False):
+        crits['LPIPS'] = LPIPSLoss()
     return crits
 
 def build_lr_schedulers(optG, optD,

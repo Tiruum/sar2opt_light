@@ -3,12 +3,12 @@ data:
   data_dir:
     labeled: "./data/labeled"
     sen12: "./data/sen12"
-  batch_size: 8
+  batch_size: 4
   image_size: 256
-  num_workers: 3  # на Windows spawn=6+6=12 процессов (~5 ГБ); 3+3=6 процессов (~2.4 ГБ)
+  num_workers: 0
   train_val_split_ratio: 0.8
   prefetch_factor: 2
-  persistent_workers: true
+  persistent_workers: false
   use_train_common_transform: true
   seed: 42
   sar_channels: 1
@@ -23,8 +23,8 @@ model:
   log_summary: true
 
 optimizer:
-  lr_g: 5.6e-4 # Статья BS=1: 2e-4. Sqrt scaling для BS=4: 2e-4 × sqrt(4) = 4e-4
-  lr_d: 5.6e-4 # Одинаковый lr для G и D
+  lr_g: 4e-4 # Статья BS=1: 2e-4. Sqrt scaling для BS=4: 2e-4 × sqrt(4) = 4e-4
+  lr_d: 4e-4 # Одинаковый lr для G и D
   beta1: 0.5
   beta2: 0.999
 
@@ -42,15 +42,15 @@ loss:
   fm_weight: 10
   # L1 и FFT авто-балансируются через AdaptiveLoss (Kendall et al., 2018).
   # Ручные веса не нужны — eta обучаются вместе с генератором.
-  use_lpips: true  # true → добавляет LPIPS в AdaptiveLoss третьим компонентом [L1, FFT, LPIPS]
+  use_lpips: false  # true → добавляет LPIPS в AdaptiveLoss третьим компонентом [L1, FFT, LPIPS]
 
 system:
   device: "cuda"
   precision: "bf16-mixed" # 32, 16, "bf16-mixed"
   deterministic: false
-  benchmark: false  # true выделяет huge cuDNN workspace при многих уникальных формах (CFRBlock/HFCFBranch → 50+ shapes → до 16 ГБ кэша)
+  benchmark: true
   compile: false # torch.compile() — только Linux (Triton не поддерживает Windows)
-  max_epochs: 800 # Статья: 200 при BS=1. Полный эквивалент BS=8: 200×(8/1)=1600. Используем 800 — ~4× больше чем статья, осознанный выбор.
+  max_epochs: 800 # Статья: 200 при BS=1. BS=4 → 200 × (4/1) = 800 эквивалентных шагов
   checkpoints_dir: "checkpoints/cfrwd"
   image_freq: 10
   output_dir: "./output/cfrwd"
@@ -59,6 +59,6 @@ system:
   summary_dir: "./output/cfrwd/summary"
   limit_train_batches: 1.0 # 0.1 for quick testing, 1.0 for full training
   limit_val_batches: 1.0 # 0.1 for quick testing, 1.0 for full validation
-  tb_version: 'cfrwd-35'
+  tb_version: 'cfrwd-34'
   resume_ckpt: null
   debug: false

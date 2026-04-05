@@ -1,0 +1,62 @@
+# configs/config.yaml
+data:
+  data_dir:
+    labeled: "./data/labeled"
+    sen12: "./data/sen12"
+  batch_size: 8
+  image_size: 256
+  num_workers: 6
+  train_val_split_ratio: 0.8
+  prefetch_factor: 2
+  persistent_workers: true
+  use_train_common_transform: true
+  seed: 42
+  sar_channels: 1
+
+model:
+  gen:
+    ngf: 64
+    in_channels: 1
+  dis:
+    ndf: 64
+    in_channels: 4 # 1 (SAR) + 3 (OPT)
+  log_summary: true
+
+optimizer:
+  lr_g: 2e-4
+  lr_d: 2e-4 # Статья: одинаковый lr=0.0002 для G и D
+  beta1: 0.5
+  beta2: 0.999
+
+scheduler:
+  eta_min: 0
+  linear_decay_epochs: 100
+
+ema:
+  use_ema: true
+  decay: 0.999
+  start_epoch: 30 # Увеличили с 10 до 30, так как новая архитектура требует больше времени на "разогрев"
+
+loss:
+  l1_weight: 0
+  gan_weight: 1
+  fm_weight: 10
+
+system:
+  device: "cuda"
+  precision: "bf16-mixed" # 32, 16, "bf16-mixed"
+  deterministic: false
+  benchmark: true
+  compile: false # torch.compile() — только Linux (Triton не поддерживает Windows)
+  max_epochs: 200 # Статья: 200 при BS=1. При BS=4 → 800 для эквивалентного числа шагов
+  checkpoints_dir: "checkpoints/cfrwd"
+  image_freq: 10
+  output_dir: "./output/cfrwd"
+  images_dir: "./output/cfrwd/images"
+  profiler_dir: "./output/cfrwd/profiler"
+  summary_dir: "./output/cfrwd/summary"
+  limit_train_batches: 1.0 # 0.1 for quick testing, 1.0 for full training
+  limit_val_batches: 1.0 # 0.1 for quick testing, 1.0 for full validation
+  tb_version: 'cfrwd-32'
+  resume_ckpt: null
+  debug: false

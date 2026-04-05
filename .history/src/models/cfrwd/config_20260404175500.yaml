@@ -42,7 +42,7 @@ loss:
   fm_weight: 10
   # L1 и FFT авто-балансируются через AdaptiveLoss (Kendall et al., 2018).
   # Ручные веса не нужны — eta обучаются вместе с генератором.
-  use_lpips: true  # true → добавляет LPIPS в AdaptiveLoss третьим компонентом [L1, FFT, LPIPS]
+  use_lpips: false  # true → добавляет LPIPS в AdaptiveLoss третьим компонентом [L1, FFT, LPIPS]
 
 system:
   device: "cuda"
