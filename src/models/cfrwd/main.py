@@ -246,6 +246,7 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
                 )
                 tg_message = generate_tg_message(self)
                 send_telegram(image_path=path, message=tg_message)
+                torch.cuda.empty_cache()
 
     def on_train_start(self):
         send_telegram(message=f"[{str(self.cfg.system.tb_version).upper()}] Обучение началось")
