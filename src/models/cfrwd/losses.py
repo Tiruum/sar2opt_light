@@ -122,29 +122,25 @@ class AdaptiveLoss(nn.Module):
 
 class LPIPSLoss(nn.Module):
     """
-    Perceptual loss на основе замороженного AlexNet (LPIPS, Zhang et al. 2018).
+    Perceptual loss — wraps a frozen AlexNet backbone.
 
-    Используется ТОЛЬКО как тренировочный лосс — отдельный от torchmetrics-метрики,
-    чтобы избежать аккумуляции состояния. Инициализируется из уже загруженного
-    torchmetrics LPIPS (общий AlexNet не грузится дважды).
+    Accepts the backbone from an already-initialized torchmetrics LPIPS instance
+    to avoid loading AlexNet twice into VRAM.
 
-    Вход: B×3×H×W в диапазоне [-1, 1] (tanh — уже корректно).
-    Выход: скаляр — среднее LPIPS по батчу (ниже = лучше, 0 = идентично).
+    Usage:
+        lpips_metric = LearnedPerceptualImagePatchSimilarity(net_type='alex', normalize=False)
+        lpips_loss = LPIPSLoss(backbone=lpips_metric.net)
 
-    AlexNet выбран над VGG: в 8× быстрее, ~60 MB vs ~500 MB,
-    качество градиентного сигнала достаточно для image translation.
+    Input: B×3×H×W in [-1, 1] (tanh output — correct).
+    Output: scalar mean LPIPS per batch (lower = better, 0 = identical).
     """
-    def __init__(self):
+    def __init__(self, backbone: nn.Module):
         super().__init__()
-        from torchmetrics.image import LearnedPerceptualImagePatchSimilarity as _LPIPS
-        # Извлекаем замороженный AlexNet из torchmetrics-обёртки.
-        # Это гарантирует идентичные веса с val-метрикой без двойной загрузки.
-        _metric = _LPIPS(net_type='alex', normalize=False)
-        self.net = _metric.net
-        # Заморозка: градиент течёт в fake_opt, но не обновляет AlexNet
+        self.net = backbone
+        # Backbone is already frozen by torchmetrics; enforce it here too.
         for p in self.net.parameters():
             p.requires_grad_(False)
 
     def forward(self, pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
-        # float32: AlexNet нестабилен в bf16 для малых активаций
+        # float32: AlexNet can be numerically unstable in bf16 for small activations
         return self.net(pred.float(), target.float()).mean()
