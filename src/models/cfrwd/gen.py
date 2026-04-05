@@ -287,7 +287,7 @@ class HaarDown(nn.Module):
 
     def __init__(self, in_channels: int = 1):
         super().__init__()
-        self.register_buffer('haar_weights', self._HAAR)
+        self.register_buffer('haar_weights', self._HAAR.clone())
 
     def forward(self, x: torch.Tensor):
         B, C, H, W = x.shape
