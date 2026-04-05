@@ -27,29 +27,50 @@ class EMAWeightAveraging(WeightAveraging):
         self.update_starting_at_step = update_starting_at_step
         self.update_starting_at_epoch = update_starting_at_epoch
 
+    def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
+        """Override to inject current epoch into should_update so the epoch gate is enforced.
+
+        The parent WeightAveraging.on_train_batch_end calls should_update(step_idx=N) without
+        an epoch_idx, which means update_starting_at_epoch is never evaluated. We replicate the
+        parent's guard logic here and pass epoch_idx so the epoch gate fires correctly.
+        """
+        # Mirror the parent's zero-based step index convention.
+        step_idx = trainer.global_step - 1
+        if (trainer.global_step > self._latest_update_step) and self.should_update(
+            step_idx=step_idx, epoch_idx=trainer.current_epoch
+        ):
+            assert self._average_model is not None
+            self._average_model.update_parameters(pl_module)
+            self._latest_update_step = trainer.global_step
+
     def should_update(self, step_idx: Optional[int] = None, epoch_idx: Optional[int] = None) -> bool:
-        """Decide when to update the model weights.
+        """Decide when to update the EMA weights.
+
+        update_starting_at_epoch acts as a global gate: if the current epoch is before the
+        configured start epoch, no update happens regardless of step conditions.
 
         Args:
-            step_idx: The current step index.
-            epoch_idx: The current epoch index.
+            step_idx: The current step index (zero-based).
+            epoch_idx: The current epoch index (zero-based).
         Returns:
-            bool: True if the model weights should be updated, False otherwise.
-
+            bool: True if EMA weights should be updated, False otherwise.
         """
+        # Epoch gate: block all updates before the configured start epoch.
+        if self.update_starting_at_epoch is not None:
+            if epoch_idx is None or epoch_idx < self.update_starting_at_epoch:
+                return False
+
+        # Step gate: check step requirement and frequency.
         if step_idx is not None:
-            # Check step-based conditions only if we have a valid step_idx
-            meets_step_requirement = self.update_starting_at_step is None or step_idx >= self.update_starting_at_step
-            meets_step_frequency = self.update_every_n_steps > 0 and step_idx % self.update_every_n_steps == 0
-            if meets_step_requirement and meets_step_frequency:
-                return True
-
-        if epoch_idx is not None:
-            # Check epoch-based condition only if we specify one
-            meets_epoch_requirement = (
-                self.update_starting_at_epoch is not None and epoch_idx >= self.update_starting_at_epoch
+            meets_step_requirement = (
+                self.update_starting_at_step is None
+                or step_idx >= self.update_starting_at_step
             )
-            if meets_epoch_requirement:
-                return True
+            meets_step_frequency = (
+                self.update_every_n_steps > 0
+                and step_idx % self.update_every_n_steps == 0
+            )
+            return meets_step_requirement and meets_step_frequency
 
-        return False
+        # Called without step_idx (epoch-only call); epoch gate already passed above.
+        return True
