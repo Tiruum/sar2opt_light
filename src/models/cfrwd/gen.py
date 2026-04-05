@@ -199,13 +199,15 @@ class CFRBlock(nn.Module):
         logger.debug(f'b3 shape: {b3.shape}, q3 shape: {q3.shape}', once=True)
 
         # Cross-fusion 2
-        q1_d = self.down(q1)
-        q2_d = self.down(q2)
-        q3_u = self.up(q3)
+        q1_d  = self.down(q1)
+        q2_d  = self.down(q2)
+        q3_u  = self.up(q3)
+        q1_dd = self.down(q1_d)   # cached: reused in c3 and c4
+        q2_dd = self.down(q2_d)   # cached: reused in c4
         c1 = self.fuse2_to3_1(torch.cat([q1, self.up(q2), self.up(q3_u)], dim=1))
         c2 = self.fuse2_to3_2(torch.cat([q1_d, q2, q3_u], dim=1))
-        c3 = self.fuse2_to3_3(torch.cat([self.down(q1_d), q2_d, q3], dim=1))
-        c4 = self.fuse2_to3_4(torch.cat([self.down(self.down(q1_d)), self.down(q2_d), self.down(q3)], dim=1))
+        c3 = self.fuse2_to3_3(torch.cat([q1_dd, q2_d, q3], dim=1))
+        c4 = self.fuse2_to3_4(torch.cat([self.down(q1_dd), q2_dd, self.down(q3)], dim=1))
 
         # Stage 3
         k1 = self.n31(c1)
