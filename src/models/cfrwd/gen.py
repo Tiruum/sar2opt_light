@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-import math
 from src.utils.logger import Logger
 
 logger = Logger(name="CFRWD", cfg_path='src/models/cfrwd/config.yaml')
@@ -269,24 +268,33 @@ class CFRBranch(nn.Module):
 
 class HaarDown(nn.Module):
     """
-    Прямое вейвлет-преобразование (DWT, Haar)
+    Прямое 2D вейвлет-преобразование (Haar DWT), ортонормальная версия.
+
+    pixel_unshuffle собирает 2×2-блок [TL, BL, TR, BR] в 4 канала,
+    матрица Haar (масштаб 0.5) даёт ортонормальные коэффициенты:
+        LL = (TL + TR + BL + BR) × 0.5
+        LH = (–TL + TR – BL + BR) × 0.5
+        HL = (–TL – TR + BL + BR) × 0.5
+        HH = (TL – TR – BL + BR) × 0.5
+    Сумма квадратов норм = сумма квадратов пикселей (Parseval). ✓
     """
-    def __init__(self, in_channels=1, normalize=True):
-        super(HaarDown, self).__init__()
-        self.scale = 0.5 if not normalize else 1 / math.sqrt(2)
-        self.register_buffer('haar_weights', torch.tensor([
-             [ 1.0,  1.0,  1.0,  1.0], # LL
-             [-1.0,  1.0, -1.0,  1.0], # LH
-             [-1.0, -1.0,  1.0,  1.0], # HL
-             [ 1.0, -1.0, -1.0,  1.0]  # HH
-        ], dtype=torch.float32) * self.scale)
-        
-    def forward(self, x):
+    _HAAR = torch.tensor([
+        [ 1.0,  1.0,  1.0,  1.0],  # LL
+        [-1.0,  1.0, -1.0,  1.0],  # LH
+        [-1.0, -1.0,  1.0,  1.0],  # HL
+        [ 1.0, -1.0, -1.0,  1.0],  # HH
+    ], dtype=torch.float32) * 0.5  # Orthonormal: each row has L2-norm 1.0
+
+    def __init__(self, in_channels: int = 1):
+        super().__init__()
+        self.register_buffer('haar_weights', self._HAAR)
+
+    def forward(self, x: torch.Tensor):
         B, C, H, W = x.shape
-        x_reshaped = torch.nn.functional.pixel_unshuffle(x, 2)
-        x_reshaped = x_reshaped.view(B, C, 4, H // 2, W // 2)
-        weights = self.haar_weights
-        out = torch.einsum('bcihw, oi -> bcohw', x_reshaped, weights) * self.scale
+        # pixel_unshuffle: B×C×H×W → B×(4C)×(H/2)×(W/2)
+        # .view: B×C×4×(H/2)×(W/2)
+        x_blocks = torch.nn.functional.pixel_unshuffle(x, 2).view(B, C, 4, H // 2, W // 2)
+        out = torch.einsum('bcihw, oi -> bcohw', x_blocks, self.haar_weights)
         return out[:, :, 0], out[:, :, 1], out[:, :, 2], out[:, :, 3]
     
 # class HaarUp(nn.Module):
@@ -310,7 +318,7 @@ class HaarDown(nn.Module):
 class DWTBlock(nn.Module):
     def __init__(self, in_channels=1):
         super(DWTBlock, self).__init__()
-        self.dwt = HaarDown(normalize=True, in_channels=in_channels)
+        self.dwt = HaarDown(in_channels=in_channels)
 
     def forward(self, x):
         ll1, lh1, hl1, hh1 = self.dwt(x)
