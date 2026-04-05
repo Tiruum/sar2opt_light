@@ -181,9 +181,15 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
         # хранить все тензоры [B,C,H,W] на GPU бесконечно → 6 МБ × 640 × N_epochs → OOM.
         self.psnr.update(fake_opt_f32, real_opt_f32)
         self.ssim.update(fake_opt_f32, real_opt_f32)
-        self.sam.update(fake_opt_f32, real_opt_f32)
-        self.ergas.update(fake_opt_f32, real_opt_f32)
         self.lpips_metric.update(fake_opt_f32, real_opt_f32)
+
+        # ERGAS: divides by per-band mean → [-1,1] mean≈0 → ERGAS=∞
+        # SAM: physically requires non-negative reflectance; zero-norm → NaN
+        # Shift [-1,1] → [0,1] for these two metrics only.
+        fake_01 = (fake_opt_f32 + 1.0) * 0.5
+        real_01 = (real_opt_f32 + 1.0) * 0.5
+        self.sam.update(fake_01, real_01)
+        self.ergas.update(fake_01, real_01)
 
     def on_validation_epoch_end(self):
         # Правильный паттерн torchmetrics + Lightning:
@@ -193,7 +199,9 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
         self.log('val/ssim',  self.ssim.compute(),          prog_bar=True)
         self.log('val/lpips', self.lpips_metric.compute(),   prog_bar=True)
         self.log('val/ergas', self.ergas.compute(),         prog_bar=False)
-        self.log('val/sam',   self.sam.compute(),           prog_bar=False)
+        sam_val = self.sam.compute()
+        if not torch.isnan(sam_val):
+            self.log('val/sam', sam_val, prog_bar=False)
         self.psnr.reset()
         self.ssim.reset()
         self.sam.reset()
