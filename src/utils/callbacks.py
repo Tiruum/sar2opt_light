@@ -23,6 +23,8 @@ class EMAWeightAveraging(WeightAveraging):
             avg_fn=get_ema_avg_fn(decay=decay),
         )
 
+        if update_every_n_steps < 1:
+            raise ValueError(f"update_every_n_steps must be >= 1, got {update_every_n_steps}")
         self.update_every_n_steps = update_every_n_steps
         self.update_starting_at_step = update_starting_at_step
         self.update_starting_at_epoch = update_starting_at_epoch
@@ -33,6 +35,9 @@ class EMAWeightAveraging(WeightAveraging):
         The parent WeightAveraging.on_train_batch_end calls should_update(step_idx=N) without
         an epoch_idx, which means update_starting_at_epoch is never evaluated. We replicate the
         parent's guard logic here and pass epoch_idx so the epoch gate fires correctly.
+
+        Note: uses self._average_model (Lightning internal) — verified against Lightning 2.x.
+        If a future Lightning version renames this attribute, this method will raise AttributeError.
         """
         # Mirror the parent's zero-based step index convention.
         step_idx = trainer.global_step - 1
