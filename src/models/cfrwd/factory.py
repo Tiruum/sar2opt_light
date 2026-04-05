@@ -26,10 +26,10 @@ def build_optimizers(netG, netD,
                      beta1: float = None,
                      beta2: float = None):
     cfg = _load_cfg()
-    lr_g = lr_g or cfg.optimizer.lr_g
-    lr_d = lr_d or cfg.optimizer.lr_d
-    beta1 = beta1 or cfg.optimizer.beta1
-    beta2 = beta2 or cfg.optimizer.beta2
+    if lr_g  is None: lr_g  = cfg.optimizer.lr_g
+    if lr_d  is None: lr_d  = cfg.optimizer.lr_d
+    if beta1 is None: beta1 = cfg.optimizer.beta1
+    if beta2 is None: beta2 = cfg.optimizer.beta2
     # extra_g_params: обучаемые параметры не из netG (напр. AdaptiveLoss.eta)
     g_params = list(netG.parameters())
     if extra_g_params is not None:
