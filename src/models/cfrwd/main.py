@@ -22,18 +22,20 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
         
         # Инициализация моделей и критерионов
         self.netG, self.netD = build_models()
+
+        # Construct val LPIPS metric first — its AlexNet backbone is shared with
+        # the training LPIPSLoss criterion to avoid loading AlexNet twice into VRAM.
+        self.lpips_metric = LearnedPerceptualImagePatchSimilarity(net_type='alex', normalize=False)
         # Важно: обычный dict не регистрирует loss-модули в nn.Module,
         # поэтому LPIPS может остаться на CPU. ModuleDict фиксирует это.
-        self.criterions = torch.nn.ModuleDict(build_criterions())
+        self.criterions = torch.nn.ModuleDict(
+            build_criterions(lpips_backbone=self.lpips_metric.net if self.cfg.loss.get('use_lpips', False) else None)
+        )
 
         # Авто-баланс реконструктивных лоссов: [L1, FFT] или [L1, FFT, LPIPS]
         # eta обучаются вместе с G (включены в optG через configure_optimizers).
         _n_recon = 3 if self.cfg.loss.get('use_lpips', False) else 2
         self.adaptive_loss = AdaptiveLoss(n_losses=_n_recon)
-
-        # LPIPS как val-метрика — всегда, независимо от use_lpips.
-        # Отдельный экземпляр от LPIPSLoss чтобы не мешать аккумуляции состояния.
-        self.lpips_metric = LearnedPerceptualImagePatchSimilarity(net_type='alex', normalize=False)
 
         # Веса adversarial-компонент остаются фиксированными
         self.loss_weights = {

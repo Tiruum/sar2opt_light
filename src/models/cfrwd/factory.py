@@ -42,7 +42,7 @@ def build_optimizers(netG, netD,
     optD = optim.Adam(netD.parameters(), lr=lr_d, betas=(beta1, beta2))
     return optG, optD
 
-def build_criterions() -> dict[Literal['GAN', 'FM', 'L1', 'FFT', 'LPIPS'], nn.Module]:
+def build_criterions(lpips_backbone=None) -> dict[Literal['GAN', 'FM', 'L1', 'FFT', 'LPIPS'], nn.Module]:
     cfg = _load_cfg()
     crits = {
         'GAN': GANLoss(use_lsgan=True),
@@ -51,7 +51,12 @@ def build_criterions() -> dict[Literal['GAN', 'FM', 'L1', 'FFT', 'LPIPS'], nn.Mo
         'FFT': FFTLoss(),
     }
     if cfg.loss.get('use_lpips', False):
-        crits['LPIPS'] = LPIPSLoss()
+        if lpips_backbone is None:
+            raise ValueError(
+                "use_lpips=True requires lpips_backbone to be passed to avoid "
+                "double-loading AlexNet. Pass lpips_metric.net from main.py."
+            )
+        crits['LPIPS'] = LPIPSLoss(backbone=lpips_backbone)
     return crits
 
 def build_lr_schedulers(optG, optD,
