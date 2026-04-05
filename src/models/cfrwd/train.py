@@ -6,7 +6,6 @@ import torch
 import lightning.pytorch as pl
 from lightning.pytorch import Trainer, seed_everything
 from lightning.pytorch.callbacks import ModelCheckpoint
-from lightning.pytorch.profilers import SimpleProfiler
 from lightning.pytorch.loggers import TensorBoardLogger, CSVLogger
 from lightning.pytorch.utilities.model_summary import ModelSummary
 
@@ -98,8 +97,6 @@ if __name__ == "__main__":
         # 7) Trainer
         trainer = Trainer(
             logger=[tb_logger, csv_logger],
-            profiler=SimpleProfiler(dirpath=cfg.system.profiler_dir, filename=cfg.system.tb_version),
-
             callbacks=callbacks,
             accelerator=cfg.system.device,
             devices=1,

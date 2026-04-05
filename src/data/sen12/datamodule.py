@@ -64,6 +64,7 @@ class SEN12Datamodule(LightningDataModule):
 
         all_items = full_dataset.items
         classes = full_dataset.classes
+        del full_dataset  # нужен только для сбора путей; освобождаем явно
 
         def make_dataset(indices, common_transform):
             items = [all_items[i] for i in indices]

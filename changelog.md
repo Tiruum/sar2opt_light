@@ -217,16 +217,27 @@
     *   **Результат:** HFCF деградирует к ~нулевому плоскому выходу к эпохе 30. AdaptiveFusion слишком быстро учит w_cfr≈1 т.к. 6ch входа недостаточно. Вторичная атрофия.
     *   **Версия:** v2.8.5
 
-*   **`cfrwd-34`**: *Feature-level fusion + метрики вклада веток*
+*   **`cfrwd-34`**: *Feature-level fusion + FFT Loss + AdaptiveLoss (Kendall et al.)*
     *   **Изменения:**
     1. Перенос AdaptiveFusion с уровня логитов (3ch) на уровень feature maps (32ch)
     Было: каждая ветка сама доходила до 3ch через свой FinalDecoderBlock → AdaptiveFusion(6ch) → tanh.
     Стало: ветки отдают 32ch feature maps → AdaptiveFusion(64ch) → единый FinalDecoderBlock (32→3) → tanh.
     Смысл: градиент от лосса проходит в обе ветки через общий финальный слой независимо от весов fusion — HFCF физически не может получить нулевой градиент.
-    2. AdaptiveFusion теперь возвращает (fused_feats, weights) — веса доступны для логирования.
-    3. Добавлены метрики вклада веток в TensorBoard:
-       - `fusion/w_hfcf` — средний вес HFCF ветки по батчу/пространству (0.5 = равный вклад, 0 = атрофия, 1 = доминирование).
-       - `fusion/spatial_std` — среднее std весов по пространству: если > 0, fusion делает per-region решения.
+    2. AdaptiveFusion возвращает (fused_feats, weights): веса логируются как fusion/w_hfcf и fusion/spatial_std.
+    3. Добавлен FFTLoss: L1 на лог-магнитуде 2D FFT спектра.
+    log(1+|F|) сжимает динамический диапазон → сбалансированный градиент на всех частотах.
+    float32 computation: FFT нестабилен в bf16.
+    4. Добавлен AdaptiveLoss (Kendall et al., 2018): авто-балансировка L1 и FFT через обучаемые eta.
+    Формула: L = sum_i(L_i * exp(-eta_i) + eta_i). eta обучаются вместе с G (включены в optG).
+    Убран ручной l1_weight из конфига — веса определяются автоматически.
+    5. LPIPS как val-метрика (всегда) и опциональный training loss (use_lpips: false/true).
+       - val/lpips — всегда логируется, независимо от use_lpips.
+       - При use_lpips=true: LPIPS добавляется в AdaptiveLoss третьим компонентом [L1, FFT, LPIPS].
+       - LPIPSLoss использует замороженный AlexNet (не обновляется, только градиент в fake_opt).
+    6. Новые метрики в TensorBoard:
+       - fusion/w_hfcf, fusion/spatial_std — здоровье HFCF ветки
+       - loss/eta_l1, loss/eta_fft, (loss/eta_lpips) — текущие логи дисперсий
+       - loss/w_l1, loss/w_fft, (loss/w_lpips) — exp(-eta): эффективные веса
     *   **Результат:** (Какие метрики/визуализация получились. Важно!)
     *   **Версия:** v2.9.5
 

@@ -284,7 +284,7 @@ class HaarDown(nn.Module):
         x_reshaped = torch.nn.functional.pixel_unshuffle(x, 2)
         x_reshaped = x_reshaped.view(B, C, 4, H // 2, W // 2)
         weights = self.haar_weights
-        out = torch.einsum('bcihw, oi -> bcohw', x_reshaped, weights)
+        out = torch.einsum('bcihw, oi -> bcohw', x_reshaped, weights) * self.scale
         return out[:, :, 0], out[:, :, 1], out[:, :, 2], out[:, :, 3]
     
 # class HaarUp(nn.Module):

@@ -42,15 +42,15 @@ loss:
   fm_weight: 10
   # L1 и FFT авто-балансируются через AdaptiveLoss (Kendall et al., 2018).
   # Ручные веса не нужны — eta обучаются вместе с генератором.
-  use_lpips: true  # true → добавляет LPIPS в AdaptiveLoss третьим компонентом [L1, FFT, LPIPS]
+  use_lpips: false  # true → добавляет LPIPS в AdaptiveLoss третьим компонентом [L1, FFT, LPIPS]
 
 system:
   device: "cuda"
   precision: "bf16-mixed" # 32, 16, "bf16-mixed"
   deterministic: false
-  benchmark: false  # true выделяет huge cuDNN workspace при многих уникальных формах (CFRBlock/HFCFBranch → 50+ shapes → до 16 ГБ кэша)
+  benchmark: true
   compile: false # torch.compile() — только Linux (Triton не поддерживает Windows)
-  max_epochs: 800 # Статья: 200 при BS=1. Полный эквивалент BS=8: 200×(8/1)=1600. Используем 800 — ~4× больше чем статья, осознанный выбор.
+  max_epochs: 800 # Статья: 200 при BS=1. BS=4 → 200 × (4/1) = 800 эквивалентных шагов
   checkpoints_dir: "checkpoints/cfrwd"
   image_freq: 10
   output_dir: "./output/cfrwd"
@@ -59,6 +59,6 @@ system:
   summary_dir: "./output/cfrwd/summary"
   limit_train_batches: 1.0 # 0.1 for quick testing, 1.0 for full training
   limit_val_batches: 1.0 # 0.1 for quick testing, 1.0 for full validation
-  tb_version: 'cfrwd-35'
+  tb_version: 'cfrwd-34'
   resume_ckpt: null
   debug: false

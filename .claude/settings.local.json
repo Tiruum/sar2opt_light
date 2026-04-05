@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python:*)",
+      "Bash(python3 -c \"import torch; print\\(torch.__version__\\)\")",
+      "Read(//c/Users/tiruu/AppData/Local/Programs/Python//**)",
+      "Read(//c/Users/tiruu/**)",
+      "Bash(/c/Users/tiruu/AppData/Local/Programs/Python/Python39/python.exe -c ':*)",
+      "Bash(grep -v \"^$\")",
+      "Read(//tmp/**)",
+      "Bash(grep:*)",
+      "Bash(python3:*)"
+    ]
+  }
+}
