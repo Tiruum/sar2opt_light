@@ -23,8 +23,9 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
         # Инициализация моделей и критерионов
         self.netG, self.netD = build_models()
 
-        # Construct val LPIPS metric first — its AlexNet backbone is shared with
-        # the training LPIPSLoss criterion to avoid loading AlexNet twice into VRAM.
+        # lpips_metric is always used for val/lpips logging regardless of use_lpips.
+        # Constructed first so its AlexNet backbone can be shared with LPIPSLoss
+        # (training criterion) when use_lpips=True — avoids loading AlexNet twice.
         self.lpips_metric = LearnedPerceptualImagePatchSimilarity(net_type='alex', normalize=False)
         # Важно: обычный dict не регистрирует loss-модули в nn.Module,
         # поэтому LPIPS может остаться на CPU. ModuleDict фиксирует это.
@@ -258,6 +259,10 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
                 )
                 tg_message = generate_tg_message(self)
                 send_telegram(image_path=path, message=tg_message)
+                # Explicitly release large GPU tensors before flushing the
+                # CUDA allocator cache; without del they stay alive until the
+                # if-block exits anyway, but this makes the intent explicit.
+                del fake_opt, cfr_out, hfcf_out
                 torch.cuda.empty_cache()
 
     def on_train_start(self):
