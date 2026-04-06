@@ -270,7 +270,7 @@ class HaarDown(nn.Module):
     """
     Прямое 2D вейвлет-преобразование (Haar DWT), ортонормальная версия.
 
-    pixel_unshuffle собирает 2×2-блок [TL, BL, TR, BR] в 4 канала,
+    pixel_unshuffle собирает 2×2-блок [TL, TR, BL, BR] в 4 канала,
     матрица Haar (масштаб 0.5) даёт ортонормальные коэффициенты:
         LL = (TL + TR + BL + BR) × 0.5
         LH = (–TL + TR – BL + BR) × 0.5

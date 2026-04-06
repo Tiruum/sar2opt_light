@@ -77,5 +77,7 @@ class EMAWeightAveraging(WeightAveraging):
             )
             return meets_step_requirement and meets_step_frequency
 
-        # Called without step_idx (epoch-only call); epoch gate already passed above.
-        return True
+        # Called without step_idx (epoch-only call, e.g. on_train_epoch_end).
+        # Step-level updates are the primary mechanism; decline epoch-only calls
+        # to avoid an extra EMA update on top of per-step updates.
+        return False
