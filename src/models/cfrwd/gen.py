@@ -592,13 +592,15 @@ class AdaptiveFusion(nn.Module):
             nn.ReLU(inplace=True),
             nn.Conv2d(mid, 2, kernel_size=1),   # 2 ветки → 2 пространственных веса
         )
+        # Temperature scaling: flattens softmax during early training when logits
+        # are large → prevents premature routing collapse. Learned jointly with G.
+        # clamp(min=0.1) in forward() prevents division by zero.
+        self.temperature = nn.Parameter(torch.ones(1) * 2.0)
 
     def forward(self, cfr_feats, hfcf_feats):
         # weights: B×2×H×W, сумма по dim=1 = 1 в каждом пикселе
-        weights = torch.softmax(
-            self.net(torch.cat([cfr_feats, hfcf_feats], dim=1)),
-            dim=1
-        )
+        logits = self.net(torch.cat([cfr_feats, hfcf_feats], dim=1))
+        weights = torch.softmax(logits / self.temperature.clamp(min=0.1), dim=1)
         fused = cfr_feats * weights[:, 0:1] + hfcf_feats * weights[:, 1:2]
         return fused, weights
 
