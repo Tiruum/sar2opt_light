@@ -50,10 +50,13 @@ Reference the pix2pix `config.yaml` at `src/models/pix2pix/config.yaml` for the 
 
 ### Generator: `CFRWDGenerator` (`src/models/cfrwd/gen.py`)
 
-Two parallel branches fused by a learnable scalar `fusion_weight` (initialized to 1.0):
+Two parallel branches fused by `AdaptiveFusion` — spatial softmax attention with learnable temperature (init=2.0):
 
 ```
-output = tanh(cfr_out_logits + fusion_weight * hfcf_out_logits)
+logits  = Conv(Cat(cfr_feats, hfcf_feats))            # B×2×H×W
+weights = Softmax(logits / temperature.clamp(min=0.1)) # B×2×H×W per-pixel
+fused   = cfr_feats * weights[:,0:1] + hfcf_feats * weights[:,1:2]
+output  = tanh(final(fused))
 ```
 
 **CFRBranch** — spatial reasoning:
