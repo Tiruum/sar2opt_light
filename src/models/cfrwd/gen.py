@@ -640,7 +640,7 @@ class CFRWDGenerator(nn.Module):
 
         logger.info("Веса инициализированы (Kaiming fan_in + Xavier/Tanh).")
 
-    def forward(self, x, return_branches=False):
+    def forward(self, x, return_branches=False, hfcf_out_only=False):
         cfr_feats = self.cfr_branch(x)    # B×32×H×W
         hfcf_feats = self.hfcf_branch(x)  # B×32×H×W
 
@@ -648,9 +648,12 @@ class CFRWDGenerator(nn.Module):
         fused_feats, fusion_weights = self.adaptive_fusion(cfr_feats, hfcf_feats)
         out = torch.tanh(self.final(fused_feats))
 
+        if hfcf_out_only:
+            # Training path: only hfcf_out needed for aux loss — skip cfr_out forward pass.
+            hfcf_out = torch.tanh(self.final(hfcf_feats))
+            return out, hfcf_out, fusion_weights
         if return_branches:
-            # Branch outputs with full gradient graph — used in cfrwd-37 aux loss.
-            # Caller is responsible for no_grad if visualization-only (main.py:246 does this).
+            # Visualization path: both branch outputs. Caller wraps with torch.no_grad().
             cfr_out = torch.tanh(self.final(cfr_feats))
             hfcf_out = torch.tanh(self.final(hfcf_feats))
             return out, cfr_out, hfcf_out, fusion_weights

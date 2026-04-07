@@ -110,8 +110,9 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
         # ========== ОБУЧЕНИЕ ГЕНЕРАТОРА ==========
         opt_g.zero_grad(set_to_none=True)
 
-        # Генерируем fake изображения заново (чтобы граф градиентов был привязан к G)
-        fake_opt, _, hfcf_out, fusion_weights = self.netG(real_sar, return_branches=True)
+        # Генерируем fake изображения заново (чтобы граф градиентов был привязан к G).
+        # hfcf_out_only=True: пропускаем cfr_out forward — он не нужен в loss.
+        fake_opt, hfcf_out, fusion_weights = self.netG(real_sar, hfcf_out_only=True)
 
         d_fake, fake_feats = self.netD(torch.cat([real_sar, fake_opt], dim=1))  # Дискриминатор оценивает fake (для adversarial loss)
 
@@ -183,7 +184,7 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
             # spatial_std > 0 означает per-region решения fusion.
             'fusion/w_hfcf':        fusion_weights[:, 1].mean(),
             'fusion/spatial_std':   fusion_weights[:, 1].std(dim=[1, 2]).mean(),
-            'fusion/temperature':   self.netG.adaptive_fusion.temperature,
+            'fusion/temperature':   self.netG.adaptive_fusion.temperature.item(),
         }, prog_bar=False, on_step=False, on_epoch=True, batch_size=real_sar.size(0))
     
     def _aux_hfcf_weight(self) -> float:
