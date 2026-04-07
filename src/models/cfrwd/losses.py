@@ -67,6 +67,9 @@ class FFTLoss(nn.Module):
     """
     Frequency-domain L1 loss on log-magnitude spectrum.
 
+    Retained for ablation reference. Replaced by FocalFrequencyLoss in cfrwd-37
+    (factory.py no longer registers this; re-import from losses.py for ablations).
+
     Для SAR→OPT модель должна воспроизводить и грубую структуру (низкие частоты),
     и тонкие края/текстуры (высокие частоты). Стандартная L1 в пространстве пикселей
     штрафует за любое отклонение, но не различает частоты — высокочастотные детали
