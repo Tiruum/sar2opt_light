@@ -197,7 +197,7 @@ class HFMaskedFFTLoss(nn.Module):
     def forward(self, pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
         pred_f = torch.fft.rfft2(pred.float(), norm='ortho')
         tgt_f  = torch.fft.rfft2(target.float(), norm='ortho')
-        H, W_h = pred_f.shape[-2], pred_f.shape[-1]
+        H = pred_f.shape[-2]
         W = pred.shape[-1]
         fy = torch.fft.fftfreq(H, device=pred.device).abs()   # H
         fx = torch.fft.rfftfreq(W, device=pred.device)         # W//2+1
