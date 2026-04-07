@@ -264,6 +264,20 @@
     *   **Результат:** ERGAS теперь корректен (~150–200 на валидации). SAM без NaN. VRAM стабилен (~12 ГБ, без скачков после каждой эпохи). EMA начинает обновление с эпохи 30, а не шага 0. LPIPSLoss требует явного backbone при инициализации (breaking change). Тренировка более предсказуема и диагностична.
     *   **Версия:** v3.0.0
 
+### 07.04.2026
+*   **`cfrwd-37`**: *Естественное устранение атрофии HFCF: температурное масштабирование, FocalFreqLoss, HF-aux супервизия, энтропийная регуляризация.*
+    *   **Изменения:**
+    1. **Temperature scaling в AdaptiveFusion** (`gen.py`): обучаемый параметр `temperature` (init=2.0, масштабирует logits перед softmax). При `temperature=2.0` ранняя маршрутизация сглажена к 50/50 — градиент идёт в обе ветки с первого шага. Добавлен форвард-путь `hfcf_out_only=True`: пропускает cfr_out при обучении (только для aux loss).
+    2. **Удалён `no_grad` из `return_branches`** (`gen.py`): ранее блокировал градиент aux loss. Визуализирующий вызов в `main.py` оборачивает `torch.no_grad()` сам.
+    3. **FocalFrequencyLoss** (`losses.py`): заменяет FFTLoss в AdaptiveLoss. Взвешивает частотные компоненты обратно пропорционально ошибке — ориентирован на трудные частоты. Стабильный абсолютный масштаб → `eta` остаётся около 0, спираль весов ×21 устранена.
+    4. **HFMaskedFFTLoss** (`losses.py`): aux-супервизия HFCF ветки только на HF-области (freq > `hf_freq_threshold` × Nyquist). Исправлена формула нечётной ширины W в маске частот.
+    5. **Обновлён `factory.py`**: `'FFT': FFTLoss()` → `'FOCAL_FREQ': FocalFrequencyLoss()`, добавлен `'HF_AUX': HFMaskedFFTLoss()`.
+    6. **G-update в `main.py`**: использует `hfcf_out_only=True`; добавлен `loss/hfcf_aux` (линейно убывающий вес 0.3→0.1); добавлена энтропийная регуляризация `loss/routing_entropy` (вес 0.005); метрики fft→focal_freq переименованы; логируются `fusion/temperature` и `fusion/spatial_std`.
+    7. **`config.yaml`**: `linear_decay_epochs: 400→600` (decay с эпохи 200); 4 новых параметра потерь (`aux_hfcf_weight_start/end`, `routing_entropy_weight`, `hf_freq_threshold`); `tb_version: cfrwd-37`.
+    8. **`CLAUDE.md`**: исправлено описание DWTBlock (сохраняет LL2 как g1), HFCFBranch (3 потока, не 2), обновлена сигнатура `forward()`.
+    *   **Результат:** Smoke-тест пройден (2 эпохи, limit_train_batches=0.02): 14/14 unit-тестов PASS; `loss/hfcf_aux` присутствует и ненулевой (0.016 → 0.009); нет NaN; `fusion/spatial_std=0.21`; стабильный `eta_focal_freq` (~-0.008 → -0.014). PSNR baseline 12.09 (2 эпохи без разогрева — ожидаемо). Полный прогноз: PSNR 15.4 → ≥17 dB; `fusion/spatial_std` ≥0.08 sustained; `eta_focal_freq` стабилен около 0.
+    *   **Версия:** v3.1.0
+
 ### DD.MM.YYYY
 *   **`cfrwd-XX`**: *Краткая цель эксперимента.*
     *   **Изменения:** (Что именно меняли в коде/параметрах)

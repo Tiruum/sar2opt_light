@@ -680,7 +680,8 @@ if __name__ == "__main__":
 
     gen = CFRWDGenerator(in_channels=1).to(device)
     with torch.no_grad():
-        out = gen(input_tensor)
+        result = gen(input_tensor)
+        out, fusion_weights = result[0], result[1]
 
     plt.subplot(1, 2, 1)
     plt.imshow(input_tensor.squeeze().detach().cpu().numpy())
@@ -693,3 +694,4 @@ if __name__ == "__main__":
     plt.show()
 
     print('out:', out.shape)
+    print('fusion_weights:', fusion_weights.shape)
