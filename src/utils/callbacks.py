@@ -29,6 +29,22 @@ class EMAWeightAveraging(WeightAveraging):
         self.update_starting_at_step = update_starting_at_step
         self.update_starting_at_epoch = update_starting_at_epoch
 
+    def on_validation_epoch_start(self, trainer, pl_module) -> None:
+        """Skip EMA model swap before start_epoch — shadow model has epoch-0 weights until then.
+
+        The parent WeightAveraging.on_validation_epoch_start unconditionally calls _swap_models(),
+        replacing the live model with the EMA shadow model for every validation run. Before
+        update_starting_at_epoch the shadow model is never updated (epoch-0 = random init), so
+        validation would evaluate the untrained network. We guard the swap here.
+        """
+        if self.update_starting_at_epoch is None or trainer.current_epoch >= self.update_starting_at_epoch:
+            super().on_validation_epoch_start(trainer, pl_module)
+
+    def on_validation_epoch_end(self, trainer, pl_module) -> None:
+        """Mirror guard for on_validation_epoch_start: swap back only if we swapped in."""
+        if self.update_starting_at_epoch is None or trainer.current_epoch >= self.update_starting_at_epoch:
+            super().on_validation_epoch_end(trainer, pl_module)
+
     def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
         """Override to inject current epoch into should_update so the epoch gate is enforced.
 
