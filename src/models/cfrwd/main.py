@@ -33,7 +33,7 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
             build_criterions(lpips_backbone=self.lpips_metric.net if self.cfg.loss.get('use_lpips', False) else None)
         )
 
-        # Авто-баланс реконструктивных лоссов: [L1, FFT] или [L1, FFT, LPIPS]
+        # Авто-баланс реконструктивных лоссов: [L1, FOCAL_FREQ] или [L1, FOCAL_FREQ, LPIPS]
         # eta обучаются вместе с G (включены в optG через configure_optimizers).
         _n_recon = 3 if self.cfg.loss.get('use_lpips', False) else 2
         self.adaptive_loss = AdaptiveLoss(n_losses=_n_recon)
@@ -111,7 +111,7 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
         opt_g.zero_grad(set_to_none=True)
 
         # Генерируем fake изображения заново (чтобы граф градиентов был привязан к G)
-        fake_opt, fusion_weights = self.netG(real_sar)
+        fake_opt, _, hfcf_out, fusion_weights = self.netG(real_sar, return_branches=True)
 
         d_fake, fake_feats = self.netD(torch.cat([real_sar, fake_opt], dim=1))  # Дискриминатор оценивает fake (для adversarial loss)
 
@@ -123,18 +123,32 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
         loss_fm = self.criterions["FM"](real_feats_detached, fake_feats)
 
         # Реконструктивные лоссы: авто-балансируются через AdaptiveLoss
-        loss_l1  = self.criterions['L1'](fake_opt, real_opt)
-        loss_fft = self.criterions['FFT'](fake_opt, real_opt)
-        recon_losses = [loss_l1, loss_fft]
+        loss_l1         = self.criterions['L1'](fake_opt, real_opt)
+        loss_focal_freq = self.criterions['FOCAL_FREQ'](fake_opt, real_opt)
+        recon_losses = [loss_l1, loss_focal_freq]
         if 'LPIPS' in self.criterions:
             loss_lpips = self.criterions['LPIPS'](fake_opt, real_opt)
             recon_losses.append(loss_lpips)
         loss_recon = self.adaptive_loss(recon_losses)
 
+        # Aux loss: supervise HFCF on HF content of real_opt only.
+        # Weight decays linearly from 0.3 (epoch 0) to 0.1 (epoch max_epochs).
+        aux_weight    = self._aux_hfcf_weight()
+        loss_hfcf_aux = self.criterions['HF_AUX'](hfcf_out, real_opt) * aux_weight
+
+        # Routing entropy: penalizes if spatial entropy of fusion weights < 50% of max.
+        # log(2) ≈ 0.693 for 2-branch system; threshold = 0.347 (50%).
+        # Cost is zero when entropy is healthy (balanced routing), nonzero only on collapse.
+        eps = 1e-8
+        H_spatial    = -(fusion_weights * (fusion_weights + eps).log()).sum(dim=1)  # B×H×W
+        loss_routing = (0.347 - H_spatial.mean()).clamp(min=0.0) * self.cfg.loss.get('routing_entropy_weight', 0.005)
+
         g_loss = (
-            loss_gan   * self.loss_weights['gan'] +
-            loss_fm    * self.loss_weights['fm'] +
-            loss_recon
+            loss_gan      * self.loss_weights['gan'] +
+            loss_fm       * self.loss_weights['fm'] +
+            loss_recon    +
+            loss_hfcf_aux +
+            loss_routing
         )
 
         self.manual_backward(g_loss)
@@ -143,30 +157,46 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
 
         self.log('train/g_loss', g_loss, prog_bar=True, on_step=False, on_epoch=True, batch_size=real_sar.size(0))
         self.log_dict({
-            'train/loss_fm':  loss_fm,
-            'train/loss_gan': loss_gan,
-            'train/loss_d':   d_loss,
-            'train/loss_l1':  loss_l1,
-            'train/loss_fft': loss_fft,
+            'train/loss_fm':         loss_fm,
+            'train/loss_gan':        loss_gan,
+            'train/loss_d':          d_loss,
+            'train/loss_l1':         loss_l1,
+            'train/loss_focal_freq': loss_focal_freq,
             'feats/d_real_mean': real_means.mean(),
             'feats/d_fake_mean': fake_means.mean(),
             # AdaptiveLoss: eta > 0 → down-weight, eta < 0 → up-weight.
             # w = exp(-eta): эффективный множитель этого лосса.
-            'loss/eta_l1':  self.adaptive_loss.eta[0],
-            'loss/eta_fft': self.adaptive_loss.eta[1],
-            'loss/w_l1':    torch.exp(-self.adaptive_loss.eta[0]),
-            'loss/w_fft':   torch.exp(-self.adaptive_loss.eta[1]),
+            'loss/eta_l1':         self.adaptive_loss.eta[0],
+            'loss/eta_focal_freq': self.adaptive_loss.eta[1],
+            'loss/w_l1':           torch.exp(-self.adaptive_loss.eta[0]),
+            'loss/w_focal_freq':   torch.exp(-self.adaptive_loss.eta[1]),
             **({'train/loss_lpips': loss_lpips,
-                'loss/eta_lpips': self.adaptive_loss.eta[2],
-                'loss/w_lpips':   torch.exp(-self.adaptive_loss.eta[2]),
+                'loss/eta_lpips':   self.adaptive_loss.eta[2],
+                'loss/w_lpips':     torch.exp(-self.adaptive_loss.eta[2]),
                } if 'LPIPS' in self.criterions else {}),
+            # Aux + routing losses
+            'loss/hfcf_aux':        loss_hfcf_aux,
+            'loss/routing_entropy': H_spatial.mean(),
+            'loss/routing_loss':    loss_routing,
             # Метрики вклада веток: w_hfcf → 0.5 означает равный вклад,
             # → 0.0 означает полную атрофию HFCF, → 1.0 — доминирование HFCF.
             # spatial_std > 0 означает per-region решения fusion.
-            'fusion/w_hfcf':     fusion_weights[:, 1].mean(),
-            'fusion/spatial_std': fusion_weights[:, 1].std(dim=[1, 2]).mean(),
+            'fusion/w_hfcf':        fusion_weights[:, 1].mean(),
+            'fusion/spatial_std':   fusion_weights[:, 1].std(dim=[1, 2]).mean(),
+            'fusion/temperature':   self.netG.adaptive_fusion.temperature,
         }, prog_bar=False, on_step=False, on_epoch=True, batch_size=real_sar.size(0))
     
+    def _aux_hfcf_weight(self) -> float:
+        """
+        Linear schedule for HFCF auxiliary loss weight.
+        Decays from aux_hfcf_weight_start (epoch 0) to aux_hfcf_weight_end (epoch max_epochs).
+        Prevents aux signal from dominating late training when HFCF is already specialized.
+        """
+        start = self.cfg.loss.get('aux_hfcf_weight_start', 0.3)
+        end   = self.cfg.loss.get('aux_hfcf_weight_end', 0.1)
+        frac  = min(self.current_epoch / max(self.cfg.system.max_epochs, 1), 1.0)
+        return start + (end - start) * frac
+
     def validation_step(self, batch, batch_idx):
         real_sar, real_opt = batch
         fake_opt = self(real_sar)
