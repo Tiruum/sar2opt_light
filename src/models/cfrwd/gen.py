@@ -649,11 +649,10 @@ class CFRWDGenerator(nn.Module):
         out = torch.tanh(self.final(fused_feats))
 
         if return_branches:
-            # Пропускаем ветки через общий финальный слой для визуализации.
-            # torch.no_grad() — только для диагностики, не влияет на обучение.
-            with torch.no_grad():
-                cfr_out = torch.tanh(self.final(cfr_feats))
-                hfcf_out = torch.tanh(self.final(hfcf_feats))
+            # Branch outputs with full gradient graph — used in cfrwd-37 aux loss.
+            # Caller is responsible for no_grad if visualization-only (main.py:246 does this).
+            cfr_out = torch.tanh(self.final(cfr_feats))
+            hfcf_out = torch.tanh(self.final(hfcf_feats))
             return out, cfr_out, hfcf_out, fusion_weights
         return out, fusion_weights
 
