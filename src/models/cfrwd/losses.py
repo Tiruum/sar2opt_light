@@ -144,3 +144,63 @@ class LPIPSLoss(nn.Module):
     def forward(self, pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
         # float32: AlexNet can be numerically unstable in bf16 for small activations
         return self.net(pred.float(), target.float()).mean()
+
+
+class FocalFrequencyLoss(nn.Module):
+    """
+    Focal Frequency Loss (Jiang et al., ICCV 2021).
+
+    Replaces FFTLoss in AdaptiveLoss to prevent eta spiral.
+
+    Problem with FFTLoss: uniform L1 on FFT magnitude → loss value converges
+    to ~0.046 by epoch 5 → eta_fft → -3.07 → weight ×21.6 → FFT monopolizes
+    AdaptiveLoss gradient → CFR handles all frequency reconstruction → HFCF redundant.
+
+    Solution: per-frequency adaptive weight = |diff_f| / (|pred_f| + eps).
+    Well-reconstructed frequencies get low weight; hard ones get high weight.
+    The absolute loss value stays stable (normalization by prediction magnitude
+    prevents collapse to near-zero), so eta equilibrium stays near 0 (weight ~1–4×).
+
+    Input: B×C×H×W in [-1, 1] (tanh output — correct).
+    """
+    def forward(self, pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+        pred_f = torch.fft.rfft2(pred.float(), norm='ortho')
+        tgt_f  = torch.fft.rfft2(target.float(), norm='ortho')
+        diff   = (pred_f - tgt_f).abs()
+        with torch.no_grad():
+            weight = diff / (pred_f.abs().detach() + 1e-8)
+        return (weight * diff).mean()
+
+
+class HFMaskedFFTLoss(nn.Module):
+    """
+    Frequency-band-selective supervision for the HFCF branch.
+
+    The paper (Figure 10c) shows HFCF output is an edge map — it produces
+    high-frequency optical features, not the full image. Supervising hfcf_out
+    on the full optical image (pixel L1 or full FFT) is architecturally wrong
+    because HFCF then competes with CFR on low-frequency content where CFR
+    has more capacity. CFR wins → HFCF collapses.
+
+    Penalizes only spatial frequencies above freq_threshold (fraction of Nyquist).
+    freq_threshold=0.25 → supervise edges/textures only; coarse structure and
+    color (below 25% Nyquist) are excluded — that is CFR's domain.
+
+    Used as auxiliary loss: loss_hfcf_aux = HFMaskedFFTLoss()(hfcf_out, real_opt).
+
+    Input: B×C×H×W in [-1, 1].
+    """
+    def __init__(self, freq_threshold: float = 0.25):
+        super().__init__()
+        self.freq_threshold = freq_threshold
+
+    def forward(self, pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+        pred_f = torch.fft.rfft2(pred.float(), norm='ortho')
+        tgt_f  = torch.fft.rfft2(target.float(), norm='ortho')
+        H, W_h = pred_f.shape[-2], pred_f.shape[-1]
+        W = (W_h - 1) * 2
+        fy = torch.fft.fftfreq(H, device=pred.device).abs()   # H
+        fx = torch.fft.rfftfreq(W, device=pred.device)         # W//2+1
+        freq_mag = (fy[:, None] ** 2 + fx[None, :] ** 2).sqrt()  # H×(W//2+1)
+        hf_mask = (freq_mag > self.freq_threshold).float()
+        return ((pred_f - tgt_f).abs() * hf_mask).mean()
