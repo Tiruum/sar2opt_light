@@ -64,7 +64,7 @@ output = tanh(cfr_out_logits + fusion_weight * hfcf_out_logits)
 - Decoder: `DecoderBlock` (64→32) + `FinalDecoderBlock` (32→3, 7×7 conv, no activation)
 
 **HFCFBranch** — high-frequency wavelet branch:
-- `DWTBlock`: two-level Haar DWT; discards LL, uses LH/HL/HH detail subbands at both levels → g2 (64×64), g3 (128×128)
+- `DWTBlock`: two-level Haar DWT; **keeps LL2 as g1** (low-low subband at level 2), uses LH/HL/HH detail subbands at both levels → g1=LL2 (64×64), g2=level-2 details (64×64), g3=level-1 details (128×128)
 - Two processing streams: top (`WDResBlock` bottlenecks on g2+g3 fused) and bottom (`RedBlock` on g3)
 - Streams merged, decoded via bilinear upsampling back to 256×256
 - `FinalDecoderBlock` (32→3, 7×7 conv, no activation)
