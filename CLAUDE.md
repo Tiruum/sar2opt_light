@@ -65,13 +65,16 @@ output = tanh(cfr_out_logits + fusion_weight * hfcf_out_logits)
 
 **HFCFBranch** — high-frequency wavelet branch:
 - `DWTBlock`: two-level Haar DWT; **keeps LL2 as g1** (low-low subband at level 2), uses LH/HL/HH detail subbands at both levels → g1=LL2 (64×64), g2=level-2 details (64×64), g3=level-1 details (128×128)
-- Two processing streams: top (`WDResBlock` bottlenecks on g2+g3 fused) and bottom (`RedBlock` on g3)
-- Streams merged, decoded via bilinear upsampling back to 256×256
+- Three independent streams: Low (g1/LL2 via `WDResBlock×2`), Mid (g2 via `WDResBlock×6`), High (g3 via `RedBlock×2`); CBAM on each
+- Streams concatenated, decoded via bilinear upsampling back to 256×256
 - `FinalDecoderBlock` (32→3, 7×7 conv, no activation)
 
 `HaarDown` uses `register_buffer` — its weights are fixed (not trained). Do not call `_initialize_weights` on it.
 
-`forward(x, return_branches=True)` returns `(fused_out, cfr_tanh, hfcf_tanh)` for visualization.
+`forward(x, return_branches=False, hfcf_out_only=False)`:
+- Default: returns `(out, fusion_weights)`
+- `hfcf_out_only=True`: returns `(out, hfcf_out, fusion_weights)` — training path (avoids computing cfr_out)
+- `return_branches=True`: returns `(out, cfr_out, hfcf_out, fusion_weights)` — visualization path
 
 ### Discriminator: `CFRWDPatchDis` (`src/models/cfrwd/discriminator.py`)
 
