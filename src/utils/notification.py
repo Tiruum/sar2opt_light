@@ -26,9 +26,9 @@ def send_telegram(message="", image_path=None):
                 print(f"❌ [TG BOT] Файл не найден: {image_path}")
                 return
 
-            # Открываем файл и отправляем фото
-            with open(image_path, 'rb') as photo:
-                bot.send_photo(TELEGRAM_RECIEVER_USER_ID, photo, caption=message)
+            # Открываем файл и отправляем как документ
+            with open(image_path, 'rb') as doc:
+                bot.send_document(TELEGRAM_RECIEVER_USER_ID, doc, caption=message)
 
         # Если передан только текст (без изображения)
         elif message:
