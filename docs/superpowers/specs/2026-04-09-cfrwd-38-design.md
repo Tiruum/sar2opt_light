@@ -60,7 +60,7 @@ HI_D = [-0.01059740, -0.03288301,  0.03084138,  0.18703481,
 
 `HaarDown` class is kept in the file but no longer instantiated.
 
-`_initialize_weights` must NOT be called on `DaubechiesDown` (same invariant as HaarDown: fixed buffers, not trained weights).
+`_initialize_weights` will NOT affect `DaubechiesDown` — the method iterates only `nn.Conv2d`, `nn.ConvTranspose2d`, and `nn.InstanceNorm2d`. Since `DaubechiesDown` contains none of these (only `register_buffer`), it is automatically skipped. No explicit guard is needed.
 
 ---
 
@@ -110,7 +110,7 @@ self.fab_mid  = FrequencyAttentionBlock(64, 64, 64)
 self.fab_high = FrequencyAttentionBlock(64, 64, 64)
 ```
 
-`_initialize_weights` must NOT be called on FABs (their init is intentional identity).
+`_initialize_weights` will NOT affect FABs — `nn.Parameter` is not a `Conv2d/InstanceNorm2d`, so the method skips it automatically. No explicit guard needed.
 
 ---
 
@@ -259,13 +259,32 @@ loss:
   routing_balance_weight: 0.1     # replaces routing_entropy_weight: 0.005
                                   # renamed + recalibrated for soft L2 formula
   hf_freq_threshold: 0.25         # unchanged
+  use_msssim: true                # NEW — enables 4th AdaptiveLoss component
 
 system:
   tb_version: "cfrwd-38"
   resume_ckpt: null
 ```
 
-`routing_entropy_weight` key is removed. All other params unchanged.
+`routing_entropy_weight` key is removed. `use_msssim: true` is added.
+
+**`_n_recon` logic in `main.py`** must be updated to account for the new flag:
+```python
+# Current (cfrwd-37):
+_n_recon = 3 if self.cfg.loss.get('use_lpips', False) else 2
+
+# cfrwd-38:
+_n_recon = 2
+if self.cfg.loss.get('use_lpips', False):  _n_recon += 1
+if self.cfg.loss.get('use_msssim', False): _n_recon += 1
+# → _n_recon = 4 with use_lpips=true, use_msssim=true
+```
+
+**Routing weight access** must use direct attribute (no `.get()` default since key is now explicit in config):
+```python
+# Old: self.cfg.loss.get('routing_entropy_weight', 0.005)
+# New: self.cfg.loss.routing_balance_weight
+```
 
 ---
 
