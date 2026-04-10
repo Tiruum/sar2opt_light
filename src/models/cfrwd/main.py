@@ -4,6 +4,7 @@ import gc
 import os
 import torch
 import lightning.pytorch as pl
+from pytorch_msssim import ms_ssim as pytorch_ms_ssim
 from src.models.cfrwd.factory import build_models, build_optimizers, build_criterions, build_lr_schedulers
 from src.models.cfrwd.losses import AdaptiveLoss
 from src.utils.visualize import visualize_batch
@@ -33,9 +34,11 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
             build_criterions(lpips_backbone=self.lpips_metric.net if self.cfg.loss.get('use_lpips', False) else None)
         )
 
-        # Авто-баланс реконструктивных лоссов: [L1, FOCAL_FREQ] или [L1, FOCAL_FREQ, LPIPS]
+        # Авто-баланс реконструктивных лоссов: [L1, FOCAL_FREQ] + optional LPIPS + optional MSSSIM.
         # eta обучаются вместе с G (включены в optG через configure_optimizers).
-        _n_recon = 3 if self.cfg.loss.get('use_lpips', False) else 2
+        _n_recon = 2
+        if self.cfg.loss.get('use_lpips',  False): _n_recon += 1
+        if self.cfg.loss.get('use_msssim', False): _n_recon += 1
         self.adaptive_loss = AdaptiveLoss(n_losses=_n_recon)
 
         # Веса adversarial-компонент остаются фиксированными
@@ -52,6 +55,7 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
         
         self.fixed_sar = None
         self.fixed_opt = None
+        self._val_msssim_acc: list = []   # accumulates per-batch MS-SSIM values
 
         self.automatic_optimization = False
 
@@ -130,6 +134,9 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
         if 'LPIPS' in self.criterions:
             loss_lpips = self.criterions['LPIPS'](fake_opt, real_opt)
             recon_losses.append(loss_lpips)
+        if self.cfg.loss.get('use_msssim', False):
+            loss_msssim = self.criterions['MSSSIM'](fake_opt, real_opt)
+            recon_losses.append(loss_msssim)
         loss_recon = self.adaptive_loss(recon_losses)
 
         # Aux loss: supervise HFCF on HF content of real_opt only.
@@ -137,12 +144,11 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
         aux_weight    = self._aux_hfcf_weight()
         loss_hfcf_aux = self.criterions['HF_AUX'](hfcf_out, real_opt) * aux_weight
 
-        # Routing entropy: penalizes if spatial entropy of fusion weights < 50% of max.
-        # log(2) ≈ 0.693 for 2-branch system; threshold = 0.347 (50%).
-        # Cost is zero when entropy is healthy (balanced routing), nonzero only on collapse.
-        eps = 1e-8
-        H_spatial    = -(fusion_weights * (fusion_weights + eps).log()).sum(dim=1)  # B×H×W
-        loss_routing = (0.347 - H_spatial.mean()).clamp(min=0.0) * self.cfg.loss.get('routing_entropy_weight', 0.005)
+        # Soft L2 routing toward balance: always active, penalizes any deviation from w_hfcf=0.5.
+        # Old hinge at 0.347 required near-degenerate 0.12/0.88 split to activate — never triggered.
+        loss_routing = (fusion_weights[:, 1].mean() - 0.5).pow(2) * self.cfg.loss.routing_balance_weight
+        # Routing entropy kept for diagnostics only (not used in loss formula)
+        _H_routing = -(fusion_weights * (fusion_weights + 1e-8).log()).sum(dim=1).mean()
 
         g_loss = (
             loss_gan      * self.loss_weights['gan'] +
@@ -155,6 +161,16 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
         self.manual_backward(g_loss)
         self.clip_gradients(opt_g, gradient_clip_val=1.0, gradient_clip_algorithm='norm')
         opt_g.step()
+
+        # DWT subband energies — diagnostic: verify db4 subbands have non-zero energy
+        with torch.no_grad():
+            g1, g2, g3 = self.netG.hfcf_branch.dwt(real_sar)
+
+        # MSSSIM eta/w — only present when use_msssim=true (4th adaptive component)
+        _msssim_log = ({'train/loss_msssim': loss_msssim,
+                        'loss/eta_msssim':   self.adaptive_loss.eta[3],
+                        'loss/w_msssim':     torch.exp(-self.adaptive_loss.eta[3]),
+                       } if self.cfg.loss.get('use_msssim', False) else {})
 
         self.log('train/g_loss', g_loss, prog_bar=True, on_step=False, on_epoch=True, batch_size=real_sar.size(0))
         self.log_dict({
@@ -175,9 +191,10 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
                 'loss/eta_lpips':   self.adaptive_loss.eta[2],
                 'loss/w_lpips':     torch.exp(-self.adaptive_loss.eta[2]),
                } if 'LPIPS' in self.criterions else {}),
+            **_msssim_log,
             # Aux + routing losses
             'loss/hfcf_aux':        loss_hfcf_aux,
-            'loss/routing_entropy': H_spatial.mean(),
+            'loss/routing_entropy': _H_routing,
             'loss/routing_loss':    loss_routing,
             # Метрики вклада веток: w_hfcf → 0.5 означает равный вклад,
             # → 0.0 означает полную атрофию HFCF, → 1.0 — доминирование HFCF.
@@ -185,6 +202,13 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
             'fusion/w_hfcf':        fusion_weights[:, 1].mean(),
             'fusion/spatial_std':   fusion_weights[:, 1].std(dim=[1, 2]).mean(),
             'fusion/temperature':   self.netG.adaptive_fusion.temperature.item(),
+            # HFCF branch health — key collapse indicators
+            'hfcf/out_spatial_std': hfcf_out.std(dim=[2, 3]).mean(),
+            'hfcf/out_mean':        hfcf_out.mean(),
+            # db4 subband energies (verify non-zero HF subbands entering the branch)
+            'hfcf/g1_energy': g1.pow(2).mean(),
+            'hfcf/g2_energy': g2.pow(2).mean(),
+            'hfcf/g3_energy': g3.pow(2).mean(),
         }, prog_bar=False, on_step=False, on_epoch=True, batch_size=real_sar.size(0))
     
     def _aux_hfcf_weight(self) -> float:
@@ -225,6 +249,13 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
         self.sam.update(fake_01, real_01)
         self.ergas.update(fake_01, real_01)
 
+        # MS-SSIM: accumulate per-batch values; log epoch mean in on_validation_epoch_end.
+        # Raw MS-SSIM (higher=better, [0,1]), NOT the training loss (1 - ms_ssim).
+        if self.cfg.loss.get('use_msssim', False):
+            val_msssim = pytorch_ms_ssim(fake_opt_f32, real_opt_f32,
+                                         data_range=2.0, size_average=True)
+            self._val_msssim_acc.append(val_msssim.item())
+
     def on_validation_epoch_end(self):
         # Правильный паттерн torchmetrics + Lightning:
         # compute() вызывается один раз за эпоху (а не 640 раз),
@@ -243,6 +274,9 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
         self.sam.reset()
         self.ergas.reset()
         self.lpips_metric.reset()
+        if self._val_msssim_acc:
+            self.log('val/msssim', torch.tensor(self._val_msssim_acc).mean(), prog_bar=True)
+            self._val_msssim_acc = []
         # Возвращаем PyTorch-кэш CUDA обратно драйверу после каждой val-эпохи.
         # Без этого caching allocator накапливает freed-блоки → Windows видит 16 ГБ занято.
         gc.collect()
@@ -268,6 +302,15 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
         opt_d, opt_g = self.optimizers()
         self.log("lr/d", opt_d.param_groups[0]["lr"], prog_bar=False, on_step=False, on_epoch=True)
         self.log("lr/g", opt_g.param_groups[0]["lr"], prog_bar=False, on_step=False, on_epoch=True)
+
+        # FAB filter magnitude diagnostics — deviates from 1.0 as HF selectivity develops.
+        # Runs every epoch regardless of fixed_sar (filter stats don't need fixed data).
+        hfcf = self.netG.hfcf_branch
+        for tag, fab in [('low', hfcf.fab_low), ('mid', hfcf.fab_mid), ('high', hfcf.fab_high)]:
+            with torch.no_grad():
+                mag = torch.complex(fab.weight_real, fab.weight_imag).abs()
+            self.log(f'fab/filter_mag_{tag}', mag.mean(), on_step=False, on_epoch=True)
+            self.log(f'fab/filter_std_{tag}', mag.std(),  on_step=False, on_epoch=True)
 
         if self.fixed_sar is None:
             return
