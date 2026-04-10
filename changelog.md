@@ -4,6 +4,24 @@
 ## Журнал экспериментов (TensorBoard Runs)
 Здесь фиксируются цели, параметры и результаты каждого запуска для отслеживания в TensorBoard.
 
+### 10.04.2026
+
+*   **`cfrwd-38`**: *Реанимация HFCF-ветки — db4 DWT + FAB + исправление лоссов + мягкий routing.*
+    *   **Цель:** Устранить коллапс HFCF-ветки (серый blob все 60 эпох в cfrwd-37). Цель: PSNR ≥17 dB, SSIM ≥0.35 после ep200.
+    *   **Чистый старт:** Да (чекпоинты cfrwd-37 удалены — веса HFCF застряли в плоских минимумах).
+    *   **Изменения:**
+        *   `gen.py`: `HaarDown` → `DaubechiesDown` (db4, 8-отводный сепарабельный фильтр, reflect padding). 4 нулевых момента vs 1 у Haar — чище разделяет LL/детальные подполосы на краях SAR.
+        *   `gen.py`: Добавлен `FrequencyAttentionBlock` (FAB) — обучаемый комплексный фильтр в пространстве rfft2 — после ResBlocks каждого потока `HFCFBranch` (Low/Mid/High). Инициализирован как тождественное преобразование.
+        *   `losses.py`: Исправлен `HFMaskedFFTLoss` — `.mean()` заменён на masked mean (деление только на активные HF-бины; раньше делилось на все бины, включая ~75% нулевых → разбавление в 4×).
+        *   `losses.py`: Добавлен `MSSSIMLoss` (1 − MS-SSIM, data_range=2.0, 5 масштабов). Прямо оптимизирует разрыв SSIM (0.186 vs 0.562 в статье).
+        *   `factory.py`: Добавлен критерий `'MSSSIM'`.
+        *   `main.py`: Hinge routing penalty заменён на soft L2 `(w_hfcf − 0.5)² × 0.1` (всегда активен с ep0; hinge требовал раскладки 0.12/0.88 — никогда не срабатывал).
+        *   `main.py`: 4-й eta в `AdaptiveLoss` для MSSSIM; логика `_n_recon` обобщена.
+        *   `main.py`: Новые TensorBoard-ключи: `hfcf/out_*`, `hfcf/g{1,2,3}_energy`, `fab/filter_mag_*`, `val/msssim`.
+        *   `config.yaml`: `aux_hfcf_weight_start: 0.5` (было 0.3), `routing_balance_weight: 0.1`, `use_msssim: true`, `tb_version: cfrwd-38`.
+    *   **Ожидаемое поведение:** `hfcf/out_spatial_std > 0` с ep5 (не серый blob), `loss/routing_loss > 0` с ep0, `loss/hfcf_aux` ~4× выше cfrwd-37, `fab/filter_mag_*` отклоняется от 1.0 после ep10.
+    *   **Результат:** (заполнить после обучения)
+
 ### 21.09.2025
 *   **`cfrwd-1`**: *Модель создана, начинаем улучшать, подгонять параметры и прочее, чтобы достичь наилучших результатов.*
     *   **Изменения:** Создание базовой модели CFRWD GAN для последующих экспериментов.
