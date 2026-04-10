@@ -3,6 +3,7 @@
 import torch
 import torch.nn as nn
 import typing
+from pytorch_msssim import ms_ssim
 
 class GANLoss(nn.Module):
     def __init__(self, use_lsgan=True):
@@ -206,4 +207,25 @@ class HFMaskedFFTLoss(nn.Module):
         fx = torch.fft.rfftfreq(W, device=pred.device)         # W//2+1
         freq_mag = (fy[:, None] ** 2 + fx[None, :] ** 2).sqrt()  # H×(W//2+1)
         hf_mask = (freq_mag > self.freq_threshold).float()
-        return ((pred_f - tgt_f).abs() * hf_mask).mean()
+        # Masked mean: divide only by active HF bins × B × C (not all bins).
+        # Old .mean() divided by ALL freq bins incl. ~75% zero-masked → 4× dilution.
+        diff_hf  = (pred_f - tgt_f).abs() * hf_mask
+        n_active = hf_mask.sum() * pred_f.shape[0] * pred_f.shape[1]  # ×B ×C
+        return diff_hf.sum() / n_active.clamp(min=1)
+
+
+class MSSSIMLoss(nn.Module):
+    """
+    Multi-Scale SSIM loss (Wang et al., 2003).
+    Loss = 1 - MS-SSIM, so 0 = perfect, 1 = worst.
+
+    Uses 5 scales with default win_size=11, K=(0.01, 0.03).
+    Directly optimizes the SSIM gap (cfrwd-37: 0.186 vs paper 0.562).
+    The 5-scale structure aligns with the two-level DWT decomposition in HFCFBranch.
+
+    Input: B×3×H×W in [-1, 1] (tanh output). data_range=2.0 for [-1, 1] range.
+    Requires H, W ≥ 160 (5 scales × 2^4 downsampling). Training at 256×256 — OK.
+    """
+    def forward(self, pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+        return 1.0 - ms_ssim(pred.float(), target.float(),
+                              data_range=2.0, size_average=True)

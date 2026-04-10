@@ -139,24 +139,33 @@ def test_hfcf_branch_output_shape_unchanged():
 
 def test_hf_masked_loss_greater_than_unmasked_naive():
     """
-    After fix: masked mean (÷ active bins only) must be larger than naive
-    mean (÷ all bins) for the same mismatch.
+    After fix: when ALL error is concentrated in HF bins,
+    masked mean (÷ active bins) > naive mean (÷ all bins incl. zero-masked LF).
     """
     from src.models.cfrwd.losses import HFMaskedFFTLoss
 
-    pred   = torch.zeros(2, 3, 64, 64)
-    target = torch.randn(2, 3, 64, 64)
+    H, W, freq_threshold = 64, 64, 0.25
+    loss_fn = HFMaskedFFTLoss(freq_threshold=freq_threshold)
 
-    loss_fn = HFMaskedFFTLoss(freq_threshold=0.25)
+    # Build a target with energy ONLY in HF bins (freq_mag > 0.25)
+    fy = torch.fft.fftfreq(H).abs()
+    fx = torch.fft.rfftfreq(W)
+    hf_mask = (fy[:, None]**2 + fx[None, :]**2).sqrt() > freq_threshold
+
+    target_f = torch.zeros(1, 1, H, W // 2 + 1, dtype=torch.complex64)
+    target_f[0, 0][hf_mask] = 1.0          # energy only in HF
+    target = torch.fft.irfft2(target_f, s=(H, W), norm='ortho')
+    pred   = torch.zeros_like(target)
+
     masked_loss = loss_fn(pred, target).item()
 
-    # Naive: divide by all bins (including zero-masked ~75%)
+    # Naive: divide by ALL freq bins (including ~75% zero-masked LF bins)
     pred_f = torch.fft.rfft2(pred.float(), norm='ortho')
     tgt_f  = torch.fft.rfft2(target.float(), norm='ortho')
     naive_loss = (pred_f - tgt_f).abs().mean().item()
 
     assert masked_loss > naive_loss, \
-        f"Masked mean {masked_loss:.4f} should be > naive mean {naive_loss:.4f}"
+        f"HF-only signal: masked {masked_loss:.4f} should be > naive {naive_loss:.4f}"
 
 
 def test_hf_masked_loss_zero_on_identical():
@@ -197,13 +206,15 @@ def test_msssim_loss_range():
 
 
 def test_msssim_loss_gradient_flows():
-    """Gradient must flow through MSSSIMLoss."""
+    """Gradient must flow through MSSSIMLoss to the leaf input tensor."""
     from src.models.cfrwd.losses import MSSSIMLoss
     loss_fn = MSSSIMLoss()
-    pred   = torch.rand(2, 3, 256, 256, requires_grad=True) * 2 - 1
+    # base is the leaf tensor; pred is non-leaf (result of arithmetic)
+    base   = torch.rand(2, 3, 256, 256, requires_grad=True)
+    pred   = base * 2 - 1   # [-1, 1], non-leaf
     target = torch.rand(2, 3, 256, 256) * 2 - 1
     loss_fn(pred, target).backward()
-    assert pred.grad is not None
+    assert base.grad is not None, "Gradient must flow through MSSSIMLoss"
 
 
 # ─── Task 5: factory.py ──────────────────────────────────────────────────────
