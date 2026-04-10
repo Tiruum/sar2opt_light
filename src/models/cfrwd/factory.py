@@ -2,7 +2,7 @@ from typing import Literal
 import torch.optim as optim
 from src.models.cfrwd.discriminator import CFRWDPatchDis
 from src.models.cfrwd.gen import CFRWDGenerator
-from src.models.cfrwd.losses import FeatureMatchingLoss, GANLoss, L1Loss, FocalFrequencyLoss, HFMaskedFFTLoss, LPIPSLoss
+from src.models.cfrwd.losses import FeatureMatchingLoss, GANLoss, L1Loss, FocalFrequencyLoss, HFMaskedFFTLoss, LPIPSLoss, MSSSIMLoss
 import torch.nn as nn
 from functools import lru_cache
 from omegaconf import OmegaConf
@@ -42,7 +42,7 @@ def build_optimizers(netG, netD,
     optD = optim.Adam(netD.parameters(), lr=lr_d, betas=(beta1, beta2))
     return optG, optD
 
-def build_criterions(lpips_backbone=None) -> dict[Literal['GAN', 'FM', 'L1', 'FOCAL_FREQ', 'HF_AUX', 'LPIPS'], nn.Module]:
+def build_criterions(lpips_backbone=None) -> dict[Literal['GAN', 'FM', 'L1', 'FOCAL_FREQ', 'HF_AUX', 'LPIPS', 'MSSSIM'], nn.Module]:
     cfg = _load_cfg()
     crits = {
         'GAN':        GANLoss(use_lsgan=True),
@@ -50,6 +50,7 @@ def build_criterions(lpips_backbone=None) -> dict[Literal['GAN', 'FM', 'L1', 'FO
         'L1':         L1Loss(),
         'FOCAL_FREQ': FocalFrequencyLoss(),
         'HF_AUX':     HFMaskedFFTLoss(freq_threshold=cfg.loss.get('hf_freq_threshold', 0.25)),
+        'MSSSIM':     MSSSIMLoss(),
     }
     if cfg.loss.get('use_lpips', False):
         if lpips_backbone is None:
