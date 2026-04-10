@@ -297,28 +297,70 @@ class HaarDown(nn.Module):
         out = torch.einsum('bcihw, oi -> bcohw', x_blocks, self.haar_weights)
         return out[:, :, 0], out[:, :, 1], out[:, :, 2], out[:, :, 3]
     
-# class HaarUp(nn.Module):
-#     def __init__(self, in_channels=1):
-#         super(HaarUp, self).__init__()
-#         # Обратная матрица Haar (transposed)
-#         self.register_buffer('inv_weights', torch.tensor([
-#              [ 1.0, -1.0, -1.0,  1.0],
-#              [ 1.0,  1.0, -1.0, -1.0],
-#              [ 1.0, -1.0,  1.0, -1.0],
-#              [ 1.0,  1.0,  1.0,  1.0]
-#         ], dtype=torch.float32))
-#     def forward(self, LL, LH, HL, HH):
-#         stack = torch.stack([LL, LH, HL, HH], dim=2)
-#         weights = self.inv_weights.to(LL.device)
-#         out_pixels = torch.einsum('bcihw, oi -> bcohw', stack, weights)
-#         B, C, _, H, W = out_pixels.shape
-#         out_pixels = out_pixels.view(B, C * 4, H, W)
-#         return torch.nn.functional.pixel_shuffle(out_pixels, 2)
+class DaubechiesDown(nn.Module):
+    """
+    2D Daubechies db4 DWT — separable convolution with reflect padding.
+
+    Applies 1D Lo_D/Hi_D filters row-wise then column-wise (stride=2 each),
+    producing four subbands: (LL, LH, HL, HH) each at (B, C, H//2, W//2).
+
+    8-tap orthonormal filters: 4 vanishing moments — better edge/texture
+    representation than Haar (1 vanishing moment); cleaner LL/detail subband
+    separation for SAR curvilinear structures (roads, building edges).
+
+    Fixed filters via register_buffer — non-trainable, same as HaarDown.
+    HaarDown is kept in the file for ablation reference but no longer instantiated.
+    _initialize_weights() skips DaubechiesDown automatically (no Conv2d/InstanceNorm2d).
+    """
+    # db4 analysis filters (PyWavelets convention, orthonormal: ||h||_2 = 1)
+    # QMF relation: HI[n] = (-1)^n * LO[N-1-n]
+    _LO = [ 0.23037781330885523,  0.71484657055254152,  0.63088076792959040,
+           -0.02798376941685985, -0.18703481171888114,  0.03084138183598697,
+            0.03288301166698295, -0.01059740178499728]
+    _HI = [-0.01059740178499728, -0.03288301166698295,  0.03084138183598697,
+            0.18703481171888114, -0.02798376941685985, -0.63088076792959040,
+            0.71484657055254152, -0.23037781330885523]
+
+    def __init__(self, in_channels: int = 1):
+        super().__init__()
+        self.register_buffer('lo', torch.tensor(self._LO, dtype=torch.float32))
+        self.register_buffer('hi', torch.tensor(self._HI, dtype=torch.float32))
+
+    def _apply_rows(self, x: torch.Tensor, filt: torch.Tensor) -> torch.Tensor:
+        """Apply 1D filter along W (columns), stride=2, reflect padding."""
+        B, C, H, W = x.shape
+        L   = filt.shape[0]           # 8 for db4
+        pad = (L - 2) // 2            # 3 samples each side
+        # 4-value pad for 4D tensor: (W_left, W_right, H_top, H_bot)
+        x   = torch.nn.functional.pad(x, (pad, pad, 0, 0), mode='reflect')
+        # Grouped conv: treat each channel independently (groups=C)
+        w   = filt.view(1, 1, 1, L).expand(C, 1, 1, L).contiguous()
+        # Reshape B×C×H×(W+2pad) → (B*H)×C×1×(W+2pad) for conv2d
+        out = torch.nn.functional.conv2d(
+            x.reshape(B * H, C, 1, W + 2 * pad),
+            w, stride=(1, 2), groups=C
+        )
+        return out.reshape(B, C, H, -1)   # B×C×H×(W//2)
+
+    def _apply_cols(self, x: torch.Tensor, filt: torch.Tensor) -> torch.Tensor:
+        """Apply 1D filter along H (rows), stride=2, reflect padding."""
+        # Transpose spatial dims, apply row filter, transpose back
+        return self._apply_rows(x.transpose(-2, -1), filt).transpose(-2, -1)
+
+    def forward(self, x: torch.Tensor):
+        lo_r = self._apply_rows(x, self.lo)    # B×C×H×(W//2)
+        hi_r = self._apply_rows(x, self.hi)
+        LL = self._apply_cols(lo_r, self.lo)   # B×C×(H//2)×(W//2)
+        LH = self._apply_cols(lo_r, self.hi)
+        HL = self._apply_cols(hi_r, self.lo)
+        HH = self._apply_cols(hi_r, self.hi)
+        return LL, LH, HL, HH
+
 
 class DWTBlock(nn.Module):
     def __init__(self, in_channels=1):
         super(DWTBlock, self).__init__()
-        self.dwt = HaarDown(in_channels=in_channels)
+        self.dwt = DaubechiesDown(in_channels=in_channels)
 
     def forward(self, x):
         ll1, lh1, hl1, hh1 = self.dwt(x)
