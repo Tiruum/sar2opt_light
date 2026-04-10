@@ -525,6 +525,39 @@ class CBAM(nn.Module):
         return x
 
 
+class FrequencyAttentionBlock(nn.Module):
+    """
+    FFNet-style learnable frequency-domain attention.
+
+    Applies a per-channel complex filter K in rfft2 space:
+        x_f = rfft2(x)
+        x_f = x_f * K          where K = weight_real + i*weight_imag
+        out = irfft2(x_f)
+
+    Initialized as identity (weight_real=1, weight_imag=0) so early training
+    is unaffected. Learns which frequency components to amplify or suppress
+    after ResBlocks have built spatial representations.
+
+    h, w must match the spatial dimensions of the forward input.
+    All three HFCFBranch streams are 64×64 after their ResBlocks — use h=64, w=64.
+
+    Not a Conv2d/InstanceNorm2d, so _initialize_weights() skips it automatically.
+    """
+    def __init__(self, channels: int, h: int, w: int):
+        super().__init__()
+        w_freq = w // 2 + 1              # rfft2 output width: 33 for w=64
+        # Identity init: K = 1 + 0j → output equals input at epoch 0
+        self.weight_real = nn.Parameter(torch.ones (1, channels, h, w_freq))
+        self.weight_imag = nn.Parameter(torch.zeros(1, channels, h, w_freq))
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        B, C, H, W = x.shape
+        x_f    = torch.fft.rfft2(x.float(), norm='ortho')
+        weight = torch.complex(self.weight_real, self.weight_imag)
+        x_f    = x_f * weight
+        return torch.fft.irfft2(x_f, s=(H, W), norm='ortho').to(x.dtype)
+
+
 class HFCFBranch(nn.Module):
     """
     Wavelet Decomposition branch с тремя независимыми потоками.
@@ -580,6 +613,13 @@ class HFCFBranch(nn.Module):
             RedBlock(hidden_dim),
         )
 
+        # --- Frequency Attention Blocks (after ResBlocks, before merge) ---
+        # All three streams output (B, hidden_dim, 64, 64) — same h=64, w=64 for all.
+        # Identity init ensures no effect at epoch 0; deviation after ep10 → HF selectivity.
+        self.fab_low  = FrequencyAttentionBlock(hidden_dim, 64, 64)
+        self.fab_mid  = FrequencyAttentionBlock(hidden_dim, 64, 64)
+        self.fab_high = FrequencyAttentionBlock(hidden_dim, 64, 64)
+
         # Слияние трёх потоков: 3×hidden_dim → hidden_dim @ W/4
         self.merge = nn.Sequential(
             nn.Conv2d(3 * hidden_dim, hidden_dim, kernel_size=1, bias=False),
@@ -602,9 +642,11 @@ class HFCFBranch(nn.Module):
         logger.debug(f'DWT shapes: g1={g1.shape}, g2={g2.shape}, g3={g3.shape}', once=True)
 
         # Три полностью независимых потока — никакого преждевременного смешения
-        ll   = self.ll_stream(self.ll_cbam(self.ll_proj(g1)))
-        mid  = self.mid_stream(self.mid_cbam(self.mid_proj(g2)))
-        high = self.high_stream(self.high_cbam(self.high_proj(g3)))  # W/2 → W/4
+        # FAB inserted after ResBlocks (before merge): frequency refinement step.
+        # CBAM position preserved (speckle suppression before computation).
+        ll   = self.fab_low (self.ll_stream  (self.ll_cbam  (self.ll_proj  (g1))))
+        mid  = self.fab_mid (self.mid_stream (self.mid_cbam (self.mid_proj (g2))))
+        high = self.fab_high(self.high_stream(self.high_cbam(self.high_proj(g3))))  # W/2 → W/4
 
         merged = self.merge(torch.cat([ll, mid, high], dim=1))
         return self.decoder(merged)
