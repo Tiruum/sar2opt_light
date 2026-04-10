@@ -40,13 +40,15 @@ ema:
 loss:
   gan_weight: 1
   fm_weight: 10
-  # L1 и FFT авто-балансируются через AdaptiveLoss (Kendall et al., 2018).
+  # L1, FOCAL_FREQ, LPIPS, MSSSIM авто-балансируются через AdaptiveLoss (Kendall et al., 2018).
   # Ручные веса не нужны — eta обучаются вместе с генератором.
-  use_lpips: true  # true → добавляет LPIPS в AdaptiveLoss третьим компонентом [L1, FOCAL_FREQ, LPIPS]
-  # cfrwd-37 additions:
-  aux_hfcf_weight_start: 0.3     # HFCF aux loss weight at epoch 0
-  aux_hfcf_weight_end: 0.1       # HFCF aux loss weight at epoch max_epochs (linear decay)
-  routing_entropy_weight: 0.005  # entropy regularization for spatial routing diversity
+  use_lpips: true   # 3rd AdaptiveLoss component
+  use_msssim: true  # 4th AdaptiveLoss component — targets SSIM gap (0.186 vs paper 0.562)
+  # cfrwd-38 fixes/additions:
+  aux_hfcf_weight_start: 0.5     # was 0.3 — stronger initial HF supervision signal
+  aux_hfcf_weight_end: 0.1       # unchanged
+  routing_balance_weight: 0.1    # replaces routing_entropy_weight: 0.005
+                                  # soft L2 formula: (w_hfcf - 0.5)^2 × weight
   hf_freq_threshold: 0.25        # HFMaskedFFTLoss: supervise freqs above 25% of Nyquist
 
 system:
@@ -64,6 +66,6 @@ system:
   summary_dir: "./output/cfrwd/summary"
   limit_train_batches: 1.0 # 0.1 for quick testing, 1.0 for full training
   limit_val_batches: 1.0 # 0.1 for quick testing, 1.0 for full validation
-  tb_version: "cfrwd-37"
+  tb_version: "cfrwd-38"
   resume_ckpt: null
   debug: false

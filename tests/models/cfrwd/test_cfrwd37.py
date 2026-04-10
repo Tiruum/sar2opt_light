@@ -53,7 +53,9 @@ def test_return_branches_gradient_flows_to_hfcf():
     """
     from src.models.cfrwd.gen import CFRWDGenerator
     gen = CFRWDGenerator(in_channels=1)
-    x = torch.randn(1, 1, 64, 64)  # small input for speed
+    # 256×256: required by FAB (cfrwd-38) whose frequency weights are fixed at
+    # the stream output resolution (64×64), derived from 256×256 → 2-level DWT → W/4.
+    x = torch.randn(1, 1, 256, 256)
     _, _, hfcf_out, _ = gen(x, return_branches=True)
     loss = hfcf_out.mean()
     loss.backward()
@@ -66,7 +68,7 @@ def test_return_branches_cfr_gradient_flows():
     """cfr_out must also have a gradient path (via shared self.final)."""
     from src.models.cfrwd.gen import CFRWDGenerator
     gen = CFRWDGenerator(in_channels=1)
-    x = torch.randn(1, 1, 64, 64)
+    x = torch.randn(1, 1, 256, 256)  # FAB requires 256×256 (see above)
     _, cfr_out, _, _ = gen(x, return_branches=True)
     loss = cfr_out.mean()
     loss.backward()
