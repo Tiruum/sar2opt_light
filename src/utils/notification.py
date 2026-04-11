@@ -28,7 +28,7 @@ def send_telegram(message="", image_path=None):
 
             # Открываем файл и отправляем фото
             with open(image_path, 'rb') as photo:
-                bot.send_photo(TELEGRAM_RECIEVER_USER_ID, photo, caption=message)
+                bot.send_document(TELEGRAM_RECIEVER_USER_ID, photo, caption=message)
 
         # Если передан только текст (без изображения)
         elif message:
