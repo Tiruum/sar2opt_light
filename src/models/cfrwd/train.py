@@ -9,6 +9,16 @@ from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning.pytorch.loggers import TensorBoardLogger, CSVLogger
 from lightning.pytorch.utilities.model_summary import ModelSummary
 
+# Патчим torch.load чтобы Lightning использовал weights_only=False для чекпоинтов
+# В PyTorch 2.6+ weights_only=True по умолчанию, что ломает загрузку
+# чекпоинтов с OmegaConf конфигами и другими объектами
+import functools
+_original_torch_load = torch.load
+@functools.wraps(_original_torch_load)
+def _patched_torch_load(*args, **kwargs):
+    kwargs['weights_only'] = False
+    return _original_torch_load(*args, **kwargs)
+torch.load = _patched_torch_load
 
 from src.models.cfrwd.main import SAR2OPTGANLightningModule
 from src.data.sen12.datamodule import SEN12Datamodule
