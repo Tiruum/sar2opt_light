@@ -2,7 +2,7 @@ from typing import Literal
 import torch.optim as optim
 from src.models.cfrwd.discriminator import CFRWDPatchDis
 from src.models.cfrwd.gen import CFRWDGenerator
-from src.models.cfrwd.losses import FeatureMatchingLoss, GANLoss, L1Loss, FFTLoss, LPIPSLoss
+from src.models.cfrwd.losses import FeatureMatchingLoss, GANLoss, L1Loss, FFTLoss, LPIPSLoss, WaveletSupervisionLoss
 import torch.nn as nn
 from functools import lru_cache
 from omegaconf import OmegaConf
@@ -43,13 +43,14 @@ def build_optimizers(netG, netD,
     optD = optim.Adam(netD.parameters(), lr=lr_d, betas=(beta1, beta2))
     return optG, optD
 
-def build_criterions(lpips_backbone=None) -> dict[Literal['GAN', 'FM', 'L1', 'FFT', 'LPIPS'], nn.Module]:
+def build_criterions(lpips_backbone=None) -> dict[Literal['GAN', 'FM', 'L1', 'FFT', 'WAVELET', 'LPIPS'], nn.Module]:
     cfg = _load_cfg()
     crits = {
-        'GAN': GANLoss(use_lsgan=True),
-        'FM':  FeatureMatchingLoss(),
-        'L1':  L1Loss(),
-        'FFT': FFTLoss(),
+        'GAN':     GANLoss(use_lsgan=True),
+        'FM':      FeatureMatchingLoss(),
+        'L1':      L1Loss(),
+        'FFT':     FFTLoss(),
+        'WAVELET': WaveletSupervisionLoss(),
     }
     if cfg.loss.get('use_lpips', False):
         if lpips_backbone is None:
