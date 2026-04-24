@@ -5,7 +5,6 @@ import os
 import torch
 import lightning.pytorch as pl
 from src.models.cfrwd.factory import build_models, build_optimizers, build_criterions, build_lr_schedulers
-from src.models.cfrwd.losses import AdaptiveLoss
 from src.utils.visualize import visualize_batch
 from torchmetrics.image import (PeakSignalNoiseRatio, StructuralSimilarityIndexMeasure,
                                 SpectralAngleMapper, LearnedPerceptualImagePatchSimilarity,
@@ -32,11 +31,6 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
         self.criterions = torch.nn.ModuleDict(
             build_criterions(lpips_backbone=self.lpips_metric.net if self.cfg.loss.get('use_lpips', False) else None)
         )
-
-        # Авто-баланс реконструктивных лоссов: [L1, FFT] или [L1, FFT, LPIPS]
-        # eta обучаются вместе с G (включены в optG через configure_optimizers).
-        _n_recon = 3 if self.cfg.loss.get('use_lpips', False) else 2
-        self.adaptive_loss = AdaptiveLoss(n_losses=_n_recon)
 
         # Веса adversarial-компонент остаются фиксированными
         self.loss_weights = {
@@ -111,7 +105,7 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
         opt_g.zero_grad(set_to_none=True)
 
         # Генерируем fake изображения заново (чтобы граф градиентов был привязан к G)
-        fake_opt, fusion_weights = self.netG(real_sar)
+        fake_opt, _, hfcf_out, fusion_weights = self.netG(real_sar, return_branches=True)
 
         d_fake, fake_feats = self.netD(torch.cat([real_sar, fake_opt], dim=1))  # Дискриминатор оценивает fake (для adversarial loss)
 
@@ -122,19 +116,16 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
         real_feats_detached = [f.detach() for f in real_feats]
         loss_fm = self.criterions["FM"](real_feats_detached, fake_feats)
 
-        # Реконструктивные лоссы: авто-балансируются через AdaptiveLoss
+        # Auxiliary supervision for HFCF branch — prevents wavelet branch atrophy
+        loss_hfcf_aux = self.criterions['L1'](hfcf_out, real_opt) * self.cfg.loss.get('hfcf_aux_weight', 1.0)
+
         loss_l1  = self.criterions['L1'](fake_opt, real_opt)
         loss_fft = self.criterions['FFT'](fake_opt, real_opt)
-        recon_losses = [loss_l1, loss_fft]
-        if 'LPIPS' in self.criterions:
-            loss_lpips = self.criterions['LPIPS'](fake_opt, real_opt)
-            recon_losses.append(loss_lpips)
-        loss_recon = self.adaptive_loss(recon_losses)
 
         g_loss = (
-            loss_gan   * self.loss_weights['gan'] +
-            loss_fm    * self.loss_weights['fm'] +
-            loss_recon
+            loss_gan      * self.loss_weights['gan'] +
+            loss_fm       * self.loss_weights['fm'] +
+            loss_hfcf_aux
         )
 
         self.manual_backward(g_loss)
@@ -148,18 +139,9 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
             'train/loss_d':   d_loss,
             'train/loss_l1':  loss_l1,
             'train/loss_fft': loss_fft,
+            'train/loss_hfcf_aux': loss_hfcf_aux,
             'feats/d_real_mean': real_means.mean(),
             'feats/d_fake_mean': fake_means.mean(),
-            # AdaptiveLoss: eta > 0 → down-weight, eta < 0 → up-weight.
-            # w = exp(-eta): эффективный множитель этого лосса.
-            'loss/eta_l1':  self.adaptive_loss.eta[0],
-            'loss/eta_fft': self.adaptive_loss.eta[1],
-            'loss/w_l1':    torch.exp(-self.adaptive_loss.eta[0]),
-            'loss/w_fft':   torch.exp(-self.adaptive_loss.eta[1]),
-            **({'train/loss_lpips': loss_lpips,
-                'loss/eta_lpips': self.adaptive_loss.eta[2],
-                'loss/w_lpips':   torch.exp(-self.adaptive_loss.eta[2]),
-               } if 'LPIPS' in self.criterions else {}),
             # Метрики вклада веток: w_hfcf → 0.5 означает равный вклад,
             # → 0.0 означает полную атрофию HFCF, → 1.0 — доминирование HFCF.
             # spatial_std > 0 означает per-region решения fusion.
@@ -221,11 +203,7 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
         pass
     
     def configure_optimizers(self):
-        # AdaptiveLoss.eta обучаются вместе с G: включаем в optG
-        optG, optD = build_optimizers(
-            self.netG, self.netD,
-            extra_g_params=self.adaptive_loss.parameters()
-        )
+        optG, optD = build_optimizers(self.netG, self.netD)
         schedG, schedD = build_lr_schedulers(optG, optD)
         return [optD, optG], [schedD, schedG]
     

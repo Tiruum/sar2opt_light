@@ -608,11 +608,11 @@ class CFRWDGenerator(nn.Module):
         super(CFRWDGenerator, self).__init__()
         self.cfr_branch = CFRBranch(in_channels=in_channels)
         self.hfcf_branch = HFCFBranch(in_channels=in_channels)
-        # Слияние на уровне 32ch feature maps: градиент лосса всегда
-        # проходит через обе ветки через общий self.final.
         self.adaptive_fusion = AdaptiveFusion(feat_channels=32)
-        # Единственный финальный декодер 32ch → 3ch для всего генератора.
-        self.final = FinalDecoderBlock(32, 3, kernel_size=7)
+        # Per-branch decoders: each branch decodes its own feature space.
+        # Fusion happens at RGB logit level so each decoder trains on its own distribution.
+        self.cfr_final = FinalDecoderBlock(32, 3, kernel_size=7)
+        self.hfcf_final = FinalDecoderBlock(32, 3, kernel_size=7)
 
         self._initialize_weights()
 
@@ -642,17 +642,15 @@ class CFRWDGenerator(nn.Module):
         cfr_feats = self.cfr_branch(x)    # B×32×H×W
         hfcf_feats = self.hfcf_branch(x)  # B×32×H×W
 
-        # Feature-level fusion: градиент идёт в обе ветки через self.final
-        fused_feats, fusion_weights = self.adaptive_fusion(cfr_feats, hfcf_feats)
-        out = torch.tanh(self.final(fused_feats))
+        _, fusion_weights = self.adaptive_fusion(cfr_feats, hfcf_feats)
+        cfr_logits  = self.cfr_final(cfr_feats)    # B×3×H×W, pre-tanh
+        hfcf_logits = self.hfcf_final(hfcf_feats)  # B×3×H×W, pre-tanh
+        out = torch.tanh(
+            fusion_weights[:, 0:1] * cfr_logits + fusion_weights[:, 1:2] * hfcf_logits
+        )
 
         if return_branches:
-            # Пропускаем ветки через общий финальный слой для визуализации.
-            # torch.no_grad() — только для диагностики, не влияет на обучение.
-            with torch.no_grad():
-                cfr_out = torch.tanh(self.final(cfr_feats))
-                hfcf_out = torch.tanh(self.final(hfcf_feats))
-            return out, cfr_out, hfcf_out, fusion_weights
+            return out, torch.tanh(cfr_logits), torch.tanh(hfcf_logits), fusion_weights
         return out, fusion_weights
 
 

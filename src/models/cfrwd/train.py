@@ -22,6 +22,7 @@ torch.load = _patched_torch_load
 
 from src.models.cfrwd.main import SAR2OPTGANLightningModule
 from src.data.sen12_full.datamodule import SEN12FullDataModule
+from src.data.sen12.datamodule import SEN12Datamodule
 from src.utils.cleanup_memory import full_cleanup, cleanup_memory
 from src.utils.callbacks import EMAWeightAveraging
 
@@ -50,19 +51,40 @@ if __name__ == "__main__":
         os.makedirs(cfg.system.profiler_dir, exist_ok=True)
 
         # 4) DataModule
-        dm = SEN12FullDataModule(
-            data_dir=cfg.data.data_dir.sen12_full,
-            batch_size=cfg.data.batch_size,
-            image_size=cfg.data.image_size,
-            num_workers=cfg.data.num_workers,
-            persistent_workers=getattr(cfg.data, "persistent_workers", False),
-            prefetch_factor=getattr(cfg.data, "prefetch_factor", 2),
-            train_val_split_ratio=cfg.data.train_val_split_ratio,
-            seed=cfg.data.seed,
-            sar_channels=cfg.data.sar_channels,
-            use_augmentation=getattr(cfg.data, "use_train_common_transform", True),
-            scenes=list(cfg.data.scenes),
-        )
+        if (cfg.data.dataset == "sen12_full"):
+            terminal_logger.info(f"Используем датасет sen12_full")
+            dm = SEN12FullDataModule(
+                data_dir=cfg.data.data_dir.sen12_full,
+                batch_size=cfg.data.batch_size,
+                image_size=cfg.data.image_size,
+                num_workers=cfg.data.num_workers,
+                persistent_workers=getattr(cfg.data, "persistent_workers", False),
+                prefetch_factor=getattr(cfg.data, "prefetch_factor", 2),
+                train_val_split_ratio=cfg.data.train_val_split_ratio,
+                seed=cfg.data.seed,
+                sar_channels=cfg.data.sar_channels,
+                use_augmentation=getattr(cfg.data, "use_train_common_transform", True),
+                scenes=list(cfg.data.scenes),
+            )
+        elif (cfg.data.dataset == "sen12"):
+            terminal_logger.info(f"Используем датасет sen12")
+            dm = SEN12Datamodule(
+                data_dir=cfg.data.data_dir.sen12,
+                batch_size=cfg.data.batch_size,
+                image_size=cfg.data.image_size,
+                num_workers=cfg.data.num_workers,
+                persistent_workers=getattr(cfg.data, "persistent_workers", False),
+                prefetch_factor=getattr(cfg.data, "prefetch_factor", 2),
+                train_val_split_ratio=cfg.data.train_val_split_ratio,
+                seed=cfg.data.seed,
+                sar_channels=cfg.data.sar_channels,
+                use_augmentation=getattr(cfg.data, "use_train_common_transform", True),
+            )
+        elif (cfg.data.dataset == "qxslab"):
+            terminal_logger.info(f"Используем датасет qxslab")
+            raise NotImplementedError("DataModule для qxslab ещё не реализован")
+        else:
+            raise ValueError(f"Неизвестный датасет: {cfg.data.dataset}")
 
         # 5) LightningModule
         model = SAR2OPTGANLightningModule(cfg)
