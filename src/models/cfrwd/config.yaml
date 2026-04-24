@@ -44,10 +44,10 @@ ema:
 loss:
   gan_weight: 1
   fm_weight: 10
-  hfcf_aux_weight: 1.0  # L1 weight on HFCF branch output — prevents wavelet branch atrophy
-  # L1 и FFT авто-балансируются через AdaptiveLoss (Kendall et al., 2018).
-  # Ручные веса не нужны — eta обучаются вместе с генератором.
-  use_lpips: false  # true → добавляет LPIPS в AdaptiveLoss третьим компонентом [L1, FFT, LPIPS]
+  cfr_aux_weight: 0.3   # L1 on CFR branch output (full-image, valid for CFR)
+  wavelet_weight: 0.5   # L1 on Haar detail subbands of HFCF output
+  use_log_preprocessing: false  # log(1+relu(x)) before DWT — worsens SEN12 |rho| (0.16→0.77), enable only for QXSLAB
+  use_lpips: false
 
 system:
   device: "cuda"
@@ -64,6 +64,6 @@ system:
   summary_dir: "./output/cfrwd/summary"
   limit_train_batches: 1.0 # 0.1 for quick testing, 1.0 for full training
   limit_val_batches: 1.0 # 0.1 for quick testing, 1.0 for full validation
-  tb_version: "cfrwd-38"
+  tb_version: "physics-1"
   resume_ckpt: null
   debug: false

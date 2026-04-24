@@ -105,7 +105,7 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
         opt_g.zero_grad(set_to_none=True)
 
         # Генерируем fake изображения заново (чтобы граф градиентов был привязан к G)
-        fake_opt, _, hfcf_out, fusion_weights = self.netG(real_sar, return_branches=True)
+        fake_opt, cfr_out, hfcf_out, w_hfcf = self.netG(real_sar, return_branches=True)
 
         d_fake, fake_feats = self.netD(torch.cat([real_sar, fake_opt], dim=1))  # Дискриминатор оценивает fake (для adversarial loss)
 
@@ -116,16 +116,12 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
         real_feats_detached = [f.detach() for f in real_feats]
         loss_fm = self.criterions["FM"](real_feats_detached, fake_feats)
 
-        # Auxiliary supervision for HFCF branch — prevents wavelet branch atrophy
-        loss_hfcf_aux = self.criterions['L1'](hfcf_out, real_opt) * self.cfg.loss.get('hfcf_aux_weight', 1.0)
-
         loss_l1  = self.criterions['L1'](fake_opt, real_opt)
         loss_fft = self.criterions['FFT'](fake_opt, real_opt)
 
         g_loss = (
-            loss_gan      * self.loss_weights['gan'] +
-            loss_fm       * self.loss_weights['fm'] +
-            loss_hfcf_aux
+            loss_gan * self.loss_weights['gan'] +
+            loss_fm  * self.loss_weights['fm']
         )
 
         self.manual_backward(g_loss)
@@ -139,14 +135,9 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
             'train/loss_d':   d_loss,
             'train/loss_l1':  loss_l1,
             'train/loss_fft': loss_fft,
-            'train/loss_hfcf_aux': loss_hfcf_aux,
             'feats/d_real_mean': real_means.mean(),
             'feats/d_fake_mean': fake_means.mean(),
-            # Метрики вклада веток: w_hfcf → 0.5 означает равный вклад,
-            # → 0.0 означает полную атрофию HFCF, → 1.0 — доминирование HFCF.
-            # spatial_std > 0 означает per-region решения fusion.
-            'fusion/w_hfcf':     fusion_weights[:, 1].mean(),
-            'fusion/spatial_std': fusion_weights[:, 1].std(dim=[1, 2]).mean(),
+            'fusion/w_hfcf': w_hfcf.squeeze(),
         }, prog_bar=False, on_step=False, on_epoch=True, batch_size=real_sar.size(0))
     
     def validation_step(self, batch, batch_idx):

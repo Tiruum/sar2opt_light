@@ -500,7 +500,7 @@ class HFCFBranch(nn.Module):
       Mid  ([LH2,HL2,HH2] W/4): HFCFPreprocess → CBAM → WDResBlock×6 (Y/B)──┤ → merge(1×1) → decoder → 3ch
       High ([LH1,HL1,HH1] W/2): HFCFPreprocess(↓) → CBAM → RedBlock×2    ──┘
     """
-    def __init__(self, in_channels=1, hidden_dim=64):
+    def __init__(self, in_channels=1, hidden_dim=64, use_log_preprocess=False):
         super(HFCFBranch, self).__init__()
         logger.debug('HFCF BRANCH INIT')
         freq_c = 3 * in_channels  # каналы cat-группы высокочастотных подполос
@@ -604,11 +604,13 @@ class AdaptiveFusion(nn.Module):
 
 
 class CFRWDGenerator(nn.Module):
-    def __init__(self, in_channels=1):
+    def __init__(self, in_channels=1, use_log_preprocess=False):
         super(CFRWDGenerator, self).__init__()
         self.cfr_branch = CFRBranch(in_channels=in_channels)
-        self.hfcf_branch = HFCFBranch(in_channels=in_channels)
-        self.adaptive_fusion = AdaptiveFusion(feat_channels=32)
+        self.hfcf_branch = HFCFBranch(in_channels=in_channels, use_log_preprocess=use_log_preprocess)
+        # Scalar learnable fusion weight: sigmoid(0) = 0.5 → equal init weighting.
+        # Replaces spatial AdaptiveFusion (spatial softmax degenerated to scalar in cfrwd-38).
+        self._fusion_logit = nn.Parameter(torch.zeros(1))
         # Per-branch decoders: each branch decodes its own feature space.
         # Fusion happens at RGB logit level so each decoder trains on its own distribution.
         self.cfr_final = FinalDecoderBlock(32, 3, kernel_size=7)
@@ -639,19 +641,20 @@ class CFRWDGenerator(nn.Module):
         logger.info("Веса инициализированы (Kaiming fan_in + Xavier/Tanh).")
 
     def forward(self, x, return_branches=False):
-        cfr_feats = self.cfr_branch(x)    # B×32×H×W
-        hfcf_feats = self.hfcf_branch(x)  # B×32×H×W
+        cfr_feats  = self.cfr_branch(x)    # B×32×H×W
+        hfcf_feats = self.hfcf_branch(x)   # B×32×H×W
 
-        _, fusion_weights = self.adaptive_fusion(cfr_feats, hfcf_feats)
-        cfr_logits  = self.cfr_final(cfr_feats)    # B×3×H×W, pre-tanh
-        hfcf_logits = self.hfcf_final(hfcf_feats)  # B×3×H×W, pre-tanh
-        out = torch.tanh(
-            fusion_weights[:, 0:1] * cfr_logits + fusion_weights[:, 1:2] * hfcf_logits
-        )
+        w_hfcf = torch.sigmoid(self._fusion_logit)  # scalar ∈ (0, 1), init=0.5
+        w_cfr  = 1.0 - w_hfcf
+        cfr_logits  = self.cfr_final(cfr_feats)     # B×3×H×W, pre-tanh
+        hfcf_logits = self.hfcf_final(hfcf_feats)   # B×3×H×W, pre-tanh
+        out = torch.tanh(w_cfr * cfr_logits + w_hfcf * hfcf_logits)
 
         if return_branches:
-            return out, torch.tanh(cfr_logits), torch.tanh(hfcf_logits), fusion_weights
-        return out, fusion_weights
+            cfr_out  = torch.tanh(cfr_logits)
+            hfcf_out = torch.tanh(hfcf_logits)
+            return out, cfr_out, hfcf_out, w_hfcf
+        return out, w_hfcf
 
 
 if __name__ == "__main__":
@@ -674,7 +677,7 @@ if __name__ == "__main__":
 
     gen = CFRWDGenerator(in_channels=1).to(device)
     with torch.no_grad():
-        out = gen(input_tensor)
+        out, w_hfcf = gen(input_tensor)
 
     plt.subplot(1, 2, 1)
     plt.imshow(input_tensor.squeeze().detach().cpu().numpy())
