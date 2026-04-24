@@ -119,9 +119,18 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
         loss_l1  = self.criterions['L1'](fake_opt, real_opt)
         loss_fft = self.criterions['FFT'](fake_opt, real_opt)
 
+        # CFR branch: full-image L1 is valid (CFR processes the complete spatial context)
+        loss_cfr_aux = self.criterions['L1'](cfr_out, real_opt) * self.cfg.loss.get('cfr_aux_weight', 0.3)
+
+        # HFCF branch: wavelet-domain L1 on 6 detail subbands — architecturally matched
+        # (HFCF discards LL2; supervising LL would penalise content it cannot model)
+        loss_wavelet = self.criterions['WAVELET'](hfcf_out, real_opt) * self.cfg.loss.get('wavelet_weight', 0.5)
+
         g_loss = (
-            loss_gan * self.loss_weights['gan'] +
-            loss_fm  * self.loss_weights['fm']
+            loss_gan     * self.loss_weights['gan'] +
+            loss_fm      * self.loss_weights['fm'] +
+            loss_cfr_aux +
+            loss_wavelet
         )
 
         self.manual_backward(g_loss)
@@ -130,14 +139,19 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
 
         self.log('train/g_loss', g_loss, prog_bar=True, on_step=False, on_epoch=True, batch_size=real_sar.size(0))
         self.log_dict({
-            'train/loss_fm':  loss_fm,
-            'train/loss_gan': loss_gan,
-            'train/loss_d':   d_loss,
-            'train/loss_l1':  loss_l1,
-            'train/loss_fft': loss_fft,
-            'feats/d_real_mean': real_means.mean(),
-            'feats/d_fake_mean': fake_means.mean(),
-            'fusion/w_hfcf': w_hfcf.squeeze(),
+            'train/loss_fm':       loss_fm,
+            'train/loss_gan':      loss_gan,
+            'train/loss_d':        d_loss,
+            'train/loss_l1':       loss_l1,
+            'train/loss_fft':      loss_fft,
+            'train/loss_cfr_aux':  loss_cfr_aux,
+            'train/loss_wavelet':  loss_wavelet,
+            'feats/d_real_mean':   real_means.mean(),
+            'feats/d_fake_mean':   fake_means.mean(),
+            'fusion/w_hfcf':       w_hfcf.squeeze(),
+            # SpeckleAwareModule gate mean activations: 1.0 = pass-through, 0.0 = full attenuation
+            'fusion/speckle_gate_mid':  self.netG.hfcf_branch._last_g2_gate_mean,
+            'fusion/speckle_gate_high': self.netG.hfcf_branch._last_g3_gate_mean,
         }, prog_bar=False, on_step=False, on_epoch=True, batch_size=real_sar.size(0))
     
     def validation_step(self, batch, batch_idx):
