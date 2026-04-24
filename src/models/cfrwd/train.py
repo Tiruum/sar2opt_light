@@ -21,7 +21,7 @@ def _patched_torch_load(*args, **kwargs):
 torch.load = _patched_torch_load
 
 from src.models.cfrwd.main import SAR2OPTGANLightningModule
-from src.data.sen12.datamodule import SEN12Datamodule
+from src.data.sen12_full.datamodule import SEN12FullDataModule
 from src.utils.cleanup_memory import full_cleanup, cleanup_memory
 from src.utils.callbacks import EMAWeightAveraging
 
@@ -50,8 +50,8 @@ if __name__ == "__main__":
         os.makedirs(cfg.system.profiler_dir, exist_ok=True)
 
         # 4) DataModule
-        dm = SEN12Datamodule(
-            data_dir=cfg.data.data_dir.sen12,
+        dm = SEN12FullDataModule(
+            data_dir=cfg.data.data_dir.sen12_full,
             batch_size=cfg.data.batch_size,
             image_size=cfg.data.image_size,
             num_workers=cfg.data.num_workers,
@@ -60,7 +60,8 @@ if __name__ == "__main__":
             train_val_split_ratio=cfg.data.train_val_split_ratio,
             seed=cfg.data.seed,
             sar_channels=cfg.data.sar_channels,
-            use_augmentation=getattr(cfg.data, "use_train_common_transform", True)
+            use_augmentation=getattr(cfg.data, "use_train_common_transform", True),
+            scenes=list(cfg.data.scenes),
         )
 
         # 5) LightningModule

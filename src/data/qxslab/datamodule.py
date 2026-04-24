@@ -1,11 +1,11 @@
-# src/data/sen12_full/datamodule.py
+# src/data/qxslab/datamodule.py
 
 import torch
 from lightning.pytorch import LightningDataModule
 from torch.utils.data import DataLoader, random_split
 from typing import Optional, List
 
-from src.data.sen12_full.dataset import SEN12Full
+from src.data.qxslab.dataset import QXSLABDataset
 from src.data.transforms import (
     get_common_transform,
     get_input_specific,
@@ -15,29 +15,23 @@ from src.data.transforms import (
 )
 
 
-class SEN12FullDataModule(LightningDataModule):
+class QXSLABDataModule(LightningDataModule):
     """
-    LightningDataModule for the SEN1-2 dataset.
+    LightningDataModule for the QXSLAB SAR-OPT dataset.
 
     Args:
-        data_dir:              Path to SEN1-2 root (contains season subdirs).
+        data_dir:              Path to QXSLAB root (contains sar_*/opt_* dirs).
         batch_size:            Batch size for train/val loaders.
-        image_size:            Resize all patches to this square size.
+        image_size:            Resize all images to this square size.
         num_workers:           DataLoader workers per loader.
         persistent_workers:    Keep workers alive between epochs.
         prefetch_factor:       Batches to prefetch per worker.
-        train_val_split_ratio: Fraction of data used for training (rest = val).
+        train_val_split_ratio: Fraction used for training.
         seed:                  RNG seed for reproducible split.
         sar_channels:          1 (grayscale) or 3.
-        use_augmentation:      Apply common geometric augmentations to train split.
-        scenes:                Scene IDs to include, e.g. ["5","45","52","84","100"].
-                               Default = paper selection (5 landscape folders from SEN1-2).
-                               Pass None to use ALL scenes in the dataset.
-        seasons:               Season folder names to include. None = all found.
+        use_augmentation:      Apply geometric augmentations to train split.
+        variants:              Variant suffixes to include. None = all found.
     """
-
-    # Paper default: suburbs(S5), dense urban(S45), farmland(S52), rivers(S84), hills(S100)
-    DEFAULT_SCENES: List[str] = ["5", "45", "52", "84", "100"]
 
     def __init__(
         self,
@@ -51,8 +45,7 @@ class SEN12FullDataModule(LightningDataModule):
         seed: int = 42,
         sar_channels: int = 1,
         use_augmentation: bool = True,
-        scenes: Optional[List[str]] = DEFAULT_SCENES,
-        seasons: Optional[List[str]] = None,
+        variants: Optional[List[str]] = None,
     ):
         super().__init__()
         self.data_dir = data_dir
@@ -64,16 +57,15 @@ class SEN12FullDataModule(LightningDataModule):
         self.train_val_split_ratio = train_val_split_ratio
         self.seed = seed
         self.sar_channels = sar_channels
-        self.scenes = scenes
-        self.seasons = seasons
+        self.variants = variants
 
-        self.train_dataset: Optional[SEN12Full] = None
-        self.val_dataset: Optional[SEN12Full] = None
+        self.train_dataset: Optional[QXSLABDataset] = None
+        self.val_dataset: Optional[QXSLABDataset] = None
 
         self.train_common_transform = get_common_transform() if use_augmentation else None
         self.val_common_transform = None
         self.resize_transform = get_resize_transform(self.image_size)
-        _stats = DATASET_NORM_STATS['sen12_full']
+        _stats = DATASET_NORM_STATS['qxslab']
         sar_mean = _stats['sar_mean'] * self.sar_channels
         sar_std = _stats['sar_std'] * self.sar_channels
         self.input_specific = get_input_specific(
@@ -87,20 +79,16 @@ class SEN12FullDataModule(LightningDataModule):
         )
 
     def setup(self, stage: Optional[str] = None):
-        # Single filesystem scan for item collection
-        full_dataset = SEN12Full(
+        full_dataset = QXSLABDataset(
             root_dir=self.data_dir,
             sar_channels=self.sar_channels,
-            seasons=self.seasons,
-            scenes=self.scenes,
+            variants=self.variants,
         )
-        all_items = full_dataset.items
-        n_total = len(all_items)
+        n_total = len(full_dataset)
         if n_total == 0:
             raise RuntimeError(
-                f"SEN12Full found 0 items in '{self.data_dir}' "
-                f"(scenes={self.scenes}, seasons={self.seasons}). "
-                "Check data_dir and scene/season names."
+                f"QXSLABDataset found 0 items in '{self.data_dir}' "
+                f"(variants={self.variants}). Check data_dir and variant names."
             )
 
         n_train = int(n_total * self.train_val_split_ratio)
@@ -109,18 +97,18 @@ class SEN12FullDataModule(LightningDataModule):
         generator = torch.Generator().manual_seed(self.seed)
         train_idx, val_idx = random_split(range(n_total), [n_train, n_val], generator=generator)
 
-        seasons_used = full_dataset.seasons
+        all_items = full_dataset.items
+        variants_used = full_dataset.variants
 
         def make_dataset(indices, common_transform):
-            return SEN12Full(
+            return QXSLABDataset(
                 root_dir=self.data_dir,
                 common_transform=common_transform,
                 input_specific=self.input_specific,
                 optical_specific=self.optical_specific,
                 resize_transform=self.resize_transform,
                 sar_channels=self.sar_channels,
-                seasons=seasons_used,
-                scenes=self.scenes,
+                variants=variants_used,
                 items=[all_items[i] for i in indices],
             )
 
@@ -128,7 +116,7 @@ class SEN12FullDataModule(LightningDataModule):
         self.val_dataset = make_dataset(val_idx.indices, self.val_common_transform)
 
         print(
-            f"[SEN12FullDataModule] scenes={sorted(self.scenes) if self.scenes else 'all'} | "
+            f"[QXSLABDataModule] variants={variants_used} | "
             f"train={len(self.train_dataset)} val={len(self.val_dataset)} "
             f"(total={n_total})"
         )
