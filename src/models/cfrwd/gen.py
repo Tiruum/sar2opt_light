@@ -548,6 +548,9 @@ class HFCFBranch(nn.Module):
         # Physics-aware speckle variance gates on detail subbands (NOT on LL2 — structural, less speckle)
         self.speckle_mid  = SpeckleAwareModule(in_channels=freq_c, kernel_size=7)
         self.speckle_high = SpeckleAwareModule(in_channels=freq_c, kernel_size=7)
+        # Initialized to None; set by forward() on every pass. Guard with `is not None` before reading.
+        self._last_g2_gate_mean = None
+        self._last_g3_gate_mean = None
 
         # --- Low-freq stream (LL2 @ W/4): структурный контекст сцены ---
         self.ll_proj   = HFCFPreprocess(in_channels, hidden_dim, downsample=False)
@@ -598,9 +601,9 @@ class HFCFBranch(nn.Module):
 
     def forward(self, x):
         if self.use_log_preprocess:
-            # log(1 + relu(x)): converts multiplicative speckle toward additive domain.
-            # Disabled for SEN12 by default — empirically worsens |rho| (0.16→0.77).
-            # Enable via config.loss.use_log_preprocessing for QXSLAB.
+            # log(1 + relu(x)): variance-stabilizing on positive linear-scale SAR intensity.
+            # NOTE: physical interpretation requires positive input — relu clips ~50% of signal
+            # on [-1,1] normalized data (SEN12). Disabled by default; enable for QXSLAB only.
             x = torch.log1p(torch.relu(x))
 
         g1, g2, g3 = self.dwt(x)  # g1=LL2 @ W/4, g2=[LH2,HL2,HH2] @ W/4, g3=[LH1,HL1,HH1] @ W/2
