@@ -50,18 +50,16 @@ def main():
     netG = netG.to(DEVICE).eval()
 
     with torch.no_grad():
-        fused, cfr_out, hfcf_out, fw = netG(sar, return_branches=True)
+        fused, cfr_out, hfcf_out, w_hfcf = netG(sar, return_branches=True)
 
-    sar_np = sar.detach().cpu().numpy()
-    opt_np = opt.detach().cpu().numpy()
+    sar_np   = sar.detach().cpu().numpy()
+    opt_np   = opt.detach().cpu().numpy()
     fused_np = fused.detach().cpu().numpy()
-    cfr_np = cfr_out.detach().cpu().numpy()
-    hfcf_np = hfcf_out.detach().cpu().numpy()
-    fw_np = fw.detach().cpu().numpy()
-
-    # fw is a scalar (1,) tensor — same value for all images in this batch
-    w_scalar = fw_np[0]  # shape () or (1,) — the single fusion weight value
-    w_val = float(w_scalar) if hasattr(w_scalar, '__float__') else float(w_scalar.item())
+    cfr_np   = cfr_out.detach().cpu().numpy()
+    hfcf_np  = hfcf_out.detach().cpu().numpy()
+    w_hfcf_val    = w_hfcf.item()
+    gate_mid_val  = netG.hfcf_branch._last_g2_gate_mean.item()
+    gate_high_val = netG.hfcf_branch._last_g3_gate_mean.item()
 
     n = len(sar)
 
@@ -97,20 +95,24 @@ def main():
         axes[4].set_title("GT optical")
         axes[4].axis('off')
 
-        # Scalar fusion weight — same for all images (learnable parameter, not per-pixel)
-        axes[5].text(0.5, 0.5, f"w_hfcf\n{w_val:.4f}", ha='center', va='center',
-                     fontsize=18, transform=axes[5].transAxes)
-        axes[5].set_title("Fusion weight (scalar)")
+        axes[5].set_facecolor('#1a1a2e')
+        axes[5].text(0.5, 0.55,
+            f"w_hfcf  = {w_hfcf_val:.3f}\n"
+            f"gate_mid  = {gate_mid_val:.3f}\n"
+            f"gate_high = {gate_high_val:.3f}",
+            ha='center', va='center', fontsize=11, color='white',
+            transform=axes[5].transAxes, family='monospace')
+        axes[5].set_title("Fusion & Speckle Gate")
         axes[5].axis('off')
 
         plt.tight_layout()
         out_path = os.path.join(OUTPUT_DIR, f"img_{i:03d}.png")
         plt.savefig(out_path, dpi=150, bbox_inches='tight')
         plt.close(fig)
-        print(f"Image {i:03d}  w_hfcf={w_val:.4f}  saved → {out_path}")
+        print(f"Image {i:03d}  w_hfcf={w_hfcf_val:.3f}  gate_mid={gate_mid_val:.3f}  gate_high={gate_high_val:.3f}  saved → {out_path}")
 
     print("━" * 40)
-    print(f"w_hfcf scalar: {w_val:.4f}  (same across all {n} images — learnable parameter)")
+    print(f"w_hfcf (scalar, learned): {w_hfcf_val:.3f}  |  gate_mid: {gate_mid_val:.3f}  gate_high: {gate_high_val:.3f}")
 
 
 if __name__ == "__main__":
