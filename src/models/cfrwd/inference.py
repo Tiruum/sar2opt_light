@@ -59,7 +59,10 @@ def main():
     hfcf_np = hfcf_out.detach().cpu().numpy()
     fw_np = fw.detach().cpu().numpy()
 
-    w_hfcf_values = []
+    # fw is a scalar (1,) tensor — same value for all images in this batch
+    w_scalar = fw_np[0]  # shape () or (1,) — the single fusion weight value
+    w_val = float(w_scalar) if hasattr(w_scalar, '__float__') else float(w_scalar.item())
+
     n = len(sar)
 
     for i in range(n):
@@ -94,28 +97,20 @@ def main():
         axes[4].set_title("GT optical")
         axes[4].axis('off')
 
-        w_hfcf = fw_np[i, 1]
-        im = axes[5].imshow(w_hfcf, cmap='viridis', vmin=0, vmax=1)
-        cbar = plt.colorbar(im, ax=axes[5])
-        mean_w = w_hfcf.mean()
-        axes[5].set_title(f"w_hfcf (mean={mean_w:.3f})")
+        # Scalar fusion weight — same for all images (learnable parameter, not per-pixel)
+        axes[5].text(0.5, 0.5, f"w_hfcf\n{w_val:.4f}", ha='center', va='center',
+                     fontsize=18, transform=axes[5].transAxes)
+        axes[5].set_title("Fusion weight (scalar)")
         axes[5].axis('off')
-
-        w_hfcf_values.append(w_hfcf)
 
         plt.tight_layout()
         out_path = os.path.join(OUTPUT_DIR, f"img_{i:03d}.png")
         plt.savefig(out_path, dpi=150, bbox_inches='tight')
         plt.close(fig)
-
-        std_w = w_hfcf.std()
-        min_w = w_hfcf.min()
-        max_w = w_hfcf.max()
-        print(f"Image {i:03d}  mean_w_hfcf={mean_w:.3f}  std={std_w:.3f}  min={min_w:.3f}  max={max_w:.3f}  saved → {out_path}")
+        print(f"Image {i:03d}  w_hfcf={w_val:.4f}  saved → {out_path}")
 
     print("━" * 40)
-    overall_mean = torch.stack([torch.tensor(w) for w in w_hfcf_values]).mean().item()
-    print(f"Overall mean_w_hfcf: {overall_mean:.3f}  (across {n} images)")
+    print(f"w_hfcf scalar: {w_val:.4f}  (same across all {n} images — learnable parameter)")
 
 
 if __name__ == "__main__":

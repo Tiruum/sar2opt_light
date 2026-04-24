@@ -503,6 +503,7 @@ class HFCFBranch(nn.Module):
     def __init__(self, in_channels=1, hidden_dim=64, use_log_preprocess=False):
         super(HFCFBranch, self).__init__()
         logger.debug('HFCF BRANCH INIT')
+        self.use_log_preprocess = use_log_preprocess
         freq_c = 3 * in_channels  # каналы cat-группы высокочастотных подполос
 
         self.dwt = DWTBlock(in_channels=in_channels)
@@ -567,6 +568,7 @@ class HFCFBranch(nn.Module):
         merged = self.merge(torch.cat([ll, mid, high], dim=1))
         return self.decoder(merged)
     
+# DEPRECATED — replaced by scalar _fusion_logit in CFRWDGenerator
 class AdaptiveFusion(nn.Module):
     """
     Пространственно-адаптивное слияние CFR и HFCF feature maps.

@@ -15,7 +15,8 @@ def _load_cfg():
 
 def build_models():
     cfg = _load_cfg()
-    netG = CFRWDGenerator(in_channels=cfg.model.gen.in_channels)
+    use_log = getattr(cfg.loss, 'use_log_preprocessing', False)
+    netG = CFRWDGenerator(in_channels=cfg.model.gen.in_channels, use_log_preprocess=use_log)
     netD = CFRWDPatchDis(in_channels=cfg.model.dis.in_channels, ndf=cfg.model.dis.ndf, return_features=True)
     return netG, netD
 
