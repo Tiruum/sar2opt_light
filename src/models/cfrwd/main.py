@@ -119,9 +119,6 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
         loss_l1  = self.criterions['L1'](fake_opt, real_opt)
         loss_fft = self.criterions['FFT'](fake_opt, real_opt)
 
-        # CFR branch: full-image L1 is valid (CFR processes the complete spatial context)
-        loss_cfr_aux = self.criterions['L1'](cfr_out, real_opt) * self.cfg.loss.get('cfr_aux_weight', 0.3)
-
         # HFCF branch: wavelet-domain L1 on 6 detail subbands — architecturally matched
         # (HFCF discards LL2; supervising LL would penalise content it cannot model)
         loss_wavelet = self.criterions['WAVELET'](hfcf_out, real_opt) * self.cfg.loss.get('wavelet_weight', 0.5)
@@ -129,7 +126,6 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
         g_loss = (
             loss_gan     * self.loss_weights['gan'] +
             loss_fm      * self.loss_weights['fm'] +
-            loss_cfr_aux +
             loss_wavelet
         )
 
@@ -144,7 +140,6 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
             'train/loss_d':        d_loss,
             'train/loss_l1':       loss_l1,
             'train/loss_fft':      loss_fft,
-            'train/loss_cfr_aux':  loss_cfr_aux,
             'train/loss_wavelet':  loss_wavelet,
             'feats/d_real_mean':   real_means.mean(),
             'feats/d_fake_mean':   fake_means.mean(),

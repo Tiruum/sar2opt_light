@@ -44,7 +44,6 @@ ema:
 loss:
   gan_weight: 1
   fm_weight: 10
-  cfr_aux_weight: 0.3   # L1 on CFR branch output (full-image, valid for CFR)
   wavelet_weight: 0.5   # L1 on Haar detail subbands of HFCF output
   use_log_preprocessing: false  # log(1+relu(x)) before DWT — worsens SEN12 |rho| (0.16→0.77), enable only for QXSLAB
   use_lpips: false
