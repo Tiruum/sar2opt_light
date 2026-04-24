@@ -2,6 +2,7 @@
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import typing
 
 class GANLoss(nn.Module):
@@ -144,3 +145,45 @@ class LPIPSLoss(nn.Module):
     def forward(self, pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
         # float32: AlexNet can be numerically unstable in bf16 for small activations
         return self.net(pred.float(), target.float()).mean()
+
+
+class WaveletSupervisionLoss(nn.Module):
+    """
+    Wavelet-domain L1 supervision for the HFCF branch output.
+
+    Computes 2-level Haar DWT of pred and target, then L1 on all 6 detail
+    subbands (LH1, HL1, HH1, LH2, HL2, HH2). LL subbands are excluded:
+    the HFCF branch discards LL2 in its own DWT, so supervising LL would
+    penalise content the branch cannot model from its inputs.
+
+    Architecturally matched: HFCF processes wavelet coefficients → supervise
+    its output in the same domain. Unlike full-image L1, this does not force
+    the HF-only branch to reconstruct LF structure.
+
+    Input: B×3×H×W tensors in [-1, 1] (tanh output range).
+    """
+    def __init__(self):
+        super().__init__()
+        # HaarDown uses register_buffer — auto-moved with .to(device).
+        # in_channels arg is unused in forward computation (works for any C).
+        from src.models.cfrwd.gen import HaarDown
+        self._haar = HaarDown(in_channels=1)
+
+    def forward(self, pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+        # float32: avoid bf16 precision loss in DWT (same rationale as FFTLoss)
+        p = pred.float()
+        t = target.float()
+
+        # Level-1 decomposition
+        ll1_p, lh1_p, hl1_p, hh1_p = self._haar(p)
+        ll1_t, lh1_t, hl1_t, hh1_t = self._haar(t)
+
+        # Level-2 decomposition on LL1
+        _, lh2_p, hl2_p, hh2_p = self._haar(ll1_p)
+        _, lh2_t, hl2_t, hh2_t = self._haar(ll1_t)
+
+        # Mean L1 across all 6 detail subbands (equal weighting, no LL)
+        return (
+            F.l1_loss(lh1_p, lh1_t) + F.l1_loss(hl1_p, hl1_t) + F.l1_loss(hh1_p, hh1_t) +
+            F.l1_loss(lh2_p, lh2_t) + F.l1_loss(hl2_p, hl2_t) + F.l1_loss(hh2_p, hh2_t)
+        ) / 6.0
