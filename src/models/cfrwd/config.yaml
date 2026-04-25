@@ -33,7 +33,7 @@ optimizer:
   beta2: 0.999
 
 scheduler:
-  eta_min: 0
+  eta_min: 1.0e-6
   linear_decay_epochs: 200 # Пропорционально max_epochs: последние 50% (=400/800)
 
 ema:
@@ -44,7 +44,7 @@ ema:
 loss:
   gan_weight: 1
   fm_weight: 10
-  wavelet_weight: 0.5   # L1 on Haar detail subbands of HFCF output
+  wavelet_weight: 1.0   # L1 on Haar detail subbands of HFCF output
   use_log_preprocessing: false  # log(1+relu(x)) before DWT — worsens SEN12 |rho| (0.16→0.77), enable only for QXSLAB
   use_lpips: false
 

@@ -18,17 +18,15 @@ def get_common_transform():
     """
     Geometric augmentations for training.
     Applied synchronously to SAR and optical images.
+
+    SAR geometry note: Sentinel-1 GRD is geocoded North-up. Horizontal flip
+    mirrors the scene left-right (valid: equivalent to descending vs ascending
+    geometry). VerticalFlip and RandomRotate90 removed — they reverse azimuth
+    direction or change look-direction orientation, producing shadow/layover
+    patterns inconsistent with the paired optical image.
     """
     return A.Compose([
         A.HorizontalFlip(p=0.5),
-        A.VerticalFlip(p=0.5),
-        A.RandomRotate90(p=0.5),
-        # A.Affine(
-        #     scale=(0.9, 1.1),
-        #     translate_percent=(-0.1, 0.1),
-        #     border_mode=cv2.BORDER_REFLECT_101,
-        #     p=0.7
-        # ),
     ], additional_targets={
         'optical': 'image'
     })
