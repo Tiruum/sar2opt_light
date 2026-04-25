@@ -64,6 +64,6 @@ system:
   summary_dir: "./output/cfrwd/summary"
   limit_train_batches: 1.0
   limit_val_batches: 1.0
-  tb_version: "physics-3"
-  resume_ckpt: "./checkpoints/cfrwd/physics-1/last.ckpt"
+  tb_version: "physics-4"
+  resume_ckpt: "./checkpoints/cfrwd/physics-1/epoch=093-psnr=13.5781.ckpt"
   debug: false

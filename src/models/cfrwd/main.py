@@ -7,8 +7,9 @@ import lightning.pytorch as pl
 from src.models.cfrwd.factory import build_models, build_optimizers, build_criterions, build_lr_schedulers
 from src.utils.visualize import visualize_batch
 from torchmetrics.image import (PeakSignalNoiseRatio, StructuralSimilarityIndexMeasure,
-                                SpectralAngleMapper, LearnedPerceptualImagePatchSimilarity,
-                                ErrorRelativeGlobalDimensionlessSynthesis)
+                                LearnedPerceptualImagePatchSimilarity)
+from torchmetrics.functional.image import (spectral_angle_mapper,
+                                           error_relative_global_dimensionless_synthesis)
 from omegaconf import OmegaConf
 from src.utils.notification import send_telegram, generate_tg_message
 from src.utils.cleanup_memory import cleanup_memory
@@ -41,9 +42,10 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
 
         self.psnr  = PeakSignalNoiseRatio(data_range=2.0)
         self.ssim  = StructuralSimilarityIndexMeasure(data_range=2.0)
-        self.sam   = SpectralAngleMapper()
-        # ratio=1: SAR и OPT у нас одного пространственного разрешения (Sentinel-1/2, 10 м)
-        self.ergas = ErrorRelativeGlobalDimensionlessSynthesis(ratio=1)
+        # SAM and ERGAS accumulate full B×C×H×W tensor lists in torchmetrics state → VRAM doubles
+        # at epoch end when compute() processes all of them. Use per-batch functional form instead.
+        self._val_sam_sum = 0.0;   self._val_sam_n = 0
+        self._val_ergas_sum = 0.0; self._val_ergas_n = 0
         
         self.fixed_sar = None
         self.fixed_opt = None
@@ -175,26 +177,33 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
         # Shift [-1,1] → [0,1] for these two metrics only.
         fake_01 = (fake_opt_f32 + 1.0) * 0.5
         real_01 = (real_opt_f32 + 1.0) * 0.5
-        self.sam.update(fake_01, real_01)
-        self.ergas.update(fake_01, real_01)
+        b = fake_01.size(0)
+
+        sam_b = spectral_angle_mapper(fake_01, real_01)
+        if not torch.isnan(sam_b):
+            self._val_sam_sum += sam_b.item() * b
+            self._val_sam_n += b
+
+        # ratio=1: SAR и OPT одного пространственного разрешения (Sentinel-1/2, 10 м)
+        ergas_b = error_relative_global_dimensionless_synthesis(fake_01, real_01, ratio=1)
+        if torch.isfinite(ergas_b):
+            self._val_ergas_sum += ergas_b.item() * b
+            self._val_ergas_n += b
 
     def on_validation_epoch_end(self):
         # Правильный паттерн torchmetrics + Lightning:
-        # compute() вызывается один раз за эпоху (а не 640 раз),
-        # reset() освобождает GPU-тензоры SpectralAngleMapper и SSIM после каждой эпохи.
+        # compute() вызывается один раз за эпоху, reset() освобождает GPU-тензоры.
         self.log('val/psnr',  self.psnr.compute(),          prog_bar=True)
         self.log('val/ssim',  self.ssim.compute(),          prog_bar=True)
         self.log('val/lpips', self.lpips_metric.compute(),   prog_bar=True)
-        ergas_val = self.ergas.compute()
-        if torch.isfinite(ergas_val):
-            self.log('val/ergas', ergas_val, prog_bar=False)
-        sam_val = self.sam.compute()
-        if not torch.isnan(sam_val):
-            self.log('val/sam', sam_val, prog_bar=False)
+        if self._val_ergas_n > 0:
+            self.log('val/ergas', self._val_ergas_sum / self._val_ergas_n, prog_bar=False)
+        if self._val_sam_n > 0:
+            self.log('val/sam', self._val_sam_sum / self._val_sam_n, prog_bar=False)
+        self._val_sam_sum = 0.0;   self._val_sam_n = 0
+        self._val_ergas_sum = 0.0; self._val_ergas_n = 0
         self.psnr.reset()
         self.ssim.reset()
-        self.sam.reset()
-        self.ergas.reset()
         self.lpips_metric.reset()
         # Возвращаем PyTorch-кэш CUDA обратно драйверу после каждой val-эпохи.
         # Без этого caching allocator накапливает freed-блоки → Windows видит 16 ГБ занято.
