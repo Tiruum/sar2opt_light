@@ -38,6 +38,7 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
             'gan': self.cfg.loss.gan_weight,
             'fm': self.cfg.loss.fm_weight,
             'l1': self.cfg.loss.get('l1_weight', 0.0),
+            'fft': self.cfg.loss.get('fft_weight', 0.0),
         }
 
         self.psnr  = PeakSignalNoiseRatio(data_range=2.0)
@@ -130,6 +131,7 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
             loss_gan     * self.loss_weights['gan'] +
             loss_fm      * self.loss_weights['fm'] +
             loss_l1      * self.loss_weights['l1'] +
+            loss_fft     * self.loss_weights['fft'] +
             loss_wavelet
         )
 
@@ -186,7 +188,7 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
 
         # ratio=1: SAR и OPT одного пространственного разрешения (Sentinel-1/2, 10 м)
         ergas_b = error_relative_global_dimensionless_synthesis(fake_01, real_01, ratio=1)
-        if torch.isfinite(ergas_b):
+        if torch.isfinite(ergas_b) and ergas_b.item() < 1000:
             self._val_ergas_sum += ergas_b.item() * b
             self._val_ergas_n += b
 
