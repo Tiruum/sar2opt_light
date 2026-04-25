@@ -152,13 +152,17 @@ class WaveletSupervisionLoss(nn.Module):
     Wavelet-domain L1 supervision for the HFCF branch output.
 
     Computes 2-level Haar DWT of pred and target, then L1 on all 6 detail
-    subbands (LH1, HL1, HH1, LH2, HL2, HH2). LL subbands are excluded:
-    the HFCF branch discards LL2 in its own DWT, so supervising LL would
-    penalise content the branch cannot model from its inputs.
+    subbands (LH1, HL1, HH1, LH2, HL2, HH2) plus a DC anchor term on LL1.
 
-    Architecturally matched: HFCF processes wavelet coefficients → supervise
-    its output in the same domain. Unlike full-image L1, this does not force
-    the HF-only branch to reconstruct LF structure.
+    Detail subbands (equal weight, averaged): architecturally matched to the
+    HFCF branch which processes wavelet coefficients.
+
+    LL1 anchor (0.1× weight): Haar detail subbands are zero-mean by construction,
+    so detail-only supervision places zero gradient on the DC component of the
+    branch output. Without this anchor the DC drifts freely — in practice it
+    collapses to large negative values (tanh → -1 → black output visible at
+    epoch 100). The HFCF branch discards LL2 in its own internal DWT, but its
+    decoder output still has a DC component that must be constrained.
 
     Input: B×3×H×W tensors in [-1, 1] (tanh output range).
     """
@@ -182,8 +186,11 @@ class WaveletSupervisionLoss(nn.Module):
         _, lh2_p, hl2_p, hh2_p = self._haar(ll1_p)
         _, lh2_t, hl2_t, hh2_t = self._haar(ll1_t)
 
-        # Mean L1 across all 6 detail subbands (equal weighting, no LL)
-        return (
+        detail = (
             F.l1_loss(lh1_p, lh1_t) + F.l1_loss(hl1_p, hl1_t) + F.l1_loss(hh1_p, hh1_t) +
             F.l1_loss(lh2_p, lh2_t) + F.l1_loss(hl2_p, hl2_t) + F.l1_loss(hh2_p, hh2_t)
         ) / 6.0
+        # LL1 at reduced weight: anchors DC so the branch cannot collapse to a
+        # constant dark value. Detail subbands are zero-mean → zero gradient on DC.
+        ll_anchor = F.l1_loss(ll1_p, ll1_t)
+        return detail + 0.1 * ll_anchor
