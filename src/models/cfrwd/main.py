@@ -38,7 +38,7 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
             'gan': self.cfg.loss.gan_weight,
             'fm': self.cfg.loss.fm_weight,
             'l1': self.cfg.loss.get('l1_weight', 0.0),
-            'fft': self.cfg.loss.get('fft_weight', 0.0),
+            'fft': self.cfg.loss.fft_weight,
         }
 
         self.psnr  = PeakSignalNoiseRatio(data_range=2.0)
