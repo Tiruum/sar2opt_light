@@ -43,7 +43,8 @@ ema:
 
 loss:
   gan_weight: 1
-  fm_weight: 10
+  fm_weight: 5
+  l1_weight: 0.5
   wavelet_weight: 1.0   # L1 on Haar detail subbands of HFCF output
   use_log_preprocessing: false  # log(1+relu(x)) before DWT — worsens SEN12 |rho| (0.16→0.77), enable only for QXSLAB
   use_lpips: false
@@ -63,6 +64,6 @@ system:
   summary_dir: "./output/cfrwd/summary"
   limit_train_batches: 1.0
   limit_val_batches: 1.0
-  tb_version: "physics-1"
-  resume_ckpt: null
+  tb_version: "physics-2"
+  resume_ckpt: "./checkpoints/cfrwd/physics-1/last.ckpt"
   debug: false

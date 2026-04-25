@@ -36,6 +36,7 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
         self.loss_weights = {
             'gan': self.cfg.loss.gan_weight,
             'fm': self.cfg.loss.fm_weight,
+            'l1': self.cfg.loss.get('l1_weight', 0.0),
         }
 
         self.psnr  = PeakSignalNoiseRatio(data_range=2.0)
@@ -126,6 +127,7 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
         g_loss = (
             loss_gan     * self.loss_weights['gan'] +
             loss_fm      * self.loss_weights['fm'] +
+            loss_l1      * self.loss_weights['l1'] +
             loss_wavelet
         )
 
