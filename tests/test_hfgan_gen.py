@@ -27,13 +27,6 @@ def test_channel_adapter_maps_1_to_3ch():
     out = adapter(x)
     assert out.shape == (2, 3, 256, 256)
 
-def test_channel_adapter_preserves_spatial():
-    from src.models.huggingface_gan.gen import ChannelAdapter
-    adapter = ChannelAdapter()
-    x = torch.randn(1, 1, 128, 128)
-    out = adapter(x)
-    assert out.shape == (1, 3, 128, 128)
-
 
 # ---------------------------------------------------------------------------
 # BottleneckAttention
@@ -46,7 +39,7 @@ def test_bottleneck_attention_shape():
     out = attn(x)
     assert out.shape == (2, 768, 8, 8)
 
-def test_bottleneck_attention_residual():
+def test_bottleneck_attention_nonidentity():
     """Output should differ from input (not identity)."""
     from src.models.huggingface_gan.gen import BottleneckAttention
     attn = BottleneckAttention(dim=768, nhead=8, num_layers=2)

@@ -54,11 +54,11 @@ class ConvUpsampleBlock(nn.Module):
         self.conv = nn.Sequential(
             nn.ReflectionPad2d(1),
             nn.Conv2d(in_ch,  out_ch, 3, bias=False),
-            nn.GroupNorm(8, out_ch),
+            nn.GroupNorm(min(out_ch // 4, 8), out_ch),
             nn.GELU(),
             nn.ReflectionPad2d(1),
             nn.Conv2d(out_ch, out_ch, 3, bias=False),
-            nn.GroupNorm(8, out_ch),
+            nn.GroupNorm(min(out_ch // 4, 8), out_ch),
             nn.GELU(),
         )
         self.shortcut = nn.Conv2d(in_ch, out_ch, 1, bias=False)
