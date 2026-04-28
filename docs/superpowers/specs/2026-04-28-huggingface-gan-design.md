@@ -384,13 +384,42 @@ system:
 
 ---
 
+## factory.py Interface
+
+`factory.py` is the single wiring point — `main.py` calls nothing else at construction time.
+
+```python
+def build_models(cfg) -> tuple[HFGenerator, HFGANDiscriminator]:
+    netG = HFGenerator(cfg)
+    netD = HFGANDiscriminator(in_ch=cfg.model.dis.in_channels, ndf=cfg.model.dis.ndf)
+    return netG, netD
+
+def build_criterions(cfg) -> dict[str, nn.Module]:
+    losses = {
+        'gan': GANLoss(),
+        'fm':  FeatureMatchingLoss(),
+    }
+    if cfg.loss.fft_weight > 0:
+        losses['fft'] = FFTLoss()
+    if cfg.loss.perceptual_weight > 0:
+        losses['perceptual'] = PerceptualLoss(cfg.model.gen.backbone)
+    return losses
+
+def build_optimizers(cfg, netG, netD) -> tuple[AdamW, Adam]: ...
+def build_lr_schedulers(cfg, opt_g, opt_d) -> tuple[LRScheduler, LRScheduler]: ...
+```
+
+Conditional instantiation is critical: `PerceptualLoss` loads a frozen 28M-param backbone — it must not be created when `perceptual_weight: 0.0`. Same for `FFTLoss` (cheaper, but keeps the dict clean).
+
+---
+
 ## Key Constraints & Gotchas
 
 1. **GroupNorm, not InstanceNorm** — project audit documented InstanceNorm causes feature amplitude suppression in this codebase.
 2. **`pixel_values=x`** — AutoBackbone forward uses keyword arg `pixel_values`, not positional.
-3. **Perceptual loss VRAM** — frozen backbone adds ~28M params in memory. Disable via `perceptual_weight: 0.0` if GPU is tight.
+3. **Conditional loss instantiation** — `FFTLoss` and `PerceptualLoss` must only be created in `factory.py` when their config weight is `> 0`. Multiplying by zero is not enough — `PerceptualLoss` loads a 28M frozen backbone even if its output is zeroed.
 4. **PerceptualLoss renormalization** — input is [-1,1]; backbone expects ImageNet normalization. The `_norm()` method handles this.
-5. **Differential LR** — encoder at 0.1× base LR. Do not set a single flat LR for the generator or pretrained weights drift immediately.
+5. **Differential LR** — encoder at 0.1× base LR. Do not use a single flat LR for the generator or pretrained weights drift immediately.
 6. **bias=False with norm layers** — throughout generator (norm absorbs bias).
 7. **No norm in discriminator** — spectral norm + LeakyReLU only; additional norm causes instability.
 8. **Real feats reuse** — `real_feats` captured in D step, detached and reused in G step. Avoids a redundant D forward pass on real images.
