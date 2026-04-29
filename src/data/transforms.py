@@ -35,8 +35,7 @@ def get_input_specific(sar_channels=1, sar_mean=None, sar_std=None):
     mean = sar_mean if sar_mean is not None else [0.5] * sar_channels
     std = sar_std if sar_std is not None else [0.5] * sar_channels
     return A.Compose([
-        A.MultiplicativeNoise(multiplier=(0.8, 1.2), per_channel=False, p=0.4),
-        A.GaussNoise(std_range=(0.009, 0.015), p=0.2),
+        A.MultiplicativeNoise(multiplier=(0.1, 1.1), per_channel=False, p=0.3),
         A.Normalize(mean=mean, std=std, max_pixel_value=255.0),
         ToTensorV2()
     ])
@@ -45,9 +44,7 @@ def get_optical_specific(opt_mean=None, opt_std=None):
     mean = opt_mean if opt_mean is not None else [0.5, 0.5, 0.5]
     std = opt_std if opt_std is not None else [0.5, 0.5, 0.5]
     return A.Compose([
-        A.RandomBrightnessContrast(brightness_limit=0.2, contrast_limit=0.2, p=0.5),
-        A.HueSaturationValue(hue_shift_limit=15, sat_shift_limit=25, val_shift_limit=0, p=0.5),
-        A.RandomGamma(gamma_limit=(80, 120), p=0.3),
+        # A.RandomBrightnessContrast(brightness_limit=0.2, contrast_limit=0.2, p=0.5),
         A.Normalize(mean=mean, std=std, max_pixel_value=255.0),
         ToTensorV2()
     ])

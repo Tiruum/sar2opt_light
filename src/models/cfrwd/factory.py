@@ -39,8 +39,8 @@ def build_optimizers(netG, netD,
     g_params = list(netG.parameters())
     if extra_g_params is not None:
         g_params += list(extra_g_params)
-    optG = optim.Adam(g_params, lr=lr_g, betas=(beta1, beta2))
-    optD = optim.Adam(netD.parameters(), lr=lr_d, betas=(beta1, beta2))
+    optG = optim.AdamW(g_params, lr=lr_g, betas=(beta1, beta2))
+    optD = optim.AdamW(netD.parameters(), lr=lr_d, betas=(beta1, beta2))
     return optG, optD
 
 def build_criterions(lpips_backbone=None) -> dict[Literal['GAN', 'FM', 'L1', 'FFT', 'WAVELET', 'LPIPS'], nn.Module]:
