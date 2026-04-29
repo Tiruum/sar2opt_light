@@ -1,6 +1,13 @@
 # Changelog
 Этот файл призван структурировать и упростить понимание коммитов и запусков, кодируя их букво-численной аббревиатурой.
 
+## hfgan-1 (2026-04-29)
+Architecture: ConvNeXtV2-Tiny encoder + bottleneck attention (2-layer Pre-LN, 64 tokens) + U-Net decoder (5 up-blocks, GroupNorm)
+Discriminator: Two-scale spectral-norm PatchGAN
+Losses: LSGAN + FM (5.0) + optional FFT (1.0) + optional Perceptual (0.1)
+Optimizer: AdamW for G (encoder 2e-5 / decoder 2e-4, weight_decay=0.01), Adam for D (2e-4)
+Status: ready to train
+
 ## Журнал экспериментов (TensorBoard Runs)
 Здесь фиксируются цели, параметры и результаты каждого запуска для отслеживания в TensorBoard.
 
