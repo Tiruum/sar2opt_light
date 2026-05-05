@@ -17,7 +17,7 @@ data:
 model:
   gen:
     backbone:          "facebook/convnextv2-tiny-22k-224"
-    out_indices:       [0, 1, 2, 3]
+    out_indices:       [1, 2, 3, 4]
     bottleneck_dim:    768
     bottleneck_heads:  8
     bottleneck_layers: 2
@@ -35,7 +35,7 @@ optimizer:
 
 scheduler:
   eta_min:             1.0e-6
-  linear_decay_epochs: 200
+  linear_decay_epochs: 400
 
 ema:
   use_ema:     true
@@ -54,12 +54,12 @@ system:
   deterministic: false
   benchmark:     false
   compile:       false
-  max_epochs:    400
+  max_epochs:    800
   image_freq:    10
   limit_train_batches: 1.0
   limit_val_batches:   1.0
   tb_version:    "hfgan-1"
-  resume_ckpt:   null
+  resume_ckpt:   "checkpoints/huggingface-gan/last.ckpt"
   debug:         false
   checkpoints_dir: "checkpoints/huggingface-gan"
   output_dir:      "./output/huggingface-gan"

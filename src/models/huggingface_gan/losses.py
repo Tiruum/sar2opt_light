@@ -70,8 +70,10 @@ class FFTLoss(nn.Module):
         Returns:
             L1 loss in frequency domain
         """
-        pred_mag   = torch.log1p(torch.abs(torch.fft.rfft2(pred,   norm='ortho')))
-        target_mag = torch.log1p(torch.abs(torch.fft.rfft2(target, norm='ortho')))
+        pred_f32 = pred.to(torch.float32)
+        target_f32 = target.to(torch.float32)
+        pred_mag   = torch.log1p(torch.abs(torch.fft.rfft2(pred_f32,   norm='ortho')))
+        target_mag = torch.log1p(torch.abs(torch.fft.rfft2(target_f32, norm='ortho')))
         return F.l1_loss(pred_mag, target_mag)
 
 

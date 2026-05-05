@@ -24,7 +24,7 @@ class SAR2OPTLightningModule(pl.LightningModule):
         return [opt_d, opt_g]
 
     def training_step(self, batch, batch_idx):
-        sar, opt     = batch['sar'], batch['optical']
+        sar, opt     = batch
         opt_d, opt_g = self.optimizers()
         loss_cfg     = self.cfg.loss
 
@@ -59,7 +59,7 @@ class SAR2OPTLightningModule(pl.LightningModule):
                       prog_bar=True, on_step=True, on_epoch=False)
 
     def validation_step(self, batch, batch_idx):
-        sar, opt = batch['sar'], batch['optical']
+        sar, opt = batch
         with torch.no_grad():
             fake = self.netG(sar)
         self.psnr.update(fake, opt)

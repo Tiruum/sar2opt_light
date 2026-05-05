@@ -27,7 +27,19 @@ CONFIG_PATH = 'src/models/huggingface_gan/config.yaml'
 def main():
     cfg = OmegaConf.load(CONFIG_PATH)
 
-    dm    = SEN12FullDataModule(cfg)
+    dm = SEN12FullDataModule(
+        data_dir=cfg.data.data_dir.sen12_full,
+        batch_size=cfg.data.batch_size,
+        image_size=cfg.data.image_size,
+        num_workers=cfg.data.num_workers,
+        persistent_workers=cfg.data.persistent_workers,
+        prefetch_factor=cfg.data.prefetch_factor,
+        train_val_split_ratio=cfg.data.train_val_split_ratio,
+        seed=cfg.data.seed,
+        sar_channels=cfg.data.sar_channels,
+        use_augmentation=cfg.data.use_train_common_transform,
+        scenes=list(cfg.data.scenes),
+    )
     model = SAR2OPTLightningModule(cfg)
 
     checkpoints = ModelCheckpoint(
