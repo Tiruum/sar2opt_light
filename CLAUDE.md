@@ -133,7 +133,7 @@ Log every experiment in `changelog.md` with the run ID, changes, and results. Th
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **sar2opt_light** (397 symbols, 1022 relationships, 30 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **sar2opt_light** (803 symbols, 1869 relationships, 61 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 

@@ -35,7 +35,7 @@ optimizer:
 
 scheduler:
   eta_min:             1.0e-6
-  linear_decay_epochs: 400
+  linear_decay_epochs: 0
 
 ema:
   use_ema:     true
@@ -44,8 +44,8 @@ ema:
 
 loss:
   gan_weight:        1.0
-  fm_weight:         5.0
-  fft_weight:        1.0
+  fm_weight:         10.0
+  fft_weight:        0.0
   perceptual_weight: 0.1
 
 system:
@@ -54,12 +54,13 @@ system:
   deterministic: false
   benchmark:     false
   compile:       false
-  max_epochs:    800
+  max_epochs:    200
   image_freq:    10
   limit_train_batches: 1.0
   limit_val_batches:   1.0
-  tb_version:    "hfgan-1"
-  resume_ckpt:   "checkpoints/huggingface-gan/last.ckpt"
+  tb_version:    "hfgan-2"
+  weights_ckpt:  "checkpoints\\huggingface-gan\\hfgan-2\\epoch=159-psnr=18.2635.ckpt"
+  resume_ckpt:   null
   debug:         false
   checkpoints_dir: "checkpoints/huggingface-gan"
   output_dir:      "./output/huggingface-gan"

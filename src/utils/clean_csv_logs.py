@@ -105,7 +105,7 @@ def analyze(exp_name, df):
 
 
 if __name__ == '__main__':
-    experiments = ['cfrwd-38']
+    experiments = ['physics-5']
 
     for exp in experiments:
         print(f"\n{'='*60}")

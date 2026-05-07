@@ -10,7 +10,7 @@ from torchmetrics.image import PeakSignalNoiseRatio, StructuralSimilarityIndexMe
 
 # Architecture changed (separate per-branch decoders) — incompatible with cfrwd-36 checkpoint.
 # Update this path after retraining with the new architecture.
-CHECKPOINT = "checkpoints/huggingface-gan/last.ckpt"
+CHECKPOINT = "checkpoints\\huggingface-gan\\hfgan-2\\epoch=159-psnr=18.2635.ckpt"
 N_IMAGES = 8
 SPLIT = "val" # "train" or "val"
 OUTPUT_DIR = f"./src/models/huggingface_gan/output/{SPLIT}"

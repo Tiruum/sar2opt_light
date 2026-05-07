@@ -1,9 +1,51 @@
-from typing import Literal
+from collections import defaultdict
+from typing import Literal, Optional
+import random
 import torch
-import matplotlib.pyplot as plt
 import torchvision.transforms.functional as TF
-import matplotlib.gridspec as gridspec
 from torchvision.utils import save_image
+
+
+def pin_diverse_batch(datamodule, n_per_class: int = 2, device='cpu', seed: Optional[int] = 42):
+    """
+    Sample n_per_class items from each SEN12 class for a reproducibly diverse
+    epoch-end visualisation batch.  Replaces the alphabetical next(iter()) bias
+    that caused physics-10 to show only agri/roads in every epoch image.
+
+    Args:
+        datamodule: SEN12Datamodule (must have called setup('fit') first)
+        n_per_class: how many samples to draw from each class
+        device: target device for the returned tensors
+        seed: fixed RNG seed for reproducibility across calls
+
+    Returns:
+        (sar, opt)  each [N_total, C, H, W] on `device`
+    """
+    dataset = datamodule.train_dataset
+    by_class = defaultdict(list)
+    for idx, item in enumerate(dataset.items):
+        # SEN12: (class, s1_file, s2_file) — 3-tuple
+        # SEN12Full: (season, s1_dir, s2_dir, s1_fname, s2_fname) — 5-tuple
+        key = item[0] if len(item) == 3 else item[1]
+        by_class[key].append(idx)
+
+    rng = random.Random(seed)
+    selected = []
+    for cls in sorted(by_class.keys()):
+        pool = by_class[cls]
+        chosen = rng.sample(pool, min(n_per_class, len(pool)))
+        selected.extend(chosen)
+
+    sar_list, opt_list = [], []
+    for idx in selected:
+        sar, opt = dataset[idx]
+        sar_list.append(sar)
+        opt_list.append(opt)
+
+    return (
+        torch.stack(sar_list).to(device),
+        torch.stack(opt_list).to(device),
+    )
 
 def visualize_batch(
     real_sar, fake_optical, real_optical,
@@ -12,6 +54,9 @@ def visualize_batch(
     title: str = None,
     cfr_out=None, hfcf_out=None, fusion_weight=None
 ):
+    import matplotlib.pyplot as plt
+    import matplotlib.gridspec as gridspec
+
     batch_size = min(real_sar.size(0), max_rows)
 
     if mode == 'quality':
@@ -26,11 +71,15 @@ def visualize_batch(
         all_diffs = torch.stack(diff_maps)
         vmin, vmax = all_diffs.min().item(), all_diffs.max().item()
 
-        # Если переданы промежуточные выходы, добавляем 2 колонки
-        show_branches = cfr_out is not None and hfcf_out is not None
-        num_cols = 7 if show_branches else 5
-        width_ratios = [1, 1, 1, 1, 1, 1, 0.05] if show_branches else [1, 1, 1, 1, 0.05]
-        fig_width = 12 if show_branches else 8
+        # Если переданы промежуточные выходы, добавляем колонки (обе ветки или только CFR)
+        show_both     = cfr_out is not None and hfcf_out is not None
+        show_cfr_only = cfr_out is not None and hfcf_out is None
+        show_branches = show_both or show_cfr_only
+        num_cols      = 7 if show_both else 6 if show_cfr_only else 5
+        width_ratios  = ([1, 1, 1, 1, 1, 1, 0.05] if show_both else
+                         [1, 1, 1, 1, 1, 0.05]    if show_cfr_only else
+                         [1, 1, 1, 1, 0.05])
+        fig_width     = 12 if show_both else 10 if show_cfr_only else 8
 
         fig = plt.figure(figsize=(fig_width, batch_size * 2))
 
@@ -59,16 +108,19 @@ def visualize_batch(
             ]
             titles = ['SAR', 'Generated', 'Ground Truth', 'Difference']
             
-            if show_branches:
-                cfr_img = (cfr_out[idx].cpu() + 1) / 2.0
+            if show_both:
+                cfr_img  = (cfr_out[idx].cpu()  + 1) / 2.0
                 hfcf_img = (hfcf_out[idx].cpu() + 1) / 2.0
-                # Вставляем CFR и HFCF между SAR и Generated
                 images.insert(1, TF.to_pil_image(cfr_img))
                 images.insert(2, TF.to_pil_image(hfcf_img))
                 titles.insert(1, 'CFR Branch')
                 titles.insert(2, 'HFCF Branch')
+            elif show_cfr_only:
+                cfr_img = (cfr_out[idx].cpu() + 1) / 2.0
+                images.insert(1, TF.to_pil_image(cfr_img))
+                titles.insert(1, 'CFR Branch')
 
-            num_image_cols = 5 if show_branches else 3
+            num_image_cols = 5 if show_both else 4 if show_cfr_only else 3
 
             for j in range(num_image_cols):
                 ax = fig.add_subplot(gs[idx, j])

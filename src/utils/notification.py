@@ -83,6 +83,7 @@ def generate_tg_message(self):
             f"dis = {_t(self,'lr/d')}\n\n"
 
             f"Fusion:\n"
-            f"w_hfcf   = {_t(self,'fusion/w_hfcf')}\n"
-            f"spat_std = {_t(self,'fusion/spatial_std')}"
+            f"w          = {_t(self,'fusion/w')}\n"
+            f"hfcf_mean  = {_t(self,'hfcf/logit_mean')}\n"
+            f"hfcf_std   = {_t(self,'hfcf/logit_std')}"
         )
