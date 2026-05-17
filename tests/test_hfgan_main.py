@@ -70,10 +70,16 @@ def test_g_loss_is_finite(module, device):
 
 def test_validation_step_updates_metrics(module, device):
     sar = torch.randn(2, 1, 256, 256, device=device)
-    opt = torch.randn(2, 3, 256, 256, device=device)
-    batch = {'sar': sar, 'optical': opt}
+    opt = torch.rand(2, 3, 256, 256, device=device) * 2 - 1
+    batch = (sar, opt)
     module.validation_step(batch, 0)
     psnr_val = module.psnr.compute()
+    ssim_val = module.ssim.compute()
+    lpips_val = module.lpips.compute()
     assert torch.isfinite(psnr_val)
+    assert torch.isfinite(ssim_val)
+    assert torch.isfinite(lpips_val)
     module.psnr.reset()
     module.ssim.reset()
+    module.lpips.reset()
+    module.fid.reset()
