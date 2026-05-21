@@ -128,27 +128,29 @@ class PerfectReconLoss(nn.Module):
 class LPIPSLoss(nn.Module):
     """AlexNet LPIPS (Zhang et al. 2018) via ``torchmetrics``.
 
-    Lazy-initialised on the first forward — keeps weights off the CPU until
-    they are actually needed (useful when an ablation disables the loss).
+    Eager-built so the AlexNet parameters are registered as children of the
+    LightningModule at ``__init__`` time.  A previous lazy-init version
+    triggered an EMA crash at ``ema.start_epoch``: Lightning's
+    ``WeightAveraging`` callback snapshots ``pl_module.parameters()`` during
+    ``setup``, before the first training forward, so a lazy LPIPS module
+    appeared in the *live* parameter list but not in the averaged shadow.
+    On the first EMA update, ``zip(avg.parameters(), live.parameters())``
+    drifted past the LPIPS insertion point and the AlexNet conv1 (kernel
+    11x11) tried to copy into a downstream 3x3 conv.
     Inputs are expected in ``[-1, 1]``; LPIPS' ``normalize=False`` consumes
     that range directly.
     """
     def __init__(self, net_type: str = 'alex'):
         super().__init__()
         self.net_type = net_type
-        self._lpips = None
-
-    def _maybe_build(self, device, dtype):
-        if self._lpips is None:
-            from torchmetrics.image.lpip import LearnedPerceptualImagePatchSimilarity
-            self._lpips = LearnedPerceptualImagePatchSimilarity(
-                net_type=self.net_type, normalize=False,
-            ).to(device=device, dtype=dtype)
-            self._lpips.eval()
-            for p in self._lpips.parameters():
-                p.requires_grad_(False)
+        from torchmetrics.image.lpip import LearnedPerceptualImagePatchSimilarity
+        self._lpips = LearnedPerceptualImagePatchSimilarity(
+            net_type=net_type, normalize=False,
+        )
+        self._lpips.eval()
+        for p in self._lpips.parameters():
+            p.requires_grad_(False)
 
     def forward(self, pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
-        self._maybe_build(pred.device, pred.dtype)
         # LPIPS expects float32; cast if running under bf16 autocast.
         return self._lpips(pred.float(), target.float())

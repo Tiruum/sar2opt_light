@@ -114,10 +114,20 @@ def test_pr_loss_grad_pushes_inverse_match(rng_seed):
 # ---------------------------------------------------------------------------
 
 
-def test_lpips_lazy_init(rng_seed):
-    """The LPIPS model should not exist until the first forward call."""
+def test_lpips_eager_init(rng_seed):
+    """LPIPS must be eager-built at __init__ so the AlexNet parameters are
+    registered as children of the LightningModule before Lightning's
+    WeightAveraging callback snapshots ``pl_module.parameters()`` in
+    ``setup``.  A previously-lazy version drifted the live and averaged
+    parameter lists past the LPIPS insertion point and crashed at
+    ``ema.start_epoch`` with a kernel-size mismatch (AlexNet conv1 11x11
+    vs a downstream 3x3 conv).  Tests the regression: the inner LPIPS
+    submodule must exist immediately and its parameters must be frozen.
+    """
     loss_fn = LPIPSLoss(net_type='alex')
-    assert loss_fn._lpips is None
+    assert loss_fn._lpips is not None
+    assert all(not p.requires_grad for p in loss_fn._lpips.parameters())
+    assert not loss_fn._lpips.training
 
 
 @pytest.mark.slow
