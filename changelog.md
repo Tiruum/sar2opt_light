@@ -1,12 +1,116 @@
 # Changelog
 Этот файл призван структурировать и упростить понимание коммитов и запусков, кодируя их букво-численной аббревиатурой.
 
+## llwt-v0.1.0 (2026-05-21)
+**Architecture:** LLW-Former — wavelet-native SAR→optical generator.
+- **Generator (3.6M params):** SARPhysicsFrontEnd (1→3 ch) → Stem Conv (3→96 ch) → LLWTransform (L=3, learnable lifting wavelet, channel-preserving) → PerSubbandEncoder per level (4 WindowSwinBlock stacks: LL/LH/HL/HH, win=8, heads=4, depth=2) → CrossBandAttention at levels 2,3 → PCSG (physics-conditioned subband gating from 7×7 SAR local-variance) → LLWTransform.inverse → 2× ConvNeXtV2-GRN post-decoder → Conv7×7 RGB head + tanh.
+- **Discriminator (3.6M params):** main MSPatchGAN (coarse + fine, spectral-norm, IN(SAR) + opt concat) + subband-D (fixed Haar L=1 on optical pair → 12-ch PatchGAN, ndf=32).
+- **Novelty (5 axes):** (i) learnable lifting wavelets (Predict/Update CNNs, lazy-init for PR); (ii) per-subband Swin stacks with band-specialised weights; (iii) cross-band attention; (iv) physics-conditioned subband gating; (v) subband-D operating in Haar coefficient space.
+- **Physics-informed regulariser:** SpeckleDecoupleLoss anchors level-1 LL to a 5×5 avg-pool despeckled-SAR proxy and pins HH energy to 0.05 — makes lifting interpretable (LL ≈ content, HH ≈ speckle).
+- **PR-safeguard regulariser:** PerfectReconLoss tracks `|x - iLLW(LLW(x))|` against fp32/bf16 round-trip drift; weight 0.01.
+- **Loss recipe:** LSGAN (main 1.0 + sub 0.5) + FM (main 10.0 + sub 5.0) + L1 50.0 (mandatory pixel anchor per cfrwd-36 / hfgan-12 lesson) + MS-SSIM 1.0 + LAB-chroma 5.0 + WaveletDetailL1 2.0 + AlexNet LPIPS 1.0 + spkdec 0.05 + PR 0.01.
+- **Optimiser:** AdamW G (2e-4, wd=0, single param group, no pretrained backbone) + Adam D (1e-4, TTUR). CosineAnnealingWarmRestarts (T_0=20, T_mult=2). EMA(0.999) from ep10. R1 γ=0.5 every 16 steps on main-D only, forced fp32. bf16-mixed forward.
+- **Stability:** every wavelet-side residual zero-init (attn out_proj, MLP last linear, CBA proj_out, PCSG last conv, RGB head last conv) → step-0 forward is identity passthrough + zero-init RGB head → mid-grey output. NaN-grad guard on both opt_d and opt_g. Bad-batch skip on non-finite inputs.
+- **Test surface:** 61 unit + integration tests, all green. PR round-trip < 1e-10 (fp64), < 1e-5 (fp32). Identity-at-init verified for WindowSwinBlock, CrossBandAttention, full generator.
+- **Fresh start.** weights_ckpt=null, resume_ckpt=null. tb_version=`llwt-v0.1.0`.
+- **Plan:** ~120 epochs SEN1-2 9-scene subset @ 256×256 bs=6. Mid-train abort gate: ep30 val/PSNR > 14 AND `pu_param_norm > 1e-3` (lifting actually learned). Status: implementation complete, ready to launch.
+
 ## hfgan-1 (2026-04-29)
 Architecture: ConvNeXtV2-Tiny encoder + bottleneck attention (2-layer Pre-LN, 64 tokens) + U-Net decoder (5 up-blocks, GroupNorm)
 Discriminator: Two-scale spectral-norm PatchGAN
 Losses: LSGAN + FM (5.0) + optional FFT (1.0) + optional Perceptual (0.1)
 Optimizer: AdamW for G (encoder 2e-5 / decoder 2e-4, weight_decay=0.01), Adam for D (2e-4)
 Status: ready to train
+
+## hfgan-5 (2026-05-15)
+Changes: Added pixel L1 loss (weight 10.0); halved FM weight (10→5); plumbed encoder_lr_scale config knob (0.1). No architectural changes — loss-only fix. Warm-started from hfgan-4 weights_ckpt.
+Result: Trained 65 epochs. Semantic hallucinations (fabricated buildings in agricultural fields, invented road segments) persisted. L1 provided pixel anchoring but insufficient without SAR skip connections. Advancing to hfgan-6 with architectural fixes.
+
+## hfgan-6 (2026-05-15)
+Changes:
+1. SARSkipPyramid — shallow SAR CNN emitting skip features at 128×128 (32ch) and 256×256 (16ch); proj_* convs zero-initialized for safe warm-start. up1/up0 in_channels widened to accept SAR skips.
+2. ChannelAdapterV2 — replaced 27-param ChannelAdapter (single Conv+GELU) with 3-conv ImageNet-normalized stem; zero-init to_rgb + bias=ImageNet mean so step-0 backbone input is in-distribution neutral.
+3. 2-D sin-cos bottleneck positional encoding — replaced 1-D zero-init learnable Parameter with fixed register_buffer; transformer spatially aware from step 0 with no learning required.
+4. Removed dead NSST test file (test_hfgan_nsst.py, 597 lines) and TerraMind dead fixture (MockTerraMindBackbone).
+Warm-start: hfgan-5 last.ckpt (checkpoints/huggingface-gan/hfgan-5/last.ckpt), strict=False.
+Result: 169 epochs. Best ckpt: PSNR 19.18 dB. Val average: PSNR 18.88 dB, SSIM 0.462, LPIPS 0.462, FID 327. Architecture correct — SAR skips and adapter wired successfully. Failure mode: L1-dominance (weight 10.0) causes chroma collapse to training-set mean (brown soup); fft_weight=0 leaves no high-freq supervision → smudges; perceptual_weight=0.1 too weak for distribution alignment → high FID/LPIPS. Advancing to hfgan-7 with loss rebalance.
+
+## hfgan-7 (2026-05-16)
+Changes: Loss recipe rebalance only — no architectural changes. l1_weight 10.0→3.0 (break chroma collapse), fft_weight 0.0→2.0 (high-freq supervision), perceptual_weight 0.1→1.0 (texture/distribution pressure). gan_weight/fm_weight unchanged (1.0/5.0). Short fine-tune: max_epochs=80, linear_decay_epochs=40. Warm-start from hfgan-6 last.ckpt.
+Result: 80 epochs. Best ckpt: PSNR 19.24 dB (ep54). Final: PSNR 19.11 dB, SSIM 0.458, AlexNet LPIPS 0.258, VGG LPIPS 0.448. No visual improvement observed. Post-mortem: warm-start from hfgan-6 anchored decoder in the brown-soup local minimum; 80 epochs of rebalanced loss insufficient to escape. Also discovered metric bug — training used AlexNet LPIPS, inference used VGG LPIPS (different scale, not comparable). Advancing to hfgan-8: fresh start + chroma loss.
+
+## hfgan-8 (2026-05-16)
+Changes:
+1. ChromaLoss — L1 on CIE L*a*b* a*/b* chroma channels only (chroma_weight=5.0); pure-PyTorch rgb_to_lab, float32 cast for bf16 safety; directly attacks mean-color bias without penalizing luminance.
+2. Fresh start — no warm-start (weights_ckpt=null); breaks anchor in hfgan-7 brown-soup local minimum.
+3. Metric consistency — inference.py switched to AlexNet LPIPS (net_type='alex') matching training metric; best ckpt loaded (ep054) instead of last.ckpt.
+4. Extended training — max_epochs=160 (was 80 fine-tune), linear_decay_epochs=40; gives 120 flat-LR epochs for fresh convergence.
+Loss: l1=3.0, fft=2.0, perceptual=1.0, chroma=5.0, gan=1.0, fm=5.0.
+Result: Collapsed at ep11. val/psnr frozen at 7.43 dB ep11–17, d_loss → 0.007 (D dominated from ep0). Generator locked to constant output (mode collapse). Root cause: chroma_weight=5.0 + no gradient clip → G loss too large → D dominated in early epochs before clip was added. Post-mortem: loss engineering has hit a fundamental limit — decoder has no mechanism to infer which color to produce for ambiguous SAR backscatter (wheat ≈ grass ≈ rapeseed). No loss penalty can fix this. Advancing to hfgan-9 with SPADE architectural conditioning.
+
+## hfgan-9 (2026-05-16)
+Changes:
+1. SPADENorm — Spatially-Adaptive Denormalization (Park et al. 2019 / GauGAN) replaces GroupNorm in all 5 ConvUpsampleBlock decoder stages. Per-pixel (gamma, beta) predicted by a 2-conv branch from the conditioning map. Zero-init on gamma/beta → identity at step 0, training-stable.
+2. Conditioning sources: up4←s2 (384ch), up3←s1 (192ch), up2←s0 (96ch), up1←f128 (32ch SAR skip), up0←f256 (16ch SAR skip). Same skip tensors already flowing via concat now also drive per-pixel normalization.
+3. Simplified loss: fft=0.0, perceptual=0.0, chroma=0.0 — architecture handles color, losses handle pixel fidelity only (l1=3.0, fm=5.0, gan=1.0).
+4. Fresh start (weights_ckpt=null); gradient clip max_norm=1.0 retained from hfgan-8 patch.
+Param cost: ~74.6M base + ~3–5M SPADE (10 SPADENorm modules, hidden=128).
+Target: green chroma visible in val/img_001 by ep30; PSNR ≥ 18 dB, AlexNet LPIPS < 0.40 by ep80.
+Result: ep83 plateau — PSNR 18.22 dB, AlexNet LPIPS 0.303, FID 342. SPADE gamma/beta convs converged near-zero (identity), conditioning had no measurable effect. Root cause confirmed: local 3×3 SPADE cannot overcome SAR backscatter ambiguity (wheat ≈ grass ≈ rapeseed); no cross-modal reasoning in architecture. Advancing to hfgan-10 with cross-modal attention.
+
+## hfgan-10 (2026-05-16)
+Changes:
+1. SARBottleneckEncoder — 5-block strided CNN (1→64→128→256→512→768@8²); produces K/V tokens from raw SAR at bottleneck resolution for cross-modal attention.
+2. CrossAttentionBlock — Q=decoder features, K/V=encoder/SAR context; to_out zero-init (identity at step 0); 2D sin-cos pos embed on K/V; F.scaled_dot_product_attention (flash attn when available). _pos_cache avoids recomputing 600KB embed each forward pass.
+3. BottleneckAttention extended — optical self-attn (unchanged) + cross-attn stream where optical tokens (Q) attend to raw SAR bottleneck (K/V). Sums with residual. Cross-attn to_out zero-init.
+4. ConvUpsampleBlock rewritten — SPADE removed. CrossAttentionBlock replaces GroupNorm when cond_ch>0. up4 (cond=s2, 384ch@16²), up3 (cond=s1, 192ch@32²). up2/up1/up0 plain GroupNorm (token count too large).
+5. HFGenerator updated — instantiates SARBottleneckEncoder, threads SAR through bottleneck cross-attn, s2/s1 serve dual purpose (skip concat + cross-attn K/V).
+6. fm_weight 5.0 → 10.0 (matches cfrwd-36 best run).
+7. Fresh start (weights_ckpt=null, resume_ckpt=null).
+Param delta: +SARBottleneckEncoder (~3.6M) + CrossAttentionBlock×6 (~4M) vs SPADE removed (~5M) ≈ net +2.6M.
+Success criteria: ep10 d_loss >0.05, val/psnr >14 dB; ep30 green chroma in agricultural fields; ep80 LPIPS <0.28, FID <280, PSNR ≥18 dB.
+Result: (pending)
+
+## hfgan-11 (2026-05-17)
+Hypothesis: discriminator + FM rewarding low-level texture rather than semantic correspondence. Three D-side fixes bundled to free D capacity for structure and stop FM forcing G to copy SAR speckle.
+Changes:
+1. FinePatchDisBranch — new 3-layer spectral-norm PatchGAN branch (~46×46 RF); replaces the 140×140 second branch. Runs at full 256×256 resolution (no AvgPool downsample). logits shape (B,1,31,31). Returns 3 intermediate features.
+2. HFGANDiscriminator.forward — `F.instance_norm` applied to SAR and OPT independently before `cat`. Frees D capacity from absorbing modality brightness shift (empirically ~7×10⁶ attenuation of brightness propagation through D).
+3. HFGANDiscriminator.forward — feature lists sliced `feats1[1:] + feats2[1:]` (drop layer 0 of each branch). Layer 0 = post-stride-2 LeakyReLU on raw concat = edges/speckle; matching it in FM is a texture-hallucination pathway (G copies SAR speckle into optical pixels). Combined FM-visible features: 5 (3 from branch1 + 2 from branch2). D logits unchanged.
+Loss recipe: unchanged (gan=1.0, fm=10.0, fft=0.0, perceptual=0.1). Optimizer unchanged.
+Fresh start: weights_ckpt=null, resume_ckpt=null.
+Tests: 48/48 hfgan tests green (incl. 3 new dis tests covering fine-patch shape, per-instance-norm attenuation, layer-0 drop).
+Success criteria: ep10 d_loss stable >0.05; ep80 val/lpips improves ≥0.02 vs hfgan-2 baseline (0.303) OR visible reduction in small fake-object hallucinations in val/img_001.
+Decision gate: if no metric movement by ep80 → move to Phase B (add L1=100 loss anchor, the more likely root cause per cfrwd-36 audit).
+Result: Collapsed within 1 epoch. Same signature as hfgan-8: val/psnr frozen bit-for-bit at 7.42901 dB across all 7 epochs (G mode-collapsed to constant output), train/d_loss → 0.0002 by ep6-7, train/g_loss flat ~1.2. val/lpips 0.914, val/fid 736 (vs hfgan-2 baseline 0.303/280). Root cause: 3 D-side fixes all tilted balance toward D simultaneously, with no pixel-space anchor for G to fall back on. Confirms cfrwd-36 audit: missing L1 is the true root cause; D changes amplified collapse but were not the original sin. Advancing to hfgan-12 with L1=100 + TTUR + wd_g=0 (matching proven cfrwd-36 recipe), keeping all 3 D-side fixes from hfgan-11.
+
+## hfgan-12 (2026-05-17)
+Hypothesis: G mode collapse in hfgan-11 is the absence-of-anchor failure mode identified in the cfrwd-36 audit. L1 pixel loss gives G a direct gradient signal independent of D — G can keep learning even when D dominates. TTUR + wd_g=0 align optimizer recipe with cfrwd-36 (the best-image-quality run).
+Changes:
+1. losses.py — new `L1Loss(nn.Module)` wrapping `F.l1_loss(pred, target)`.
+2. factory.py — `build_criterions` instantiates `L1Loss` when `cfg.loss.l1_weight > 0` (gated like fft/perceptual to avoid no-op cost).
+3. main.py training_step — adds `criterions['l1'](fake, opt) * loss_cfg.l1_weight` to g_loss (mirrors fft/perceptual gating). Also logs `train/d_real_mean` and `train/d_fake_mean` for early D-dominance detection (abort signal: real-fake > 0.8 at ep1).
+4. config.yaml — `loss.l1_weight: 100.0` (NEW; matches pix2pix tradition and cfrwd-36 effective L1≈100 scale).
+5. config.yaml — `optimizer.lr_d: 2.0e-4 → 1.0e-4` (canonical TTUR; halves D step size, gives G gradient room).
+6. config.yaml — `optimizer.weight_decay_g: 0.01 → 0.0` (cfrwd-36 used wd=0; ConvNeXtV2 has implicit reg via LayerNorm and drop_path; wd=0.01 on pretrained backbone known to drag fine-tuning).
+7. config.yaml — `ema.start_epoch: 30 → 10` (hfgan-11 collapsed in 7 ep before EMA even started; lower start preserves option to recover via averaged weights).
+D architecture: unchanged (all 3 hfgan-11 D-side fixes preserved — fine-patch branch, instance-norm, FM[1:]).
+Loss recipe: gan=1.0, fm=10.0, **l1=100.0 (NEW)**, fft=0.0, perceptual=0.1.
+Fresh start: weights_ckpt=null, resume_ckpt=null.
+Tests: 55/55 hfgan tests green (3 new: `test_l1_loss_identical_inputs`, `test_l1_loss_known_diff`, `test_l1_loss_grad_flows`; 2 new factory: `test_build_criterions_l1_enabled_when_weight_positive`, `test_build_criterions_no_l1_when_zero`; 2 new main: `test_l1_criterion_present_when_weight_positive`, `test_g_loss_with_l1_anchor_is_finite`).
+Success criteria: ep1 train/d_real_mean - train/d_fake_mean < 0.8 (D not dominating); ep10 val/psnr > 12 (escaped 7.43 mode collapse); ep80 val/lpips < 0.40 + visual: fewer fake buildings in val/img_001.
+Decision gate: if val/psnr breaks free from 7.43 → continue training to ep160 → compare to hfgan-2 baseline. If collapses again → ablate D fixes one-by-one (instance_norm most suspect).
+Result: (pending)
+
+## hfgan-14c (2026-05-18)
+Hypothesis: hfgan-14 / hfgan-14b mode-collapsed (val/psnr=7.4290 bit-exact across 83 ep; d_real_mean ≈ d_fake_mean ≈ 0.449 → degenerate Nash). Pure GAN+FM recipe with no pixel anchor cannot recover G from constant tanh-saturated output. Compounding root cause: stale FM real-features in main.py — real_feats captured pre-opt_d.step() reused as FM target post-step → D weights changed → FM target drifts each batch → incoherent gradient.
+Changes:
+1. main.py training_step — replace `real_feats_d = [f.detach() for f in real_feats]` with a fresh `with torch.no_grad(): _, real_feats_post = self.netD(sar, opt)` after `opt_d.step()`. G's FM target now from same D weights producing fake_feats — coherent gradient.
+2. config.yaml — `system.tb_version: "hfgan-14b" → "hfgan-14c"`.
+Loss recipe / D architecture unchanged from hfgan-14: gan=1.0, fm=10.0, l1=0.0, fft=0.0, perceptual=0.0, r1_gamma=0.5, r1_every=16. EMA still off.
+Tests: API unchanged; pytest tests/test_hfgan_*.py must stay green.
+Decision gate (ep10): d_real_mean − d_fake_mean > 0.05 → FM bug confirmed dominant, continue to ep80. Still ≈ 0 → FM fix insufficient, jump to hfgan-15 with l1_weight=100 restored.
+Result: (pending)
 
 ## Журнал экспериментов (TensorBoard Runs)
 Здесь фиксируются цели, параметры и результаты каждого запуска для отслеживания в TensorBoard.
@@ -270,6 +374,38 @@ Status: ready to train
     7. **BUG-7 (CFRBlock redundant ops):** Кэширование `q1_dd = self.down(q1_d)` и `q2_dd = self.down(q2_d)` в CFRBlock — устранены redundant AvgPool2d вызовы в cross-fusion.2.
     *   **Результат:** ERGAS теперь корректен (~150–200 на валидации). SAM без NaN. VRAM стабилен (~12 ГБ, без скачков после каждой эпохи). EMA начинает обновление с эпохи 30, а не шага 0. LPIPSLoss требует явного backbone при инициализации (breaking change). Тренировка более предсказуема и диагностична.
     *   **Версия:** v3.0.0
+
+## sarformer-wb-1 (2026-05-20)
+Fresh-start hybrid SAR→optical generator, new package `src/models/sarformer_wb/`, replacing the plateaued `huggingface_gan/hfgan-{6..18}` lineage.
+Architecture:
+1. Encoder — Swin V2-Tiny (`microsoft/swinv2-tiny-patch4-window8-256`, ImageNet-22k pretrained, `out_indices=[1,2,3,4]`, lr×0.1).
+2. SARPhysicsFrontEnd — [raw, log1p, reflect-padded Sobel, predicted speckle log-variance `s_spk`] → 4ch input concatenation; learned `s_spk` head feeds both the wavelet bottleneck and the Phi-physics-D.
+3. WaveletBottleneck — Haar DWT level-1 on the (768, 8, 8) Swin V2 final feature; LL refined by a MiniSwinV2Block (scaled-cosine attn + log-CPB); LH/HL/HH refined by a SpeckleGatedConvStack (1×1 project → 3 reflect-pad convs → 1×1 expand, gated by sigmoid(s_spk downsampled)); iDWT recombines with a learnable residual gate (init sigmoid(-4) ≈ identity).
+4. Decoder — 5 stages of `DecoderStage` = PixelShuffle (ICNR init) + ConvNeXtV2 GRN block (DWConv7×7 + LN + Linear + GELU + GRN + Linear + DropPath); GRN gamma/beta zero-initialised so the layer starts as identity.
+5. SAR cross-attention skips — lightweight windowed cross-attention (`SARCrossAttnSkip`, single-head, inner_dim=64, window=8) at decoder resolutions 32 and 64 with Q = decoder feature, K/V = SAR pyramid feature (3 stride-2 conv stages on raw SAR); learnable scalar gate inits ≈ 0 (tanh) so the skip starts as identity.
+6. Heads — RGB head = ReflectionPad+Conv7×7 + tanh; uncertainty head = Conv3×3 producing per-pixel log-variance `s(x)` (zero-initialised, training-only).
+
+Discriminators:
+- `MSPatchGANDis` — 2-scale conditional PatchGAN (70×70 coarse + 46×46 fine), spectral-norm, asymmetric input normalisation (SAR instance-normed, optical raw), layer-0 features dropped from FM (`hfgan-18` lesson). 22×22 micro branch from hfgan-18 dropped — micro-texture coverage moves to the Phi-D side.
+- `PhiPhysicsDis` (Φ-GAN-inspired) — 4-layer spectral-norm PatchGAN on `[SAR, optical, s_spk]` (5ch). Frozen for `phi.freeze_epochs=5` then trained alongside the main D.
+
+Losses (config weights):
+- LSGAN main (1.0) + FM main (10.0)
+- LSGAN phi (0.5) + FM phi (5.0)
+- `UncertaintyL1Loss` (10.0) — Kendall-Gal aleatoric weighting `Σ exp(-s)·|y-ŷ|₁ + s` + `0.01·|s|` reg, log-var clamped to [-2,+2]; replaces plain L1.
+- MS-SSIM (1.0), LAB-chroma (5.0), Wavelet-detail L1 on Haar LH/HL/HH (1.0)
+- `SpeckleConsistencyLoss` (0.5, linear warm-up epochs 5→10) — reflectivity proxy head + Gamma(L=4, 1/L) sample modulated by s_spk; reflectivity head's params live in the G optimiser.
+- R1: main-D γ=0.5 every 16; Phi-D γ=0.5 every 32.
+
+Training recipe: AdamW G (encoder lr 2e-5, fresh 2e-4) + Adam D (1e-4 each), β=(0.5,0.999), bf16-mixed, BS=8, 80 epochs (cosine warm restarts with 60-epoch linear decay tail), EMA decay=0.999 from ep 10, gradient clip G=1.0 / D=5.0, torch.compile on G + main-D (Phi-D off — gamma-sampling not compile-friendly).
+
+Param budget (real Swin V2): G≈50.6 M, D_main≈3.4 M, D_phi≈0.7 M → grand total ≈54.7 M trainable + 26.3 M frozen (FID Inception + LPIPS AlexNet). Under the 100 M ceiling.
+
+Verification:
+- Pytest: 60/60 sarformer_wb tests pass (gen/dis/losses/factory/main); 112/112 hfgan-18 tests still pass (no regression).
+- Smoke train (1 epoch, BS=2, 4 train + 4 val batches) on RTX 4080 Super 16 GB completes without NaN/OOM. Both d_loss and d_phi_loss compute (Phi-D path exercised with `freeze_epochs=0`). Speckle-consistency loss fires (`warmup_start=0`). Validation metrics finite (PSNR 5.24 dB, SSIM 0.029, LPIPS 0.75, FID 652 — expected for an initialised model).
+
+Status: ready to launch ablation A1 (no Phi-D, no speckle-consistency) and ablation A2 (full configuration).
 
 ### DD.MM.YYYY
 *   **`cfrwd-XX`**: *Краткая цель эксперимента.*
