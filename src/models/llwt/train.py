@@ -23,6 +23,13 @@ from omegaconf import OmegaConf
 # training.
 torch.set_float32_matmul_precision('high')
 
+# Dynamo guards on bool kwargs, tensor shapes, branch flags. The default cache
+# size of 8 was tripped earlier (148 graph breaks observed under the profiler);
+# 16 leaves room for the train (return_internals=True) + val (False) + R1
+# (autocast disabled) variants without thrashing recompiles.
+import torch._dynamo
+torch._dynamo.config.cache_size_limit = 16
+
 # torch>=2.6 changed `weights_only` default; Lightning ckpts contain Python
 # objects so we have to opt out globally.
 _orig_load = torch.load

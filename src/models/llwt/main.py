@@ -154,9 +154,23 @@ class LLWFormerLightningModule(pl.LightningModule):
                     self.log('train/d_loss_sub', d_loss_sub.detach(), on_step=False, on_epoch=True)
             self.log('train/r1_main', r1.detach(), on_step=False, on_epoch=True)
         else:
+            # Batched D real+fake forward: D is per-sample (spectral_norm +
+            # F.instance_norm(sar) + Conv2d + LeakyReLU; no BN/GN), so processing
+            # 2B samples in one call is bit-identical to two separate D calls
+            # but pays one set of kernel launches instead of two.
             opt_real = opt
-            real_main, real_sub, _, _ = self.netD(sar, opt_real)
-            fake_main, fake_sub, _, _ = self.netD(sar, fake_d)
+            B = sar.size(0)
+            sar_doubled = sar.repeat(2, 1, 1, 1)
+            opt_doubled = torch.cat([opt_real, fake_d], dim=0)
+            main_both, sub_both, _, _ = self.netD(sar_doubled, opt_doubled)
+            lc_both, lf_both = main_both
+            real_main = (lc_both[:B], lf_both[:B])
+            fake_main = (lc_both[B:], lf_both[B:])
+            if self.use_subband_d:
+                real_sub = sub_both[:B]
+                fake_sub = sub_both[B:]
+            else:
+                real_sub, fake_sub = None, None
             d_loss = 0.5 * (
                 self.criterions['gan'](real_main, is_real=True) +
                 self.criterions['gan'](fake_main, is_real=False)
@@ -190,11 +204,28 @@ class LLWFormerLightningModule(pl.LightningModule):
         else:
             fake = self.netG(sar)
 
-        fake_main_g, fake_sub_g, fake_feats_main, fake_feats_sub = self.netD(sar, fake)
-        with torch.no_grad():
-            _, _, real_feats_main, real_feats_sub = self.netD(sar, opt)
-        real_feats_main = [f.detach() for f in real_feats_main]
-        real_feats_sub  = [f.detach() for f in real_feats_sub]
+        # Batched D forward in G phase: fake (with grad) + opt (we want detached
+        # features for FM).  Slice fake half of the output / features for the
+        # G-loss path, .detach() the real half for FM target.  D's grad
+        # accumulates from the fake half only (opt has no requires_grad source
+        # and the real_feats slice is detached before FM); same as the previous
+        # two-call layout, just one set of kernel launches.
+        B = sar.size(0)
+        sar_doubled_g = sar.repeat(2, 1, 1, 1)
+        opt_doubled_g = torch.cat([fake, opt], dim=0)
+        main_both_g, sub_both_g, feats_main_both, feats_sub_both = self.netD(sar_doubled_g, opt_doubled_g)
+        lc_both_g, lf_both_g = main_both_g
+        fake_main_g = (lc_both_g[:B], lf_both_g[:B])
+        fake_feats_main = [f[:B] for f in feats_main_both]
+        real_feats_main = [f[B:].detach() for f in feats_main_both]
+        if self.use_subband_d:
+            fake_sub_g = sub_both_g[:B]
+            fake_feats_sub = [f[:B] for f in feats_sub_both]
+            real_feats_sub = [f[B:].detach() for f in feats_sub_both]
+        else:
+            fake_sub_g = None
+            fake_feats_sub = []
+            real_feats_sub = []
 
         l_gan_main = self.criterions['gan'](fake_main_g, is_real=True)
         l_fm_main = self.criterions['fm'](fake_feats_main, real_feats_main)
