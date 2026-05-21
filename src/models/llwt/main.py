@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import lightning.pytorch as pl
 from torchmetrics.image import (
     LearnedPerceptualImagePatchSimilarity,
@@ -178,7 +179,16 @@ class LLWFormerLightningModule(pl.LightningModule):
             opt_d.step()
 
         # -------- G update --------
-        fake = self.netG(sar)
+        # If spkdec or PR is active, ask the generator to return the pre-encoder
+        # raw lifting coeffs and the post-stem feature tensor.  Both losses
+        # previously re-ran ``physics_front_end -> stem -> llw`` outside the
+        # compiled forward, costing one extra (uncompiled) lifting pass per
+        # step.  Caching them removes that redundancy at no math cost.
+        need_internals = ('spkdec' in self.criterions) or ('pr' in self.criterions)
+        if need_internals:
+            fake, raw_coeffs, raw_feat = self.netG(sar, return_internals=True)
+        else:
+            fake = self.netG(sar)
 
         fake_main_g, fake_sub_g, fake_feats_main, fake_feats_sub = self.netD(sar, fake)
         with torch.no_grad():
@@ -225,21 +235,21 @@ class LLWFormerLightningModule(pl.LightningModule):
             g_loss = g_loss + l_lp * float(loss_cfg.lpips_weight)
             self.log('train/loss_lpips', l_lp.detach(), on_step=False, on_epoch=True)
 
-        # LLW-specific regularisers.
-        if 'spkdec' in self.criterions or 'pr' in self.criterions:
-            # Recompute lifting coeffs once for both regs; they're cheap.
-            # NOTE: feat at this point inside fake's forward graph; redo it
-            # explicitly so we can attach gradients through the lifting modules
-            # cleanly.
-            three = self.netG.physics_front_end(sar)
-            feat = self.netG.stem(three)
-            coeffs = self.netG.llw(feat)
+        # LLW-specific regularisers — reuse the raw coeffs + feat already
+        # produced by the G forward above (return_internals=True).  Gradients
+        # still flow through the lifting modules because raw_coeffs and
+        # raw_feat are tracked tensors from the same compiled forward graph.
+        if need_internals:
             if 'spkdec' in self.criterions:
-                l_spk = self.criterions['spkdec'](sar, coeffs)
+                l_spk = self.criterions['spkdec'](sar, raw_coeffs)
                 g_loss = g_loss + l_spk * float(loss_cfg.spkdec_weight)
                 self.log('train/loss_spkdec', l_spk.detach(), on_step=False, on_epoch=True)
             if 'pr' in self.criterions:
-                l_pr = self.criterions['pr'](self.netG.llw, feat)
+                # Inline PR to skip a second ``self.netG.llw(raw_feat)`` call;
+                # raw_coeffs is already that result.  Only the inverse pass is
+                # needed for the |x - iLLW(LLW(x))| target.
+                x_hat = self.netG.llw.inverse(raw_coeffs)
+                l_pr = F.l1_loss(x_hat, raw_feat)
                 g_loss = g_loss + l_pr * float(loss_cfg.pr_weight)
                 self.log('train/loss_pr', l_pr.detach(), on_step=False, on_epoch=True)
 

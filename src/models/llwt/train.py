@@ -123,6 +123,7 @@ def main():
         benchmark=cfg.system.benchmark,
         limit_train_batches=cfg.system.limit_train_batches,
         limit_val_batches=cfg.system.limit_val_batches,
+        check_val_every_n_epoch=int(cfg.system.get('check_val_every_n_epoch', 1)),
         log_every_n_steps=50,
     )
 

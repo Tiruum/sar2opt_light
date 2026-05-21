@@ -403,7 +403,7 @@ class LLWFormerGenerator(nn.Module):
 
     # ----- forward ---------------------------------------------------------
 
-    def forward(self, sar: torch.Tensor) -> torch.Tensor:
+    def forward(self, sar: torch.Tensor, return_internals: bool = False):
         # 1. Physics front-end + stem
         three = self.physics_front_end(sar)                          # (B,3,H,W)
         feat = self.stem(three)                                      # (B,C,H,W)
@@ -433,4 +433,12 @@ class LLWFormerGenerator(nn.Module):
         # 7. Post-decoder
         post = self.post_dec(recon_feat)
         logits = self.head_rgb(post)
-        return torch.tanh(logits)
+        rgb = torch.tanh(logits)
+        if return_internals:
+            # ``coeffs`` are the pre-encoder raw lifting outputs (used by
+            # SpeckleDecoupleLoss); ``feat`` is the post-stem tensor (used as
+            # the PR target).  Returning them lets the training step skip a
+            # redundant physics_front_end -> stem -> llw recompute that would
+            # otherwise run uncompiled outside this forward.
+            return rgb, coeffs, feat
+        return rgb

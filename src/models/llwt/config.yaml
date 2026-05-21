@@ -7,7 +7,7 @@ data:
   # numbers are directly comparable across model families.  Set scenes: null
   # to use ALL scenes (~282k pairs).
   scenes:                ["5", "10", "25", "35", "45", "47", "52", "84", "100"]
-  batch_size:            6                          # 16 GB VRAM @ 256x256 + 27M params
+  batch_size:            7                          # 16 GB VRAM @ 256x256; bs=6 used 11.7 GB peak, bs=7 expected ~13.6 GB (R1 step headroom kept)
   image_size:            256
   num_workers:           6
   prefetch_factor:       2
@@ -95,11 +95,13 @@ system:
   deterministic: false
   benchmark:     true                               # cuDNN autotunes conv algos for fixed input shapes -- math identical, faster kernel pick
   compile:       true                               # netG only; netD eager so R1 + bf16 path stays safe. Saves ~30% step time after one-time 180s compile cost.
-  max_epochs:    120
+  max_epochs:    3                                  # TRANSIENT smoke run — revert to 120 before real training
   image_freq:    5
   limit_train_batches: 1.0
   limit_val_batches:   1.0
-  tb_version:    "llwt-v0.1.0"
+  check_val_every_n_epoch: 1                        # set to 2 on the full run to roughly halve LPIPS+FID overhead; leave 1 for smoke
+
+  tb_version:    "llwt-v0.1.0-smoke"                # TRANSIENT smoke run — revert to "llwt-v0.1.0" before real training
   weights_ckpt:  null                               # FRESH START -- no warm-start (per plan, avoids brown-soup anchor)
   resume_ckpt:   null
   debug:         false
