@@ -7,9 +7,8 @@ import lightning.pytorch as pl
 from src.models.cfrwd.factory import build_models, build_optimizers, build_criterions, build_lr_schedulers
 from src.utils.visualize import visualize_batch
 from torchmetrics.image import (PeakSignalNoiseRatio, StructuralSimilarityIndexMeasure,
-                                LearnedPerceptualImagePatchSimilarity)
-from torchmetrics.functional.image import (spectral_angle_mapper,
-                                           error_relative_global_dimensionless_synthesis)
+                                SpectralAngleMapper, LearnedPerceptualImagePatchSimilarity,
+                                ErrorRelativeGlobalDimensionlessSynthesis)
 from omegaconf import OmegaConf
 from src.utils.notification import send_telegram, generate_tg_message
 from src.utils.cleanup_memory import cleanup_memory
@@ -37,16 +36,13 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
         self.loss_weights = {
             'gan': self.cfg.loss.gan_weight,
             'fm': self.cfg.loss.fm_weight,
-            'l1': self.cfg.loss.get('l1_weight', 0.0),
-            'fft': self.cfg.loss.fft_weight,
         }
 
         self.psnr  = PeakSignalNoiseRatio(data_range=2.0)
         self.ssim  = StructuralSimilarityIndexMeasure(data_range=2.0)
-        # SAM and ERGAS accumulate full B×C×H×W tensor lists in torchmetrics state → VRAM doubles
-        # at epoch end when compute() processes all of them. Use per-batch functional form instead.
-        self._val_sam_sum = 0.0;   self._val_sam_n = 0
-        self._val_ergas_sum = 0.0; self._val_ergas_n = 0
+        self.sam   = SpectralAngleMapper()
+        # ratio=1: SAR и OPT у нас одного пространственного разрешения (Sentinel-1/2, 10 м)
+        self.ergas = ErrorRelativeGlobalDimensionlessSynthesis(ratio=1)
         
         self.fixed_sar = None
         self.fixed_opt = None
@@ -109,7 +105,7 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
         opt_g.zero_grad(set_to_none=True)
 
         # Генерируем fake изображения заново (чтобы граф градиентов был привязан к G)
-        fake_opt, cfr_out, hfcf_out, w_hfcf = self.netG(real_sar, return_branches=True)
+        fake_opt, _, hfcf_out, fusion_weights = self.netG(real_sar, return_branches=True)
 
         d_fake, fake_feats = self.netD(torch.cat([real_sar, fake_opt], dim=1))  # Дискриминатор оценивает fake (для adversarial loss)
 
@@ -120,19 +116,16 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
         real_feats_detached = [f.detach() for f in real_feats]
         loss_fm = self.criterions["FM"](real_feats_detached, fake_feats)
 
+        # Auxiliary supervision for HFCF branch — prevents wavelet branch atrophy
+        loss_hfcf_aux = self.criterions['L1'](hfcf_out, real_opt) * self.cfg.loss.get('hfcf_aux_weight', 1.0)
+
         loss_l1  = self.criterions['L1'](fake_opt, real_opt)
         loss_fft = self.criterions['FFT'](fake_opt, real_opt)
 
-        # HFCF branch: wavelet-domain L1 on 6 detail subbands — architecturally matched
-        # (HFCF discards LL2; supervising LL would penalise content it cannot model)
-        loss_wavelet = self.criterions['WAVELET'](hfcf_out, real_opt) * self.cfg.loss.get('wavelet_weight', 0.5)
-
         g_loss = (
-            loss_gan     * self.loss_weights['gan'] +
-            loss_fm      * self.loss_weights['fm'] +
-            loss_l1      * self.loss_weights['l1'] +
-            loss_fft     * self.loss_weights['fft'] +
-            loss_wavelet
+            loss_gan      * self.loss_weights['gan'] +
+            loss_fm       * self.loss_weights['fm'] +
+            loss_hfcf_aux
         )
 
         self.manual_backward(g_loss)
@@ -141,18 +134,19 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
 
         self.log('train/g_loss', g_loss, prog_bar=True, on_step=False, on_epoch=True, batch_size=real_sar.size(0))
         self.log_dict({
-            'train/loss_fm':       loss_fm,
-            'train/loss_gan':      loss_gan,
-            'train/loss_d':        d_loss,
-            'train/loss_l1':       loss_l1,
-            'train/loss_fft':      loss_fft,
-            'train/loss_wavelet':  loss_wavelet,
-            'feats/d_real_mean':   real_means.mean(),
-            'feats/d_fake_mean':   fake_means.mean(),
-            'fusion/w_hfcf':       w_hfcf.squeeze(),
-            # SpeckleAwareModule gate mean activations: 1.0 = pass-through, 0.0 = full attenuation
-            'fusion/speckle_gate_mid':  self.netG.hfcf_branch._last_g2_gate_mean,
-            'fusion/speckle_gate_high': self.netG.hfcf_branch._last_g3_gate_mean,
+            'train/loss_fm':  loss_fm,
+            'train/loss_gan': loss_gan,
+            'train/loss_d':   d_loss,
+            'train/loss_l1':  loss_l1,
+            'train/loss_fft': loss_fft,
+            'train/loss_hfcf_aux': loss_hfcf_aux,
+            'feats/d_real_mean': real_means.mean(),
+            'feats/d_fake_mean': fake_means.mean(),
+            # Метрики вклада веток: w_hfcf → 0.5 означает равный вклад,
+            # → 0.0 означает полную атрофию HFCF, → 1.0 — доминирование HFCF.
+            # spatial_std > 0 означает per-region решения fusion.
+            'fusion/w_hfcf':     fusion_weights[:, 1].mean(),
+            'fusion/spatial_std': fusion_weights[:, 1].std(dim=[1, 2]).mean(),
         }, prog_bar=False, on_step=False, on_epoch=True, batch_size=real_sar.size(0))
     
     def validation_step(self, batch, batch_idx):
@@ -179,33 +173,26 @@ class SAR2OPTGANLightningModule(pl.LightningModule):
         # Shift [-1,1] → [0,1] for these two metrics only.
         fake_01 = (fake_opt_f32 + 1.0) * 0.5
         real_01 = (real_opt_f32 + 1.0) * 0.5
-        b = fake_01.size(0)
-
-        sam_b = spectral_angle_mapper(fake_01, real_01)
-        if not torch.isnan(sam_b):
-            self._val_sam_sum += sam_b.item() * b
-            self._val_sam_n += b
-
-        # ratio=1: SAR и OPT одного пространственного разрешения (Sentinel-1/2, 10 м)
-        ergas_b = error_relative_global_dimensionless_synthesis(fake_01, real_01, ratio=1)
-        if torch.isfinite(ergas_b) and ergas_b.item() < 1000:
-            self._val_ergas_sum += ergas_b.item() * b
-            self._val_ergas_n += b
+        self.sam.update(fake_01, real_01)
+        self.ergas.update(fake_01, real_01)
 
     def on_validation_epoch_end(self):
         # Правильный паттерн torchmetrics + Lightning:
-        # compute() вызывается один раз за эпоху, reset() освобождает GPU-тензоры.
+        # compute() вызывается один раз за эпоху (а не 640 раз),
+        # reset() освобождает GPU-тензоры SpectralAngleMapper и SSIM после каждой эпохи.
         self.log('val/psnr',  self.psnr.compute(),          prog_bar=True)
         self.log('val/ssim',  self.ssim.compute(),          prog_bar=True)
         self.log('val/lpips', self.lpips_metric.compute(),   prog_bar=True)
-        if self._val_ergas_n > 0:
-            self.log('val/ergas', self._val_ergas_sum / self._val_ergas_n, prog_bar=False)
-        if self._val_sam_n > 0:
-            self.log('val/sam', self._val_sam_sum / self._val_sam_n, prog_bar=False)
-        self._val_sam_sum = 0.0;   self._val_sam_n = 0
-        self._val_ergas_sum = 0.0; self._val_ergas_n = 0
+        ergas_val = self.ergas.compute()
+        if torch.isfinite(ergas_val):
+            self.log('val/ergas', ergas_val, prog_bar=False)
+        sam_val = self.sam.compute()
+        if not torch.isnan(sam_val):
+            self.log('val/sam', sam_val, prog_bar=False)
         self.psnr.reset()
         self.ssim.reset()
+        self.sam.reset()
+        self.ergas.reset()
         self.lpips_metric.reset()
         # Возвращаем PyTorch-кэш CUDA обратно драйверу после каждой val-эпохи.
         # Без этого caching allocator накапливает freed-блоки → Windows видит 16 ГБ занято.

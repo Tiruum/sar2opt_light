@@ -96,6 +96,8 @@ def main():
         sar_channels=cfg.data.sar_channels,
         use_augmentation=cfg.data.use_train_common_transform,
         scenes=list(cfg.data.scenes),
+        train_crop_size=cfg.data.get('train_crop_size', None),
+        val_batch_size=cfg.data.get('val_batch_size', None),
     )
     model = LLWFormerLightningModule(cfg)
 

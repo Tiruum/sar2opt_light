@@ -2,7 +2,7 @@ from typing import Literal
 import torch.optim as optim
 from src.models.cfrwd.discriminator import CFRWDPatchDis
 from src.models.cfrwd.gen import CFRWDGenerator
-from src.models.cfrwd.losses import FeatureMatchingLoss, GANLoss, L1Loss, FFTLoss, LPIPSLoss, WaveletSupervisionLoss
+from src.models.cfrwd.losses import FeatureMatchingLoss, GANLoss, L1Loss, FFTLoss, LPIPSLoss
 import torch.nn as nn
 from functools import lru_cache
 from omegaconf import OmegaConf
@@ -15,8 +15,7 @@ def _load_cfg():
 
 def build_models():
     cfg = _load_cfg()
-    use_log = getattr(cfg.loss, 'use_log_preprocessing', False)
-    netG = CFRWDGenerator(in_channels=cfg.model.gen.in_channels, use_log_preprocess=use_log)
+    netG = CFRWDGenerator(in_channels=cfg.model.gen.in_channels)
     netD = CFRWDPatchDis(in_channels=cfg.model.dis.in_channels, ndf=cfg.model.dis.ndf, return_features=True)
     return netG, netD
 
@@ -39,18 +38,17 @@ def build_optimizers(netG, netD,
     g_params = list(netG.parameters())
     if extra_g_params is not None:
         g_params += list(extra_g_params)
-    optG = optim.AdamW(g_params, lr=lr_g, betas=(beta1, beta2))
-    optD = optim.AdamW(netD.parameters(), lr=lr_d, betas=(beta1, beta2))
+    optG = optim.Adam(g_params, lr=lr_g, betas=(beta1, beta2))
+    optD = optim.Adam(netD.parameters(), lr=lr_d, betas=(beta1, beta2))
     return optG, optD
 
-def build_criterions(lpips_backbone=None) -> dict[Literal['GAN', 'FM', 'L1', 'FFT', 'WAVELET', 'LPIPS'], nn.Module]:
+def build_criterions(lpips_backbone=None) -> dict[Literal['GAN', 'FM', 'L1', 'FFT', 'LPIPS'], nn.Module]:
     cfg = _load_cfg()
     crits = {
-        'GAN':     GANLoss(use_lsgan=True),
-        'FM':      FeatureMatchingLoss(),
-        'L1':      L1Loss(),
-        'FFT':     FFTLoss(),
-        'WAVELET': WaveletSupervisionLoss(),
+        'GAN': GANLoss(use_lsgan=True),
+        'FM':  FeatureMatchingLoss(),
+        'L1':  L1Loss(),
+        'FFT': FFTLoss(),
     }
     if cfg.loss.get('use_lpips', False):
         if lpips_backbone is None:

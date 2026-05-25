@@ -19,7 +19,7 @@ from src.data.sen12_full.datamodule import SEN12FullDataModule
 from src.models.llwt.gen import LLWFormerGenerator
 
 
-CHECKPOINT = "checkpoints/llwt/llwt-v0.1.0/last.ckpt"
+CHECKPOINT = "checkpoints/llwt/llwt-v0.1.0-can-learn-5scenes/epoch=029-psnr=16.1613.ckpt"
 N_IMAGES = 8
 SPLIT = "val"              # "train" or "val"
 OUTPUT_DIR = f"./src/models/llwt/output/{SPLIT}"

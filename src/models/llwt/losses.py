@@ -7,7 +7,10 @@ implementation (and so any bugfix in one place lands here automatically):
 * ``FeatureMatchingLoss``    — element-weighted L1 over D features
 * ``MSSSIMLoss``             — 1 - MS-SSIM
 * ``LABChromaL1Loss``        — L1 on CIE LAB a*/b* with ab_norm rescale
-* ``WaveletDetailL1Loss``    — L1 on Haar detail subbands
+* ``WaveletDetailL1Loss``    — L1 on Haar detail subbands (full-res output)
+* ``PerBandWaveletL1Loss``   — per-band L1 (LL+LH+HL+HH) on the pre-IHaar
+  predicted subband tensor (v0.4.x).  Mutually exclusive with
+  ``WaveletDetailL1Loss`` at the factory level.
 * ``PlainL1Loss``            — F.l1_loss wrapper
 * ``AdaptiveLoss``           — homoscedastic uncertainty weighting (opt-in)
 
@@ -30,9 +33,11 @@ import torch.nn.functional as F
 from src.models.sarformer_wb.losses import (  # noqa: F401  (re-export)
     AdaptiveLoss,
     FeatureMatchingLoss,
+    FoundationPerceptualLoss,
     GANLoss,
     LABChromaL1Loss,
     MSSSIMLoss,
+    PerBandWaveletL1Loss,
     PlainL1Loss,
     WaveletDetailL1Loss,
 )
@@ -41,9 +46,11 @@ from src.models.sarformer_wb.losses import (  # noqa: F401  (re-export)
 __all__ = [
     "AdaptiveLoss",
     "FeatureMatchingLoss",
+    "FoundationPerceptualLoss",
     "GANLoss",
     "LABChromaL1Loss",
     "MSSSIMLoss",
+    "PerBandWaveletL1Loss",
     "PlainL1Loss",
     "WaveletDetailL1Loss",
     "SpeckleDecoupleLoss",

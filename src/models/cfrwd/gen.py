@@ -483,40 +483,6 @@ class CBAM(nn.Module):
         return x
 
 
-class SpeckleAwareModule(nn.Module):
-    """
-    Heteroscedastic attention gate for wavelet detail subbands.
-
-    Estimates per-pixel local variance via E[x²] - E[x]² (AvgPool2d approximation),
-    then maps variance → gate ∈ [0,1] via a 2-layer bottleneck network.
-
-    Physics: SAR speckle is multiplicative (I = R·n, n ~ Gamma(L,L)).
-    In wavelet domain: real edges → low local variance (structured, localized).
-    Speckle noise → high local variance (spatially uncorrelated).
-    Gate attenuation of high-variance regions extracts signal from speckle.
-
-    Gate initializes near 1.0 (pass-through) via bias init in CFRWDGenerator._initialize_weights.
-    """
-    def __init__(self, in_channels: int, kernel_size: int = 7):
-        super().__init__()
-        reduced = max(in_channels // 4, 8)
-        self.pool = nn.AvgPool2d(kernel_size, stride=1, padding=kernel_size // 2)
-        self.gate = nn.Sequential(
-            nn.Conv2d(in_channels, reduced, kernel_size=1, bias=False),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(reduced, in_channels, kernel_size=1, bias=True),
-            nn.Sigmoid(),
-        )
-
-    def forward(self, x: torch.Tensor):
-        # Local variance estimate: E[x²] - E[x]²
-        mu  = self.pool(x)
-        mu2 = self.pool(x * x)
-        var = (mu2 - mu * mu).clamp(min=0.0)  # B×C×H×W, non-negative
-        gate = self.gate(var)                  # B×C×H×W, ∈ [0,1]
-        return x * gate, gate
-
-
 class HFCFBranch(nn.Module):
     """
     Wavelet Decomposition branch с тремя независимыми потоками.
@@ -527,30 +493,19 @@ class HFCFBranch(nn.Module):
       Mid/High потокам ориентироваться в пространстве и снижает вероятность
       "затухания" HFCF-ветки (fusion_weight → 0).
     - CBAM на входе каждого потока фильтрует спекл-шум SAR до ResBlocks.
-    - SpeckleAwareModule: heteroscedastic gate на сырых вейвлет-подполосах до CBAM+проекции.
 
     Архитектура потоков (все приводятся к W/4 перед слиянием):
 
       Low  (LL2 @ W/4)       : HFCFPreprocess → CBAM → WDResBlock×2      ──┐
-      Mid  ([LH2,HL2,HH2] W/4): SAM → HFCFPreprocess → CBAM → WDResBlock×6 ──┤ → merge(1×1) → decoder → 3ch
-      High ([LH1,HL1,HH1] W/2): SAM → HFCFPreprocess(↓) → CBAM → RedBlock×2 ──┘
-
-    SAM = SpeckleAwareModule (heteroscedastic variance gate)
+      Mid  ([LH2,HL2,HH2] W/4): HFCFPreprocess → CBAM → WDResBlock×6 (Y/B)──┤ → merge(1×1) → decoder → 3ch
+      High ([LH1,HL1,HH1] W/2): HFCFPreprocess(↓) → CBAM → RedBlock×2    ──┘
     """
-    def __init__(self, in_channels=1, hidden_dim=64, use_log_preprocess=False):
+    def __init__(self, in_channels=1, hidden_dim=64):
         super(HFCFBranch, self).__init__()
         logger.debug('HFCF BRANCH INIT')
-        self.use_log_preprocess = use_log_preprocess
         freq_c = 3 * in_channels  # каналы cat-группы высокочастотных подполос
 
         self.dwt = DWTBlock(in_channels=in_channels)
-
-        # Physics-aware speckle variance gates on detail subbands (NOT on LL2 — structural, less speckle)
-        self.speckle_mid  = SpeckleAwareModule(in_channels=freq_c, kernel_size=7)
-        self.speckle_high = SpeckleAwareModule(in_channels=freq_c, kernel_size=7)
-        # Initialized to None; set by forward() on every pass. Guard with `is not None` before reading.
-        self._last_g2_gate_mean = None
-        self._last_g3_gate_mean = None
 
         # --- Low-freq stream (LL2 @ W/4): структурный контекст сцены ---
         self.ll_proj   = HFCFPreprocess(in_channels, hidden_dim, downsample=False)
@@ -600,23 +555,9 @@ class HFCFBranch(nn.Module):
         )
 
     def forward(self, x):
-        if self.use_log_preprocess:
-            # log(1 + relu(x)): variance-stabilizing on positive linear-scale SAR intensity.
-            # NOTE: physical interpretation requires positive input — relu clips ~50% of signal
-            # on [-1,1] normalized data (SEN12). Disabled by default; enable for QXSLAB only.
-            x = torch.log1p(torch.relu(x))
-
         g1, g2, g3 = self.dwt(x)  # g1=LL2 @ W/4, g2=[LH2,HL2,HH2] @ W/4, g3=[LH1,HL1,HH1] @ W/2
 
         logger.debug(f'DWT shapes: g1={g1.shape}, g2={g2.shape}, g3={g3.shape}', once=True)
-
-        # Physics-aware speckle gating on raw detail subbands (before InstanceNorm in proj).
-        # Gate acts on raw wavelet statistics: high local variance = speckle → attenuate.
-        g2, g2_gate = self.speckle_mid(g2)
-        g3, g3_gate = self.speckle_high(g3)
-        # Store mean gate activations for logging (side-effect, accessed by training loop)
-        self._last_g2_gate_mean = g2_gate.mean().detach()
-        self._last_g3_gate_mean = g3_gate.mean().detach()
 
         # Три полностью независимых потока — никакого преждевременного смешения
         ll   = self.ll_stream(self.ll_cbam(self.ll_proj(g1)))
@@ -626,7 +567,6 @@ class HFCFBranch(nn.Module):
         merged = self.merge(torch.cat([ll, mid, high], dim=1))
         return self.decoder(merged)
     
-# DEPRECATED — replaced by scalar _fusion_logit in CFRWDGenerator
 class AdaptiveFusion(nn.Module):
     """
     Пространственно-адаптивное слияние CFR и HFCF feature maps.
@@ -664,17 +604,14 @@ class AdaptiveFusion(nn.Module):
 
 
 class CFRWDGenerator(nn.Module):
-    def __init__(self, in_channels=1, use_log_preprocess=False):
+    def __init__(self, in_channels=1):
         super(CFRWDGenerator, self).__init__()
         self.cfr_branch = CFRBranch(in_channels=in_channels)
-        self.hfcf_branch = HFCFBranch(in_channels=in_channels, use_log_preprocess=use_log_preprocess)
-        # Scalar learnable fusion weight: sigmoid(0) = 0.5 → equal init weighting.
-        # Replaces spatial AdaptiveFusion (spatial softmax degenerated to scalar in cfrwd-38).
-        self._fusion_logit = nn.Parameter(torch.zeros(1))
-        # Per-branch decoders: each branch decodes its own feature space.
-        # Fusion happens at RGB logit level so each decoder trains on its own distribution.
-        self.cfr_final = FinalDecoderBlock(32, 3, kernel_size=7)
-        self.hfcf_final = FinalDecoderBlock(32, 3, kernel_size=7)
+        self.hfcf_branch = HFCFBranch(in_channels=in_channels)
+        self.adaptive_fusion = AdaptiveFusion(feat_channels=32)
+        
+        # Общий декодер для обеих веток
+        self.final = FinalDecoderBlock(32, 3, kernel_size=7)
 
         self._initialize_weights()
 
@@ -700,28 +637,20 @@ class CFRWDGenerator(nn.Module):
 
         logger.info("Веса инициализированы (Kaiming fan_in + Xavier/Tanh).")
 
-        # SpeckleAwareModule: init gate[-2] bias large positive → sigmoid ≈ 0.95 (near pass-through).
-        # The Kaiming pass above set these biases to 0 → sigmoid(0)=0.5 would block half the signal.
-        # Starting open lets the network learn when to attenuate, not force attenuation from epoch 0.
-        for m in self.modules():
-            if isinstance(m, SpeckleAwareModule):
-                nn.init.constant_(m.gate[-2].bias, 3.0)  # sigmoid(3.0) ≈ 0.95
-
     def forward(self, x, return_branches=False):
-        cfr_feats  = self.cfr_branch(x)    # B×32×H×W
-        hfcf_feats = self.hfcf_branch(x)   # B×32×H×W
+        cfr_feats = self.cfr_branch(x)    # B×32×H×W
+        hfcf_feats = self.hfcf_branch(x)  # B×32×H×W
 
-        w_hfcf = torch.sigmoid(self._fusion_logit)  # scalar ∈ (0, 1), init=0.5
-        w_cfr  = 1.0 - w_hfcf
-        cfr_logits  = self.cfr_final(cfr_feats)     # B×3×H×W, pre-tanh
-        hfcf_logits = self.hfcf_final(hfcf_feats)   # B×3×H×W, pre-tanh
-        out = torch.tanh(w_cfr * cfr_logits + w_hfcf * hfcf_logits)
+        _, fusion_weights = self.adaptive_fusion(cfr_feats, hfcf_feats)
+        cfr_logits  = self.final(cfr_feats)    # B×3×H×W, pre-tanh
+        hfcf_logits = self.final(hfcf_feats)   # B×3×H×W, pre-tanh
+        out = torch.tanh(
+            fusion_weights[:, 0:1] * cfr_logits + fusion_weights[:, 1:2] * hfcf_logits
+        )
 
         if return_branches:
-            cfr_out  = torch.tanh(cfr_logits)
-            hfcf_out = torch.tanh(hfcf_logits)
-            return out, cfr_out, hfcf_out, w_hfcf
-        return out, w_hfcf
+            return out, torch.tanh(cfr_logits), torch.tanh(hfcf_logits), fusion_weights
+        return out, fusion_weights
 
 
 if __name__ == "__main__":
@@ -744,7 +673,7 @@ if __name__ == "__main__":
 
     gen = CFRWDGenerator(in_channels=1).to(device)
     with torch.no_grad():
-        out, w_hfcf = gen(input_tensor)
+        out = gen(input_tensor)
 
     plt.subplot(1, 2, 1)
     plt.imshow(input_tensor.squeeze().detach().cpu().numpy())

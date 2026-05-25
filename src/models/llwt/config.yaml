@@ -6,9 +6,11 @@ data:
   # Same 9-scene subset used by the sarformer_wb runs so PSNR/LPIPS/FID
   # numbers are directly comparable across model families.  Set scenes: null
   # to use ALL scenes (~282k pairs).
-  scenes:                ["5", "10", "25", "35", "45", "47", "52", "84", "100"]
-  batch_size:            7                          # 16 GB VRAM @ 256x256; bs=6 used 11.7 GB peak, bs=7 expected ~13.6 GB (R1 step headroom kept)
-  image_size:            256
+  scenes:                ["5", "45", "52", "84", "100"] # ["5", "10", "25", "35", "45", "47", "52", "84", "100"]
+  batch_size:            16                         # train @ 128 crop; ~10 GB VRAM with 8-bit Adam + NHWC
+  val_batch_size:        4                          # val @ 256 full-res; smaller bs because pixels per sample 4x larger
+  image_size:            256                        # base resize (val uses this as-is; train crops down to train_crop_size)
+  train_crop_size:       128                        # patch-train lever — 4x fewer pixels per step, val numbers stay at 256
   num_workers:           6
   prefetch_factor:       2
   persistent_workers:    true
@@ -48,6 +50,7 @@ optimizer:
   beta1:          0.5
   beta2:          0.999
   weight_decay_g: 0.0                               # cfrwd-36 lesson: wd=0 on G recovers best image quality
+  use_bnb_8bit:   true                              # bnb 8-bit AdamW/Adam — ~700 MB VRAM saved vs fp32 fused. Auto-falls back to torch fused on ImportError.
 
 scheduler:
   type:                "cosine_warm_restarts"
@@ -62,26 +65,25 @@ ema:
   start_epoch: 10
 
 loss:
-  # Adversarial (main + subband).  gan_sub=0.5 keeps the subband-D as a
-  # supplementary signal, not a load-bearing one (it shares L1's job of
-  # preventing mode collapse if main-D dominates).
+  # v0.2.0 pix2pixHD-style: pure GAN + FM. Subband-D is now load-bearing
+  # (gan_sub 0.5->1.0, fm_sub 5->10). All recon losses zeroed — factory.py
+  # gates instantiation behind weight > 0, so MS-SSIM/LAB/LPIPS forwards never
+  # execute. Saves ~150 MB VRAM and ~15% step time.
   gan_main_weight:        1.0
-  gan_sub_weight:         0.5
+  gan_sub_weight:         1.0                       # 0.5 -> 1.0 — subband-D is the only HF supervision left
   fm_main_weight:         10.0
-  fm_sub_weight:          5.0
-  # Pixel anchor and frequency-aware reconstruction stack.  l1=50 keeps the
-  # recon:adv ratio at ~5:1 (the ratio that produced the sharpest visuals in
-  # sarformer-wb-2; <5:1 -> blur, >10:1 -> chroma collapse).
-  l1_weight:              50.0
-  msssim_weight:          1.0
-  lab_chroma_weight:      5.0
-  wavelet_weight:         2.0                       # L1 on Haar detail subbands (data-side, not network-side)
-  lpips_weight:           1.0                       # AlexNet LPIPS pulls toward perceptual distribution
-  # LLW-Former novelty regularisers (physics-informed speckle decoupling).
+  fm_sub_weight:          10.0                      # 5.0 -> 10.0 — subband-D feature matching doubled
+  l1_weight:              0.0                       # 50.0 -> 0 — kill the L1 mean-attractor blur trap
+  msssim_weight:          0.0                       # 1.0 -> 0 — drop low-pass-biased SSIM
+  lab_chroma_weight:      0.0                       # 5.0 -> 0
+  wavelet_weight:         0.0                       # 2.0 -> 0
+  lpips_weight:           0.0                       # 1.0 -> 0
+  # LLW-Former physics priors — tiny, kept. Not learning signals; the lifting
+  # wavelet must stay interpretable (LL ~ despeckled SAR) and invertible.
   spkdec_weight:          0.05
   spkdec_target_hh:       0.05
   pr_weight:              0.01
-  # Mode-collapse hardening.
+  # Mode-collapse hardening — extra important now that no pixel anchor exists.
   adaptive_balance:       false
   adaptive_eta_max:       5.0
   r1_gamma:               0.5
@@ -94,16 +96,17 @@ system:
   precision:     "bf16-mixed"
   deterministic: false
   benchmark:     true                               # cuDNN autotunes conv algos for fixed input shapes -- math identical, faster kernel pick
-  compile:       true                               # netG only; netD eager so R1 + bf16 path stays safe. Saves ~30% step time after one-time 180s compile cost.
-  max_epochs:    3                                  # TRANSIENT smoke run — revert to 120 before real training
-  image_freq:    5
+  channels_last: true                               # NHWC memory format — +10-15% on conv-heavy Ada kernels with cuDNN benchmark
+  compile:       false                              # Windows venv lacks triton — eager only. Set true when running from WSL2 (.venv_wsl).
+  max_epochs:    20                                 # SMOKE: 20-ep validation of pure GAN+FM recipe; bump to 120 for 9-scene production
+  image_freq:    2                                  # save val grid every 2 ep — early sharpness inspection during smoke
   limit_train_batches: 1.0
   limit_val_batches:   1.0
-  check_val_every_n_epoch: 1                        # set to 2 on the full run to roughly halve LPIPS+FID overhead; leave 1 for smoke
+  check_val_every_n_epoch: 2                        # val at 256 is the heaviest op; ep2 cadence halves LPIPS+FID cost
 
-  tb_version:    "llwt-v0.1.0-smoke"                # TRANSIENT smoke run — revert to "llwt-v0.1.0" before real training
-  weights_ckpt:  null                               # FRESH START -- no warm-start (per plan, avoids brown-soup anchor)
-  resume_ckpt:   null
+  tb_version:    "llwt-v0.2.0-smoke-5scenes"        # SMOKE for pix2pixHD-style loss surgery; switch to llwt-v0.2.0 for 9-scene production
+  weights_ckpt:  null                               # FRESH START — pure GAN+FM has a different optimum than the L1-anchored v0.1.0 ckpt
+  resume_ckpt:   null                               # FRESH START
   debug:         false
   checkpoints_dir: "checkpoints/llwt"
   output_dir:      "./output/llwt"

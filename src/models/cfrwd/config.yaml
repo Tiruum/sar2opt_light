@@ -33,7 +33,7 @@ optimizer:
   beta2: 0.999
 
 scheduler:
-  eta_min: 1.0e-6
+  eta_min: 0
   linear_decay_epochs: 200 # Пропорционально max_epochs: последние 50% (=400/800)
 
 ema:
@@ -43,12 +43,11 @@ ema:
 
 loss:
   gan_weight: 1
-  fm_weight: 3
-  l1_weight: 0.5
-  fft_weight: 0.5
-  wavelet_weight: 1.0   # L1 on Haar detail subbands of HFCF output
-  use_log_preprocessing: false  # log(1+relu(x)) before DWT — worsens SEN12 |rho| (0.16→0.77), enable only for QXSLAB
-  use_lpips: false
+  fm_weight: 10
+  hfcf_aux_weight: 1.0  # L1 weight on HFCF branch output — prevents wavelet branch atrophy
+  # L1 и FFT авто-балансируются через AdaptiveLoss (Kendall et al., 2018).
+  # Ручные веса не нужны — eta обучаются вместе с генератором.
+  use_lpips: false  # true → добавляет LPIPS в AdaptiveLoss третьим компонентом [L1, FFT, LPIPS]
 
 system:
   device: "cuda"
@@ -56,15 +55,15 @@ system:
   deterministic: false
   benchmark: false  # true выделяет huge cuDNN workspace при многих уникальных формах (CFRBlock/HFCFBranch → 50+ shapes → до 16 ГБ кэша)
   compile: false # torch.compile() — только Linux (Triton не поддерживает Windows)
-  max_epochs: 400 # Статья: 200 при BS=1. Полный эквивалент BS=8: 200×(8/1)=1600. Используем 400 — ~2× больше чем статья.
+  max_epochs: 400 # Статья: 200 при BS=1. Полный эквивалент BS=8: 200×(8/1)=1600. Используем 800 — ~4× больше чем статья, осознанный выбор.
   checkpoints_dir: "checkpoints/cfrwd"
   image_freq: 10
   output_dir: "./output/cfrwd"
   images_dir: "./output/cfrwd/images"
   profiler_dir: "./output/cfrwd/profiler"
   summary_dir: "./output/cfrwd/summary"
-  limit_train_batches: 1.0
-  limit_val_batches: 1.0
-  tb_version: "physics-5"
-  resume_ckpt: "./checkpoints/cfrwd/physics-4/epoch=144-psnr=13.9816.ckpt"
+  limit_train_batches: 1.0 # 0.1 for quick testing, 1.0 for full training
+  limit_val_batches: 1.0 # 0.1 for quick testing, 1.0 for full validation
+  tb_version: "cfrwd-38"
+  resume_ckpt: null
   debug: false

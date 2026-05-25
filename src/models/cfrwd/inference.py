@@ -7,12 +7,10 @@ from omegaconf import OmegaConf
 from src.models.cfrwd.gen import CFRWDGenerator
 from src.data.sen12.datamodule import SEN12Datamodule
 
-# Architecture changed (separate per-branch decoders) — incompatible with cfrwd-36 checkpoint.
-# Update this path after retraining with the new architecture.
-CHECKPOINT = "checkpoints/cfrwd/cfrwd-38/last.ckpt"
+CHECKPOINT = "checkpoints/cfrwd/cfrwd-36/last.ckpt"
 N_IMAGES = 8
 SPLIT = "val"
-OUTPUT_DIR = "outputs/cfr_analysis"
+OUTPUT_DIR = "./src/models/cfrwd/output"
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 
@@ -50,17 +48,16 @@ def main():
     netG = netG.to(DEVICE).eval()
 
     with torch.no_grad():
-        fused, cfr_out, hfcf_out, w_hfcf = netG(sar, return_branches=True)
+        fused, cfr_out, hfcf_out, fw = netG(sar, return_branches=True)
 
-    sar_np   = sar.detach().cpu().numpy()
-    opt_np   = opt.detach().cpu().numpy()
+    sar_np = sar.detach().cpu().numpy()
+    opt_np = opt.detach().cpu().numpy()
     fused_np = fused.detach().cpu().numpy()
-    cfr_np   = cfr_out.detach().cpu().numpy()
-    hfcf_np  = hfcf_out.detach().cpu().numpy()
-    w_hfcf_val    = w_hfcf.item()
-    gate_mid_val  = netG.hfcf_branch._last_g2_gate_mean.item()
-    gate_high_val = netG.hfcf_branch._last_g3_gate_mean.item()
+    cfr_np = cfr_out.detach().cpu().numpy()
+    hfcf_np = hfcf_out.detach().cpu().numpy()
+    fw_np = fw.detach().cpu().numpy()
 
+    w_hfcf_values = []
     n = len(sar)
 
     for i in range(n):
@@ -95,24 +92,28 @@ def main():
         axes[4].set_title("GT optical")
         axes[4].axis('off')
 
-        axes[5].set_facecolor('#1a1a2e')
-        axes[5].text(0.5, 0.55,
-            f"w_hfcf  = {w_hfcf_val:.3f}\n"
-            f"gate_mid  = {gate_mid_val:.3f}\n"
-            f"gate_high = {gate_high_val:.3f}",
-            ha='center', va='center', fontsize=11, color='white',
-            transform=axes[5].transAxes, family='monospace')
-        axes[5].set_title("Fusion & Speckle Gate")
+        w_hfcf = fw_np[i, 1]
+        im = axes[5].imshow(w_hfcf, cmap='viridis', vmin=0, vmax=1)
+        cbar = plt.colorbar(im, ax=axes[5])
+        mean_w = w_hfcf.mean()
+        axes[5].set_title(f"w_hfcf (mean={mean_w:.3f})")
         axes[5].axis('off')
+
+        w_hfcf_values.append(w_hfcf)
 
         plt.tight_layout()
         out_path = os.path.join(OUTPUT_DIR, f"img_{i:03d}.png")
         plt.savefig(out_path, dpi=150, bbox_inches='tight')
         plt.close(fig)
-        print(f"Image {i:03d}  w_hfcf={w_hfcf_val:.3f}  gate_mid={gate_mid_val:.3f}  gate_high={gate_high_val:.3f}  saved → {out_path}")
+
+        std_w = w_hfcf.std()
+        min_w = w_hfcf.min()
+        max_w = w_hfcf.max()
+        print(f"Image {i:03d}  mean_w_hfcf={mean_w:.3f}  std={std_w:.3f}  min={min_w:.3f}  max={max_w:.3f}  saved → {out_path}")
 
     print("━" * 40)
-    print(f"w_hfcf (scalar, learned): {w_hfcf_val:.3f}  |  gate_mid: {gate_mid_val:.3f}  gate_high: {gate_high_val:.3f}")
+    overall_mean = torch.stack([torch.tensor(w) for w in w_hfcf_values]).mean().item()
+    print(f"Overall mean_w_hfcf: {overall_mean:.3f}  (across {n} images)")
 
 
 if __name__ == "__main__":

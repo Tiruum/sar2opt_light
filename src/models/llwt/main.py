@@ -17,6 +17,8 @@ fake vs real — measures low-frequency distributional alignment).
 """
 from __future__ import annotations
 
+from typing import Optional
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -72,6 +74,16 @@ class LLWFormerLightningModule(pl.LightningModule):
         if bool(getattr(cfg.system, 'compile', False)):
             self.netG.compile(mode='default', dynamic=False)
 
+        # NHWC (channels_last) memory format: cuDNN benchmark picks faster conv
+        # kernels on Ada/Ampere when both weights and activations are NHWC.
+        # Free 10-15% throughput on the conv-heavy lifting + subband-D paths;
+        # 1-channel SAR is essentially a no-op but the 3-channel optical/RGB
+        # path and the embed_dim=96 PSwE/decoder tensors benefit fully.
+        self.use_channels_last = bool(getattr(cfg.system, 'channels_last', False))
+        if self.use_channels_last:
+            self.netG = self.netG.to(memory_format=torch.channels_last)
+            self.netD = self.netD.to(memory_format=torch.channels_last)
+
         self.criterions = nn.ModuleDict(factory.build_criterions(cfg))
 
         # R1 + grad clip from cfg.loss.
@@ -82,6 +94,11 @@ class LLWFormerLightningModule(pl.LightningModule):
         self.use_subband_d = self.netD.use_sub
         self.gan_sub_weight = float(getattr(cfg.loss, 'gan_sub_weight', 0.5))
         self.fm_sub_weight  = float(getattr(cfg.loss, 'fm_sub_weight',  5.0))
+
+        # Mode-collapse abort-gate state (pure GAN+FM recipe has no pixel
+        # anchor; without these checks we can train through a silent collapse).
+        self._prev_val_psnr: Optional[float] = None
+        self._mode_collapse_strikes = 0
 
         # Validation metrics — data range 2.0 because images are in [-1, 1].
         self.psnr = PeakSignalNoiseRatio(data_range=2.0)
@@ -128,6 +145,10 @@ class LLWFormerLightningModule(pl.LightningModule):
         if not (torch.isfinite(sar).all() and torch.isfinite(opt).all()):
             self.log('train/bad_batch_skip', 1.0, on_step=False, on_epoch=True, reduce_fx='sum')
             return
+
+        if self.use_channels_last:
+            sar = sar.contiguous(memory_format=torch.channels_last)
+            opt = opt.contiguous(memory_format=torch.channels_last)
 
         # -------- D update on detached fake --------
         with torch.no_grad():
@@ -227,7 +248,7 @@ class LLWFormerLightningModule(pl.LightningModule):
             fake_feats_sub = []
             real_feats_sub = []
 
-        l_gan_main = self.criterions['gan'](fake_main_g, is_real=True)
+        l_gan_main = self.criterions['gan'](fake_main_g, is_real=True, for_d=False)
         l_fm_main = self.criterions['fm'](fake_feats_main, real_feats_main)
         g_loss = (
             l_gan_main * float(loss_cfg.gan_main_weight) +
@@ -236,7 +257,7 @@ class LLWFormerLightningModule(pl.LightningModule):
         self.log('train/gan_main', l_gan_main.detach(), on_step=False, on_epoch=True)
         self.log('train/fm_main', l_fm_main.detach(), on_step=False, on_epoch=True)
         if self.use_subband_d:
-            l_gan_sub = self.criterions['gan'](fake_sub_g, is_real=True)
+            l_gan_sub = self.criterions['gan'](fake_sub_g, is_real=True, for_d=False)
             g_loss = g_loss + l_gan_sub * self.gan_sub_weight
             self.log('train/gan_sub', l_gan_sub.detach(), on_step=False, on_epoch=True)
             if fake_feats_sub:                                  # guard against empty list
@@ -317,6 +338,9 @@ class LLWFormerLightningModule(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         sar, opt = batch
+        if self.use_channels_last:
+            sar = sar.contiguous(memory_format=torch.channels_last)
+            opt = opt.contiguous(memory_format=torch.channels_last)
         with torch.no_grad():
             fake = self.netG(sar)
         self.psnr.update(fake, opt)
@@ -328,16 +352,38 @@ class LLWFormerLightningModule(pl.LightningModule):
         self.fid.update(opt01, real=True)
 
     def on_validation_epoch_end(self):
+        psnr_now = float(self.psnr.compute())
+        ssim_now = float(self.ssim.compute())
+        lpips_now = float(self.lpips.compute())
+        fid_now = float(self.fid.compute())
         self.log_dict({
-            'val/psnr':  self.psnr.compute(),
-            'val/ssim':  self.ssim.compute(),
-            'val/lpips': self.lpips.compute(),
-            'val/fid':   self.fid.compute(),
+            'val/psnr':  psnr_now,
+            'val/ssim':  ssim_now,
+            'val/lpips': lpips_now,
+            'val/fid':   fid_now,
         }, prog_bar=True)
         self.psnr.reset()
         self.ssim.reset()
         self.lpips.reset()
         self.fid.reset()
+
+        # Mode-collapse abort gate (val side): exact PSNR repeat to 4 decimals
+        # across consecutive val epochs = G output is deterministic given SAR
+        # = mode collapse.  Only the pure GAN+FM recipe is vulnerable; pixel
+        # anchors used to mask this with noisy L1 contributions.
+        if self._prev_val_psnr is not None:
+            delta = abs(psnr_now - self._prev_val_psnr)
+            if delta < 1e-4 and self.current_epoch >= 3:
+                self._mode_collapse_strikes += 1
+                print(
+                    f"[ABORT-GATE] val/psnr identical across consecutive checks "
+                    f"({psnr_now:.4f} == {self._prev_val_psnr:.4f}, "
+                    f"strike #{self._mode_collapse_strikes} at ep{self.current_epoch}). "
+                    f"Pure GAN+FM mode-collapse signature — consider §15.6 anchored fallback."
+                )
+            else:
+                self._mode_collapse_strikes = 0
+        self._prev_val_psnr = psnr_now
 
     def on_train_epoch_end(self):
         self.sched_g.step()
@@ -348,3 +394,18 @@ class LLWFormerLightningModule(pl.LightningModule):
             for name, eta, w in zip(adaptive._loss_order, adaptive.eta, weights):
                 self.log(f'train/eta_{name}', eta.detach(), on_step=False, on_epoch=True)
                 self.log(f'train/w_{name}', w.detach(), on_step=False, on_epoch=True)
+
+        # Mode-collapse abort gate (train side): D no longer distinguishes
+        # real from fake → adversarial signal dead.  trainer.callback_metrics
+        # holds the on_epoch-aggregated values logged in training_step.
+        cm = self.trainer.callback_metrics
+        d_real = cm.get('train/d_real_mean')
+        d_fake = cm.get('train/d_fake_mean')
+        if d_real is not None and d_fake is not None and self.current_epoch >= 3:
+            diff = float(d_real) - float(d_fake)
+            if diff < 0.05:
+                print(
+                    f"[ABORT-GATE] D collapse signature: d_real - d_fake = {diff:.4f} "
+                    f"at ep{self.current_epoch} (< 0.05 threshold). "
+                    f"Pure GAN+FM training has no pixel anchor — consider §15.6 fallback."
+                )

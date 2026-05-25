@@ -72,6 +72,7 @@ class QXSLABDataModule(LightningDataModule):
             sar_channels=self.sar_channels,
             sar_mean=sar_mean,
             sar_std=sar_std,
+            use_lognorm=True
         )
         self.optical_specific = get_optical_specific(
             opt_mean=_stats['opt_mean'],

@@ -15,7 +15,8 @@
       "WebFetch(domain:www.mdpi.com)",
       "Bash(git add *)",
       "Bash(git commit *)",
-      "Bash(npx gitnexus *)"
+      "Bash(npx gitnexus *)",
+      "WebSearch"
     ]
   },
   "enableAllProjectMcpServers": true,

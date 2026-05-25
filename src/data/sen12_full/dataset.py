@@ -40,6 +40,7 @@ class SEN12Full(Dataset):
         input_specific: Optional[Callable] = None,
         optical_specific: Optional[Callable] = None,
         resize_transform: Optional[Callable] = None,
+        sar_resize_transform: Optional[Callable] = None,
         sar_channels: int = 1,
         seasons: Optional[List[str]] = None,
         scenes: Optional[List[str]] = None,
@@ -68,6 +69,10 @@ class SEN12Full(Dataset):
         self.input_specific = input_specific
         self.optical_specific = optical_specific
         self.resize_transform = resize_transform
+        # SAR-specific resize (nearest-neighbour by default if provided) so we
+        # don't bilinear-blur speckle structure.  Falls back to `resize_transform`
+        # when None for backward compatibility.
+        self.sar_resize_transform = sar_resize_transform
         self.sar_channels = sar_channels
 
         self.items: List[Tuple[str, str, str, str, str]] = (
@@ -169,7 +174,8 @@ class SEN12Full(Dataset):
             sar = cv2.cvtColor(sar, cv2.COLOR_BGR2RGB)
 
         if self.resize_transform:
-            sar = self.resize_transform(image=sar)['image']
+            sar_resize = self.sar_resize_transform or self.resize_transform
+            sar = sar_resize(image=sar)['image']
             opt = self.resize_transform(image=opt)['image']
 
         if self.common_transform:

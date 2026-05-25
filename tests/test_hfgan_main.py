@@ -9,7 +9,7 @@ from tests.conftest_hfgan import MockBackbone
 @pytest.fixture(scope='module')
 def cfg():
     c = OmegaConf.load('src/models/huggingface_gan/config.yaml')
-    return OmegaConf.merge(c, {'loss': {'fft_weight': 0.0, 'perceptual_weight': 0.0}})
+    return OmegaConf.merge(c, {'loss': {'fft_weight': 0.0, 'perceptual_weight': 0.0, 'l1_weight': 100.0}})
 
 @pytest.fixture(scope='module')
 def device():
@@ -36,6 +36,29 @@ def test_criterions_are_moduledict(module):
     assert 'gan' in module.criterions
     assert 'fm'  in module.criterions
     assert 'fft' not in module.criterions
+
+
+def test_l1_criterion_present_when_weight_positive(module):
+    """hfgan-12 wires L1 anchor when loss.l1_weight > 0."""
+    assert module.cfg.loss.l1_weight > 0
+    assert 'l1' in module.criterions
+
+
+def test_g_loss_with_l1_anchor_is_finite(module, device):
+    sar = torch.randn(2, 1, 256, 256, device=device)
+    opt = torch.rand(2, 3, 256, 256, device=device) * 2 - 1
+    _, real_feats = module.netD(sar, opt)
+    fake = module.netG(sar)
+    fake_logits, fake_feats = module.netD(sar, fake)
+    real_feats_d = [f.detach() for f in real_feats]
+    cfg = module.cfg.loss
+    g_loss = (
+        module.criterions['gan'](fake_logits, is_real=True) * cfg.gan_weight +
+        module.criterions['fm'](fake_feats, real_feats_d)   * cfg.fm_weight +
+        module.criterions['l1'](fake, opt)                  * cfg.l1_weight
+    )
+    assert torch.isfinite(g_loss)
+    assert g_loss.item() > 0.0
 
 def test_d_loss_is_finite(module, device):
     sar = torch.randn(2, 1, 256, 256, device=device)
@@ -83,3 +106,11 @@ def test_validation_step_updates_metrics(module, device):
     module.ssim.reset()
     module.lpips.reset()
     module.fid.reset()
+
+
+def test_r1_attrs_present(module):
+    """hfgan-14 wires R1 GP knobs on the module."""
+    assert hasattr(module, 'r1_gamma')
+    assert hasattr(module, 'r1_every')
+    assert module.r1_every >= 1
+    assert module.r1_gamma > 0.0

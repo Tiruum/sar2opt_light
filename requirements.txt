@@ -1,4 +1,5 @@
 albumentations==2.0.8
+bitsandbytes>=0.43
 colorama==0.4.6
 matplotlib==3.10.8
 numpy==2.4.2
@@ -16,3 +17,9 @@ tensorboard>=2.14.0
 torch==2.8.0+cu129
 torchmetrics==1.6.1
 torchvision==0.23.0+cu129
+# SAR2OPT-V1 additions (May 2026)
+focal-frequency-loss>=0.3.0   # Jiang ICCV 2021, sharp HF anchor (loss term in sar2opt_v1)
+pytorch-msssim>=1.0.0          # MS-SSIM (also pulled in transitively by torchmetrics)
+kornia>=0.7.0                  # rgb_to_lab path used by LABChromaL1Loss
+transformers>=4.41.0           # HF AutoBackbone (SwinV2 / ConvNeXtV2 generators)
+lpips>=0.1.4                   # val metric only in sar2opt_v1, training loss in older stacks

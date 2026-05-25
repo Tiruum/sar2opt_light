@@ -17,9 +17,9 @@ def cleanup_memory(log: bool = False):
         if log:
             allocated = torch.cuda.memory_allocated() / 1024**3
             cached = torch.cuda.memory_reserved() / 1024**3
-            print(f"Память после очистки:")
-            print(f'\tВыделено {old_allocated:.2f} -> {allocated:.2f}GB')
-            print(f'\tКэш {old_cached:.2f} -> {cached:.2f}GB')
+            print("Memory after cleanup:")
+            print(f'\tallocated {old_allocated:.2f} -> {allocated:.2f} GB')
+            print(f'\tcached    {old_cached:.2f} -> {cached:.2f} GB')
 
 
 def kill_dataloader_workers(log: bool = False):
@@ -30,7 +30,7 @@ def kill_dataloader_workers(log: bool = False):
     """
     children = multiprocessing.active_children()
     if log and children:
-        print(f"Найдено {len(children)} дочерних процессов, завершаем...")
+        print(f"Found {len(children)} child process(es), terminating...")
     for child in children:
         child.terminate()
     for child in children:
@@ -38,7 +38,7 @@ def kill_dataloader_workers(log: bool = False):
         if child.is_alive():
             child.kill()
     if log and children:
-        print(f"Все дочерние процессы завершены.")
+        print("All child processes terminated.")
 
 
 def full_cleanup(trainer=None, model=None, datamodule=None, log: bool = False):

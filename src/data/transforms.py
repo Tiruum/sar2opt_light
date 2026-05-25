@@ -1,4 +1,5 @@
 # src/data/transforms.py
+import numpy as np
 import albumentations as A
 import cv2
 from albumentations.pytorch import ToTensorV2
@@ -31,14 +32,37 @@ def get_common_transform():
         'optical': 'image'
     })
 
-def get_input_specific(sar_channels=1, sar_mean=None, sar_std=None):
+class LogNormSAR(A.ImageOnlyTransform):
+    """
+    Applies logarithmic normalization to SAR images (log1p).
+    Scales the output back to [0, 255] or original max, so A.Normalize works properly.
+    """
+    def __init__(self, always_apply=True, p=1.0):
+        super(LogNormSAR, self).__init__(always_apply, p)
+
+    def apply(self, img, **params):
+        img_float = img.astype(np.float32)
+        # Assuming input is in [0, 255]
+        img_log = np.log1p(img_float)
+        img_log = (img_log / np.log1p(255.0)) * 255.0
+        if img.dtype == np.uint8:
+            return np.clip(img_log, 0, 255).astype(np.uint8)
+        return img_log
+
+def get_input_specific(sar_channels=1, sar_mean=None, sar_std=None, use_lognorm=False):
     mean = sar_mean if sar_mean is not None else [0.5] * sar_channels
     std = sar_std if sar_std is not None else [0.5] * sar_channels
-    return A.Compose([
-        A.MultiplicativeNoise(multiplier=(0.1, 1.1), per_channel=False, p=0.3),
+    
+    transforms = []
+    if use_lognorm:
+        transforms.append(LogNormSAR(always_apply=True))
+        
+    transforms.extend([
         A.Normalize(mean=mean, std=std, max_pixel_value=255.0),
         ToTensorV2()
     ])
+    
+    return A.Compose(transforms)
 
 def get_optical_specific(opt_mean=None, opt_std=None):
     mean = opt_mean if opt_mean is not None else [0.5, 0.5, 0.5]
@@ -49,5 +73,14 @@ def get_optical_specific(opt_mean=None, opt_std=None):
         ToTensorV2()
     ])
 
-def get_resize_transform(image_size):
-    return A.Resize(image_size, image_size)
+def get_resize_transform(image_size, interpolation=cv2.INTER_LINEAR):
+    """Bilinear by default — appropriate for the optical (continuous-tone) target."""
+    return A.Resize(image_size, image_size, interpolation=interpolation)
+
+
+def get_sar_resize_transform(image_size):
+    """Nearest-neighbour interpolation preserves the discrete speckle structure
+    of SAR amplitude.  Bilinear blurs speckle edges and removes high-frequency
+    cues the wavelet branch and the discriminator depend on.
+    """
+    return A.Resize(image_size, image_size, interpolation=cv2.INTER_NEAREST)

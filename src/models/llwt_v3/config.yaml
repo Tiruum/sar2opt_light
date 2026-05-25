@@ -1,0 +1,112 @@
+data:
+  data_dir:
+    sen12:      "./data/sen12"
+    sen12_full: "./data/sen12_full"
+  dataset:               "sen12_full"
+  # Same 5-scene subset for the smoke. Switch to the 9-list before the
+  # production run: ["5","10","25","35","45","47","52","84","100"].
+  scenes:                ["5", "45", "52", "84", "100"]
+  batch_size:            8                          # train @ 256 full-res; ~same pixel budget as bs=16 @ 128 was
+  val_batch_size:        4                          # val @ 256 full-res
+  image_size:            256                        # train + val same resolution — back to full-res training
+  train_crop_size:       null                       # patch-train disabled; null means no RandomCrop in the train pipeline
+  num_workers:           6
+  prefetch_factor:       2
+  persistent_workers:    true
+  use_train_common_transform: true
+  train_val_split_ratio: 0.8
+  seed:                  42
+  sar_channels:          1
+
+model:
+  gen:
+    # HuggingFace AutoBackbone name. Tiny = 28.6 M params, hidden_sizes=(96,192,384,768).
+    # Switch to ``facebook/convnextv2-atto-1k-224`` for faster smoke / lower VRAM, or
+    # ``facebook/convnextv2-base-22k-224`` for higher capacity (likely OOM at bs=16).
+    backbone:         "facebook/convnextv2-tiny-22k-224"
+    out_indices:      [1, 2, 3, 4]                  # HF ConvNeXt V2 stage_names = stem + stage1..4; want the 4 stages
+    use_sar_physics:  true                          # SARAdapter (raw / log|SAR| / Sobel-grad) before Haar-Stem
+  dis:
+    main:
+      in_channels:    4                             # SAR(1) + opt(3)
+      ndf:            64
+    subband:
+      enabled:        true                          # subband-D head -- novelty axis #5
+      ndf:            32
+  log_summary: true
+
+optimizer:
+  lr_g:           2.0e-4                            # restored original — overfit-l1 confirmed arch climbs to 33 dB at 5e-4 / 3000 iter
+  lr_d:           2.0e-4                            # equal LR (no TTUR penalty on either side)
+  beta1:          0.5
+  beta2:          0.999
+  weight_decay_g: 0.0
+  use_bnb_8bit:   true                              # bnb 8-bit AdamW/Adam — ~700 MB VRAM saved vs fp32 fused
+
+scheduler:
+  type:                "cosine_warm_restarts"
+  eta_min:             1.0e-6
+  linear_decay_epochs: 60
+  t_0:                 20
+  t_mult:              2
+
+ema:
+  use_ema:     true
+  decay:       0.999
+  start_epoch: 10
+
+loss:
+  # v0.3.0 inherits the v0.2.x pix2pixHD-style pure GAN+FM recipe. Subband-D
+  # is load-bearing (gan_sub=1.0, fm_sub=10.0). Wavelet branch has its own
+  # internal SpeckleAwareModule gates so no spkdec loss is needed; the
+  # generator has no learnable lifting so PR is undefined too.
+  gan_main_weight:        1.0
+  gan_sub_weight:         1.0
+  fm_main_weight:         10.0                      # FM=10 was doing the G training work — cutting it crashed PSNR
+  fm_sub_weight:          10.0                      # d_real≈d_fake is the equilibrium of FM-driven training, not a bug
+  l1_weight:              0.0
+  msssim_weight:          0.0
+  lab_chroma_weight:      0.0
+  wavelet_weight:         0.0
+  lpips_weight:           0.0
+  spkdec_weight:          0.0                       # OFF — no learnable lifting in v0.3.0
+  spkdec_target_hh:       0.05
+  pr_weight:              0.0                       # OFF — no PR contract to enforce
+  adaptive_balance:       false
+  adaptive_eta_max:       5.0
+  # D-collapse fix set (smoke v1 stuck at d_real≈d_fake≈0.45):
+  #  * r1_gamma=0 + r1_main_every huge — spectral_norm already enforces
+  #    Lipschitz; R1 on top drove D to constant. Skipping the R1 branch keeps
+  #    the fast batched-D path on every step.
+  #  * real_smooth=1.0 — old (0.9, 0.0) made the LSGAN degenerate fixed point
+  #    exactly (0.9+0)/2=0.45 = the observed plateau.
+  r1_gamma:               0.0
+  r1_main_every:          999999
+  real_smooth:            1.0
+  fake_smooth:            0.0
+  gan_type:               "lsgan"                   # back to LSGAN — hinge saturated worse on overfit (d_loss=2.0)
+  grad_clip_g:            1.0
+  grad_clip_d:            5.0
+
+system:
+  device:        "cuda"
+  precision:     "bf16-mixed"
+  deterministic: false
+  benchmark:     true
+  channels_last: true                               # NHWC memory format — +10-15% on conv-heavy Ada kernels
+  compile:       false                              # Windows venv lacks triton — eager only
+  max_epochs:    200                                 # SMOKE 10-ep validation of v0.3.0 architecture; bump to 120 for production
+  image_freq:    2
+  limit_train_batches: 1.0
+  limit_val_batches:   1.0
+  check_val_every_n_epoch: 1
+
+  tb_version:    "llwt-v0.3.6-lr2e4-5scenes"        # lr_g restored 2e-4, lr_d=2e-4 (no TTUR penalty); R1 off, label_smooth=1, no-SN main D
+  weights_ckpt:  null                               # no warm-start across architectures
+  resume_ckpt:   null                               # FRESH START
+  debug:         false
+  checkpoints_dir: "checkpoints/llwt_v3"
+  output_dir:      "./output/llwt_v3"
+  images_dir:      "./output/llwt_v3/images"
+  profiler_dir:    "./output/llwt_v3/profiler"
+  summary_dir:     "./output/llwt_v3/summary"
