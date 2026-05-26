@@ -10,8 +10,8 @@ data:
   val_batch_size:        4                          # val @ 256 full-res
   image_size:            256                        # train + val same resolution — back to full-res training
   train_crop_size:       null                       # patch-train disabled; null means no RandomCrop in the train pipeline
-  num_workers:           6
-  prefetch_factor:       2
+  num_workers:           10                         # raised 6->10: train was GPU-starved (16% util); feed the loader harder
+  prefetch_factor:       4                           # raised 2->4: deeper per-worker prefetch queue to hide cv2 decode latency
   persistent_workers:    true
   use_train_common_transform: true
   train_val_split_ratio: 0.8
@@ -25,13 +25,14 @@ model:
     # ``facebook/convnextv2-base-22k-224`` for higher capacity (likely OOM at bs=16).
     backbone:         "facebook/convnextv2-tiny-22k-224"
     out_indices:      [1, 2, 3, 4]                  # HF ConvNeXt V2 stage_names = stem + stage1..4; want the 4 stages
-    use_sar_physics:  true                          # SARAdapter (raw / log|SAR| / Sobel-grad) before Haar-Stem
+    use_sar_physics:  true                          # SARAdapter (raw / channel2 / Sobel-grad) before Haar-Stem
+    sar_channel2:     despeckle                     # v0.4.5: log-domain adaptive Lee — A/B WINNER (FID -10%, KID -29%, LPIPS -3% vs log|x|; PSNR flat). 'log' = v4 fallback.
   dis:
     main:
       in_channels:    4                             # SAR(1) + opt(3)
       ndf:            64
     subband:
-      enabled:        true                          # subband-D head -- novelty axis #5
+      enabled:        false                         # v0.4.5: DISABLED — SubbandDis logits explode (~1.8e5, fp32-confirmed), swamping all perceptual losses under grad-clip. Re-enable only after adding spectral-norm/output-norm + fresh (non-warm) D train.
       ndf:            32
     fourier:
       enabled:        false                         # S-stage (S1+S2) rejected — FourierDis redundant with SubbandDis Haar discrimination
@@ -65,9 +66,9 @@ loss:
   # internal SpeckleAwareModule gates so no spkdec loss is needed; the
   # generator has no learnable lifting so PR is undefined too.
   gan_main_weight:        1.0
-  gan_sub_weight:         1.0
+  gan_sub_weight:         0.0                       # v0.4.5: subband-D disabled (see model.dis.subband.enabled)
   fm_main_weight:         10.0                      # FM=10 was doing the G training work — cutting it crashed PSNR
-  fm_sub_weight:          10.0                      # d_real≈d_fake is the equilibrium of FM-driven training, not a bug
+  fm_sub_weight:          0.0                       # v0.4.5: subband-D disabled (exploding feats ~1e5)
   l1_weight:              0.0
   msssim_weight:          1.0                       # v0.4.5: 1-MS-SSIM — direct non-blurring SSIM lever
   lab_chroma_weight:      0.0
@@ -99,15 +100,15 @@ loss:
   # (v0.4.0/v0.4.1 behaviour); set 1.0/10.0 to match gan_sub/fm_sub when enabled.
   gan_fourier_weight:     0.0
   fm_fourier_weight:      0.0
-  lpips_weight:           1.0                       # v0.4.5: AlexNet perceptual anchor (LPIPS + perceived structure)
+  lpips_weight:           2.0                       # v0.4.5: AlexNet perceptual anchor (~0.9 contribution; main photorealism driver)
   # v0.4.5 Focal Frequency Loss (Jiang ICCV 2021) — global FFT-domain sharpener.
   # Complementary to per_band (local Haar subbands); needs `focal-frequency-loss`.
-  ffl_weight:             1.0
+  ffl_weight:             10.0                      # v0.4.5: raw FFL ~0.03 -> x10 ~0.3 contribution (FFT-domain sharpener)
   ffl_alpha:              1.0
   # v0.4.5 PatchNCE (CUT, Park 2020) — misalignment-robust contrastive supervision
   # in the generator's own encoder space (attacks SEN12 SAR<->optical misregistration
   # that caps SSIM). layers index encode_optical's [s0,s1,s2,s3] pyramid.
-  patchnce_weight:        1.0
+  patchnce_weight:        0.1                       # v0.4.5: raw InfoNCE ~5 -> x0.1 ~0.5 contribution (else dominates)
   patchnce_layers:        [0, 1, 2, 3]
   patchnce_nc:            256
   patchnce_num_patches:   256
@@ -145,8 +146,8 @@ system:
   check_val_every_n_epoch: 1
 
   tb_version:    "llwt-v0.4.5-cnx-overhaul"         # Arm A: ConvNeXtV2 + loss overhaul (MS-SSIM+LPIPS+FFL) + PatchNCE; warm-start from R2 ep56
-  weights_ckpt:  "checkpoints/llwt_v4/llwt-v0.4.1-perband-r2-detail/epoch=056-psnr=14.2607.ckpt"  # warm from R2 W2 (PSNR 14.26, FID 81 — golden balanced ckpt)
-  resume_ckpt:   null                               # warm-start, not resume
+  weights_ckpt:  null  # warm from R2 W2 (PSNR 14.26, FID 81 — golden balanced ckpt)
+  resume_ckpt:   "checkpoints/llwt_v45/llwt-v0.4.5-cnx-overhaul/last.ckpt"                               # warm-start, not resume
   debug:         false
   checkpoints_dir: "checkpoints/llwt_v45"
   output_dir:      "./output/llwt_v45"

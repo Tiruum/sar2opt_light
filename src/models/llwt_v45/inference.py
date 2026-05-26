@@ -1,10 +1,28 @@
-"""Standalone inference entry for LLW-Former v0.3.0.
+"""Standalone quick-look inference for LLW-Former v0.4.5.
 
-Loads ``CHECKPOINT`` (Lightning ckpt), strips ``netG.`` prefix, applies the
-v4 generator to ``N_IMAGES`` SAR samples, writes side-by-side PNGs with
-PSNR/SSIM.  Mirrors ``src/models/llwt/inference.py``.
+Loads ``CHECKPOINT['state_dict']`` (defaults to the production ``last.ckpt``),
+strips the ``netG.`` prefix, applies the generator to ONE batch of SAR samples
+(``N_IMAGES`` capped at the batch size), and writes side-by-side PNGs with
+PSNR/SSIM.  For full-split top-K-per-scene scoring use ``best_inference.py``.
+
+Run from repo root::
+
+    python -m src.models.llwt_v45.inference
 """
 import os
+
+# Skip the online HF repo_exists probe that SSL-times-out on a flaky/offline
+# network; the backbone is already cached from training. setdefault keeps an
+# escape hatch: ``$env:HF_HUB_OFFLINE=0`` forces online.
+os.environ.setdefault('HF_HUB_OFFLINE', '1')
+os.environ.setdefault('TRANSFORMERS_OFFLINE', '1')
+
+# transformers' AutoBackbone.from_pretrained calls repo_exists() unconditionally
+# (a network probe to pick HF-vs-timm). Offline that *raises*; online on a flaky
+# net it SSL-times-out. Our backbone is a cached HF model, so force the HF branch.
+if os.environ.get('HF_HUB_OFFLINE') == '1':
+    import transformers.models.auto.auto_factory as _af
+    _af.repo_exists = lambda *a, **k: True
 
 import matplotlib
 matplotlib.use('Agg')
@@ -19,7 +37,7 @@ from src.data.sen12_full.datamodule import SEN12FullDataModule
 from src.models.llwt_v45.gen import LLWv4Generator
 
 
-CHECKPOINT = "checkpoints/llwt_v4/llwt-v0.4.1-perband-r2-detail/last.ckpt"
+CHECKPOINT = "checkpoints/llwt_v45/llwt-v0.4.5-cnx-overhaul/last.ckpt"
 N_IMAGES = 10
 SPLIT = "val"  # "train" or "val"
 OUTPUT_DIR = f"./src/models/llwt_v45/output/{SPLIT}"

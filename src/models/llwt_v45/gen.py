@@ -213,7 +213,7 @@ class LLWv4Generator(nn.Module):
 
         # SAR -> 3-ch physics-aware input.
         if self.use_sar_physics:
-            self.sar_adapter = SARAdapter()
+            self.sar_adapter = SARAdapter(channel2=str(getattr(gen_cfg, 'sar_channel2', 'log')))
         else:
             self.sar_adapter = None
             self.naive_proj = nn.Conv2d(1, 3, kernel_size=1, bias=True)
@@ -277,6 +277,27 @@ class LLWv4Generator(nn.Module):
         # Fixed inverse Haar — no learnable params, channels=3 RGB.
         self.ihaar = InverseHaarUp(channels=3)
 
+        # v0.4.5 novelty (optional): full-res SAR-conditioned detail residual.
+        # The IHaar head reconstructs H from predicted H/2 subbands; this adds a
+        # DIRECT full-resolution high-frequency path conditioned on the SAR-physics
+        # input (sar3) + upsampled terminal decoder features, summed into the
+        # pre-tanh logits. Attacks the H/2 reconstruction bottleneck (raises the
+        # representational ceiling = sharper, more photorealistic detail).
+        # Zero-init last conv -> detail=0 at step 0, so the mid-gray warm-start
+        # contract AND v4-checkpoint warm-loading both still hold.
+        self.use_detail_residual = bool(getattr(gen_cfg, 'detail_residual', False))
+        if self.use_detail_residual:
+            self.detail_head = nn.Sequential(
+                nn.ReflectionPad2d(1),
+                nn.Conv2d(3 + 32, 32, kernel_size=3, bias=False),
+                nn.GroupNorm(8, 32),
+                nn.GELU(),
+                nn.ReflectionPad2d(1),
+                nn.Conv2d(32, 3, kernel_size=3),
+            )
+            nn.init.zeros_(self.detail_head[-1].weight)
+            nn.init.zeros_(self.detail_head[-1].bias)
+
     # ----------------------------------------------------------------- forward
 
     def _decoder(self, sar3: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
@@ -306,6 +327,12 @@ class LLWv4Generator(nn.Module):
         sub = sub_flat.view(B, 3, 4, Hh, Ww)
         ll, lh, hl, hh = sub[:, :, 0], sub[:, :, 1], sub[:, :, 2], sub[:, :, 3]
         logits = self.ihaar(ll, lh, hl, hh)                   # (B, 3, H, W) pre-tanh
+        if self.use_detail_residual:
+            # Upsample terminal features H/2 -> H, condition on SAR-physics input,
+            # predict a zero-init high-freq residual added to the IHaar logits.
+            x_full = F.interpolate(x, scale_factor=2, mode='bilinear', align_corners=False)
+            detail = self.detail_head(torch.cat([sar3, x_full], dim=1))   # (B, 3, H, W)
+            logits = logits + detail
         return logits, sub
 
     def forward(self, sar: torch.Tensor, return_internals: bool = False):

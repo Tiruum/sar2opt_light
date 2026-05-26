@@ -13,7 +13,33 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-__all__ = ["SARAdapter", "HaarDown", "ConvUpsampleBlock"]
+__all__ = ["SARAdapter", "HaarDown", "ConvUpsampleBlock", "lee_despeckle"]
+
+
+def lee_despeckle(x: torch.Tensor, win: int = 5, q: float = 0.05) -> torch.Tensor:
+    """Adaptive Lee despeckle in the log/dB domain (additive-noise form).
+
+    SEN1-2 SAR is already dB/log-scaled and normalized to [-1, 1], so the
+    multiplicative speckle is ~additive constant-variance noise in this domain.
+    Lee then reduces to an edge-preserving adaptive local filter:
+
+        out = mean + w * (x - mean),   w = clamp(1 - sigma_n2 / var_local, 0, 1)
+
+    ``sigma_n2`` (log-domain speckle variance) is estimated PER IMAGE as the low
+    quantile of the local-variance map (homogeneous patches ~= pure speckle), so
+    there is no dataset-specific tuning. w -> 1 at high-variance edges (preserve),
+    w -> 0 in flat speckle (smooth). O(N), non-iterative, no params/weights.
+    Call inside an autocast-disabled (fp32) scope.
+    """
+    pad = win // 2
+    xp = F.pad(x, (pad, pad, pad, pad), mode='reflect')
+    mean = F.avg_pool2d(xp, win, stride=1)
+    mean_sq = F.avg_pool2d(xp * xp, win, stride=1)
+    var = (mean_sq - mean * mean).clamp_min(1e-6)
+    b = var.shape[0]
+    sigma_n2 = torch.quantile(var.reshape(b, -1), q, dim=1).view(b, 1, 1, 1)
+    w = (1.0 - sigma_n2 / var).clamp(0.0, 1.0)
+    return mean + w * (x - mean)
 
 
 class SARAdapter(nn.Module):
@@ -26,8 +52,9 @@ class SARAdapter(nn.Module):
       * ``proj`` uses ``padding_mode='reflect'`` (NOT zero-pad).
       * Final activation is ``nn.GELU()`` after the proj (NOT bare conv).
     """
-    def __init__(self):
+    def __init__(self, channel2: str = 'log'):
         super().__init__()
+        self.channel2 = str(channel2)   # 'log' = log|x| (v4); 'despeckle' = log-domain Lee
         sobel_x = torch.tensor([[-1., 0., 1.],
                                 [-2., 0., 2.],
                                 [-1., 0., 1.]], dtype=torch.float32).view(1, 1, 3, 3)
@@ -39,7 +66,13 @@ class SARAdapter(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         eps = 1e-6
-        log_amp = torch.log(x.abs() + eps)
+        # Channel 2: log|x| (v4 default) OR log-domain Lee despeckle (v0.4.5).
+        # 'log' kept byte-identical to v4 for warm-start parity.
+        if self.channel2 == 'despeckle':
+            with torch.amp.autocast(device_type='cuda', enabled=False):
+                c2 = lee_despeckle(x.float()).to(x.dtype)
+        else:
+            c2 = torch.log(x.abs() + eps)
         # bf16-safe Sobel: fp32 then cast back.  Reflect-pad before Sobel so
         # corner pixels don't see a zero border — otherwise the 1-px boundary
         # bias accumulates and shows as a ring artifact (hfgan-17 -> hfgan-18 fix).
@@ -49,7 +82,7 @@ class SARAdapter(nn.Module):
             gx = F.conv2d(xf_pad, self.sx)
             gy = F.conv2d(xf_pad, self.sy)
             grad = torch.sqrt(gx * gx + gy * gy + eps).to(x.dtype)
-        feat = torch.cat([x, log_amp, grad], dim=1)         # (B, 3, H, W)
+        feat = torch.cat([x, c2, grad], dim=1)              # (B, 3, H, W)
         return self.act(self.proj(feat))
 
 

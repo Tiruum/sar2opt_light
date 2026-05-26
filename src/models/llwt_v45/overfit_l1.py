@@ -38,7 +38,7 @@ from src.data.transforms import (
 from src.models.llwt_v45 import factory
 
 
-CONFIG_PATH = str(ROOT / 'src' / 'models' / 'llwt_v45' / 'config.yaml')
+CONFIG_PATH = sys.argv[1] if len(sys.argv) > 1 else str(ROOT / 'src' / 'models' / 'llwt_v45' / 'config.yaml')
 ITERATIONS = 3000                      # arch-ceiling probe — long enough to plateau
 BATCH_SIZE = 4
 LR_OVERRIDE = 5.0e-4                   # 5x cfg.optimizer.lr_g to remove LR as bottleneck

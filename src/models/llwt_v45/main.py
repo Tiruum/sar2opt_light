@@ -33,6 +33,7 @@ from torchmetrics.image import (
     StructuralSimilarityIndexMeasure,
 )
 from torchmetrics.image.fid import FrechetInceptionDistance
+from torchmetrics.image.kid import KernelInceptionDistance
 
 from src.models.llwt_v45 import factory
 
@@ -50,15 +51,6 @@ def _logit_mean(logits) -> torch.Tensor:
     if isinstance(logits, (list, tuple)):
         return torch.stack([l.mean() for l in logits]).mean()
     return logits.mean()
-
-
-def _grads_finite(params) -> bool:
-    for p in params:
-        if p.grad is None:
-            continue
-        if not torch.isfinite(p.grad).all():
-            return False
-    return True
 
 
 class LLWv4LightningModule(pl.LightningModule):
@@ -107,6 +99,9 @@ class LLWv4LightningModule(pl.LightningModule):
         self.ssim = StructuralSimilarityIndexMeasure(data_range=2.0)
         self.lpips = LearnedPerceptualImagePatchSimilarity(net_type='alex', normalize=False)
         self.fid = FrechetInceptionDistance(feature=2048, reset_real_features=True, normalize=True)
+        # KID (kernel Inception distance) — unbiased, more reliable than FID on
+        # small val sets; a key photorealism metric for the thesis.
+        self.kid = KernelInceptionDistance(subset_size=int(getattr(cfg.system, 'kid_subset', 50)), normalize=True)
 
     # ------------------------------------------------------------------ optims
 
@@ -214,13 +209,22 @@ class LLWv4LightningModule(pl.LightningModule):
                 self.log('train/d_loss_fourier', d_loss_fourier.detach(), on_step=False, on_epoch=True)
         opt_d.zero_grad()
         self.manual_backward(d_loss)
-        if not _grads_finite(self.netD.parameters()):
+        # Single fused grad-finiteness check: clip_grad_norm_ returns the total
+        # grad norm (ONE GPU->CPU sync) which is inf/nan iff any grad is
+        # non-finite. Replaces the old per-parameter isfinite().all() loop, which
+        # synced once per param tensor (hundreds of GPU stalls per step ->
+        # GPU starvation). max_norm=inf computes the norm WITHOUT scaling, so the
+        # clip-disabled path keeps the guard at zero behaviour cost. Bad grads are
+        # never applied: opt_d.step() runs only on the finite branch.
+        d_gnorm = torch.nn.utils.clip_grad_norm_(
+            self.netD.parameters(),
+            self.grad_clip_d if self.grad_clip_d > 0 else float('inf'),
+        )
+        if torch.isfinite(d_gnorm):
+            opt_d.step()
+        else:
             self.log('train/d_grad_nan_skip', 1.0, on_step=False, on_epoch=True, reduce_fx='sum')
             opt_d.zero_grad()
-        else:
-            if self.grad_clip_d > 0:
-                torch.nn.utils.clip_grad_norm_(self.netD.parameters(), self.grad_clip_d)
-            opt_d.step()
 
         # -------- G update --------
         # v0.4.0 had no consumers of the internals path (spkdec/pr both gated
@@ -359,13 +363,17 @@ class LLWv4LightningModule(pl.LightningModule):
                 g_clip_params.extend(self.criterions['per_band'].parameters())
             if 'patchnce' in self.criterions:
                 g_clip_params.extend(self.criterions['patchnce'].parameters())
-            if not _grads_finite(g_clip_params):
+            # Same fused finite-check as the D side: one sync via clip_grad_norm_
+            # instead of the per-param isfinite().all() loop.
+            g_gnorm = torch.nn.utils.clip_grad_norm_(
+                g_clip_params,
+                self.grad_clip_g if self.grad_clip_g > 0 else float('inf'),
+            )
+            if torch.isfinite(g_gnorm):
+                opt_g.step()
+            else:
                 self.log('train/g_grad_nan_skip', 1.0, on_step=False, on_epoch=True, reduce_fx='sum')
                 opt_g.zero_grad()
-            else:
-                if self.grad_clip_g > 0:
-                    torch.nn.utils.clip_grad_norm_(g_clip_params, self.grad_clip_g)
-                opt_g.step()
 
         with torch.no_grad():
             d_real_mean = _logit_mean(real_main).detach()
@@ -394,22 +402,31 @@ class LLWv4LightningModule(pl.LightningModule):
         opt01 = ((opt + 1) / 2).clamp(0, 1).float()
         self.fid.update(fake01, real=False)
         self.fid.update(opt01, real=True)
+        self.kid.update(fake01, real=False)
+        self.kid.update(opt01, real=True)
 
     def on_validation_epoch_end(self):
         psnr_now = float(self.psnr.compute())
         ssim_now = float(self.ssim.compute())
         lpips_now = float(self.lpips.compute())
         fid_now = float(self.fid.compute())
+        try:
+            kid_mean, _ = self.kid.compute()
+            kid_now = float(kid_mean)
+        except Exception:
+            kid_now = float('nan')   # too few val samples for subset_size
         self.log_dict({
             'val/psnr':  psnr_now,
             'val/ssim':  ssim_now,
             'val/lpips': lpips_now,
             'val/fid':   fid_now,
+            'val/kid':   kid_now,
         }, prog_bar=True)
         self.psnr.reset()
         self.ssim.reset()
         self.lpips.reset()
         self.fid.reset()
+        self.kid.reset()
 
         # Mode-collapse abort gate (val side).
         if self._prev_val_psnr is not None:
