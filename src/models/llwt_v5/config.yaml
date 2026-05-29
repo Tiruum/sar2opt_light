@@ -4,7 +4,7 @@ data:
     sen12_full:       "./data/sen12_full"
     sen12_full_align: "./data/sen12_full_align"   # gradient-domain phaseCorrelate->ECC aligned mirror (scripts/align_pairs.py); SAR byte-identical, optical warped
     qxs_saropt:       "./data/QXSLAB_SAROPT"      # QXSLAB SAR-OPT (Gaofen-3 SAR + Google Earth optical), 20k 256x256 paired patches; flat layout sar_256_oc_0.2/ + opt_256_oc_0.2/
-  dataset:               "sen12_full_align"        # switch: "sen12_full" (raw) | "sen12_full_align" (aligned A/B) | "qxs_saropt" (QXSLAB transfer-learning target). train.py picks the matching datamodule + data_root.
+  dataset:               "sen12_full"              # SAWG trains on RAW (unaligned) data: the learned online aligner attacks real misregistration in-loop (replaces offline ECC). switch: "sen12_full" (raw) | "sen12_full_align" (aligned A/B) | "qxs_saropt" (QXSLAB transfer-learning target). train.py picks the matching datamodule + data_root.
   # Same 5-scene subset for the smoke. Switch to the 9-list before the
   # production run: ["5","10","25","35","45","47","52","84","100"].
   # NOTE: ignored when dataset=='qxs_saropt' (QXS layout has no scene partition).
