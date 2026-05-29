@@ -16,7 +16,8 @@
       "Bash(git add *)",
       "Bash(git commit *)",
       "Bash(npx gitnexus *)",
-      "WebSearch"
+      "WebSearch",
+      "WebFetch(domain:arxiv.org)"
     ]
   },
   "enableAllProjectMcpServers": true,

@@ -23,3 +23,4 @@ pytorch-msssim>=1.0.0          # MS-SSIM (also pulled in transitively by torchme
 kornia>=0.7.0                  # rgb_to_lab path used by LABChromaL1Loss
 transformers>=4.41.0           # HF AutoBackbone (SwinV2 / ConvNeXtV2 generators)
 lpips>=0.1.4                   # val metric only in sar2opt_v1, training loss in older stacks
+psutil>=5.9.0                  # cpu_rss_gb probe in llwt_v45 main.py — disambiguates GPU-alloc-fragmentation vs host-side leak for the per-epoch train-time ramp
