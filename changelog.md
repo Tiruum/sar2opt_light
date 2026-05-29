@@ -34,6 +34,11 @@ Quick <1h overfit-based screen (pure-L1 single-batch capacity, lr 5e-4, 3000 it)
 - **Verification:** `dis.py` Tier-1 smoke PASS; `smoke_a3.py` fast_dev_run (1 train + 1 val batch, real data + real v4 ckpt) PASS — d_loss=1.03, g_loss=2.97 finite, residual_mean=0 (zero-init identity start), G frozen (0 grads), refiner+D train. Ready to launch (`tb_version=llwt-v0.5.2-adv-refine`, max_epochs=60).
 - **Version:** v0.5.2
 
+## llwt-v0.5.0 — SAWG-Φ Self-Aligning Wavelet GAN, physics-anchored (2026-05-29)
+**Run ID:** llwt-v0.5.0-sawg
+**Changes:** New module `src/models/llwt_v5` (copy of llwt_v45). Adds a Self-Aligning Wavelet GAN: `DeformationAligner` predicts a deformation field phi from the speckle-robust LL Haar band and warps the GT optical into the generator's geometry; pixel-fidelity losses (per_band, MS-SSIM, FFL, LPIPS) measured vs the aligned target. Physics anchoring via deterministic PSC scattering-center heatmap (`PSCAnchorLoss`, contribution A) + backscatter-structure consistency (`BackscatterStructureLoss`, contribution B). `DeformationRegLoss` (TV + magnitude) prevents aligner collapse. GAN+FM+PatchNCE stay on raw GT. Warm-started from llwt-v0.4.6-align-ws. Gated by `align.enabled` (false => ≡ llwt_v45). Dual-eval val: `val/psnr` (raw, headline) + `val/psnr_aligned` (diagnostic).
+**Results:** TBD (training pending).
+
 ## llwt-v0.1.0 (2026-05-21)
 **Architecture:** LLW-Former — wavelet-native SAR→optical generator.
 - **Generator (3.6M params):** SARPhysicsFrontEnd (1→3 ch) → Stem Conv (3→96 ch) → LLWTransform (L=3, learnable lifting wavelet, channel-preserving) → PerSubbandEncoder per level (4 WindowSwinBlock stacks: LL/LH/HL/HH, win=8, heads=4, depth=2) → CrossBandAttention at levels 2,3 → PCSG (physics-conditioned subband gating from 7×7 SAR local-variance) → LLWTransform.inverse → 2× ConvNeXtV2-GRN post-decoder → Conv7×7 RGB head + tanh.
