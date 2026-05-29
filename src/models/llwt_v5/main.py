@@ -484,6 +484,19 @@ class LLWv4LightningModule(pl.LightningModule):
         if self.use_kid:
             self.kid.update(fake01, real=False)
             self.kid.update(opt01, real=True)
+        if getattr(self, 'use_align', False):
+            import torchmetrics.functional as _tmf
+            from src.models.llwt_v5.align import DeformationAligner
+            fake_ll = self._haar_ll(fake)[0]
+            opt_ll = self._haar_ll(opt)[0]
+            phi_v = self.aligner(fake_ll, opt_ll)
+            opt_aligned_v = DeformationAligner.warp(opt, phi_v)
+            self.log('val/psnr_aligned',
+                     _tmf.peak_signal_noise_ratio(fake, opt_aligned_v, data_range=2.0),
+                     on_step=False, on_epoch=True, prog_bar=False)
+            self.log('val/ssim_aligned',
+                     _tmf.structural_similarity_index_measure(fake, opt_aligned_v, data_range=2.0),
+                     on_step=False, on_epoch=True, prog_bar=False)
 
     def on_validation_epoch_end(self):
         psnr_now = float(self.psnr.compute())
