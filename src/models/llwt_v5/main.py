@@ -76,6 +76,21 @@ class LLWv4LightningModule(pl.LightningModule):
 
         self.criterions = nn.ModuleDict(factory.build_criterions(cfg, netG=self.netG))
 
+        # --- llwt_v5 Self-Aligning Wavelet GAN -------------------------------
+        from src.models.llwt_v5.blocks import HaarDown
+        from src.models.llwt_v5 import factory as _f
+        self.aligner, align_crit = _f.build_aligner(cfg)
+        self.use_align = self.aligner is not None
+        if self.use_align:
+            self.align_criterions = nn.ModuleDict(align_crit)
+            self._haar_ll = HaarDown(in_channels=3)            # LL extractor, fixed buffer
+            ac = cfg.align
+            self.psc_topk = int(getattr(ac, 'psc_topk', 64))
+            self.psc_anchor_weight = float(getattr(ac, 'psc_anchor_weight', 1.0))
+            self.bsc_weight = float(getattr(ac, 'bsc_weight', 0.5))
+            if self.use_channels_last:
+                self.aligner = self.aligner.to(memory_format=torch.channels_last)
+
         # R1 + grad clip from cfg.loss.
         self.r1_gamma = float(getattr(cfg.loss, 'r1_gamma', 0.5))
         self.r1_main_every = int(getattr(cfg.loss, 'r1_main_every', 16))
@@ -117,6 +132,15 @@ class LLWv4LightningModule(pl.LightningModule):
         opt_d, opt_g = factory.build_optimizers(
             self.cfg, self.netG, self.netD, criterions=self.criterions,
         )
+        # llwt_v5: the deformation aligner trains jointly with G. The G optimizer
+        # is constructed inside factory.build_optimizers (which only knows about
+        # netG + criterions), so register the aligner's params as an extra group
+        # on opt_g here. Uses the same lr as the G group (group 0).
+        if getattr(self, 'use_align', False) and self.aligner is not None:
+            existing_ids = {id(p) for pg in opt_g.param_groups for p in pg['params']}
+            align_params = [p for p in self.aligner.parameters() if id(p) not in existing_ids]
+            if align_params:
+                opt_g.add_param_group({'params': align_params, 'lr': opt_g.param_groups[0]['lr']})
         sched_d, sched_g = factory.build_lr_schedulers(self.cfg, opt_d, opt_g)
         self.sched_g = sched_g
         self.sched_d = sched_d
@@ -253,6 +277,19 @@ class LLWv4LightningModule(pl.LightningModule):
             fake = self.netG(sar)
             predicted_sub = None
 
+        # llwt_v5: register GT optical into the generator's geometry (LL band).
+        if self.use_align:
+            from src.models.llwt_v5.align import psc_detect, DeformationAligner
+            fake_ll = self._haar_ll(fake)[0]
+            opt_ll = self._haar_ll(opt)[0]
+            phi = self.aligner(fake_ll, opt_ll)
+            opt_aligned = DeformationAligner.warp(opt, phi)
+            m_psc = psc_detect(sar, topk=self.psc_topk)
+        else:
+            opt_aligned = opt
+            phi = None
+            m_psc = None
+
         # Batched D forward in G phase.
         B = sar.size(0)
         sar_doubled_g = sar.repeat(2, 1, 1, 1)
@@ -308,7 +345,7 @@ class LLWv4LightningModule(pl.LightningModule):
             g_loss = g_loss + l_l1 * float(loss_cfg.l1_weight)
             self.log('train/loss_l1', l_l1.detach(), on_step=False, on_epoch=True)
         if 'msssim' in self.criterions:
-            l_ms = self.criterions['msssim'](fake, opt)
+            l_ms = self.criterions['msssim'](fake, opt_aligned)
             g_loss = g_loss + l_ms * float(loss_cfg.msssim_weight)
             self.log('train/loss_msssim', l_ms.detach(), on_step=False, on_epoch=True)
         if 'lab_chroma' in self.criterions:
@@ -325,7 +362,7 @@ class LLWv4LightningModule(pl.LightningModule):
             # above when ``need_internals`` is True — which the factory
             # guarantees whenever 'per_band' is in self.criterions.
             pb_loss_fn = self.criterions['per_band']
-            l_pb = pb_loss_fn(predicted_sub, opt)
+            l_pb = pb_loss_fn(predicted_sub, opt_aligned)
             g_loss = g_loss + l_pb * float(loss_cfg.per_band_weight)
             self.log('train/loss_per_band', l_pb.detach(), on_step=False, on_epoch=True)
             # v0.4.1 R4: always log effective per-band weights (precisions in
@@ -338,13 +375,13 @@ class LLWv4LightningModule(pl.LightningModule):
                     for band, value in pb_loss_fn.last_per_band.items():
                         self.log(f'train/loss_pb_{band}', value, on_step=False, on_epoch=True)
         if 'lpips' in self.criterions:
-            l_lp = self.criterions['lpips'](fake, opt)
+            l_lp = self.criterions['lpips'](fake, opt_aligned)
             g_loss = g_loss + l_lp * float(loss_cfg.lpips_weight)
             self.log('train/loss_lpips', l_lp.detach(), on_step=False, on_epoch=True)
         if 'ffl' in self.criterions:
             # v0.4.5: Focal Frequency Loss on the full-res RGB output (global
             # FFT spectrum). Complementary to per_band (local Haar subbands).
-            l_ffl = self.criterions['ffl'](fake, opt)
+            l_ffl = self.criterions['ffl'](fake, opt_aligned)
             g_loss = g_loss + l_ffl * float(loss_cfg.ffl_weight)
             self.log('train/loss_ffl', l_ffl.detach(), on_step=False, on_epoch=True)
         if 'patchnce' in self.criterions:
@@ -359,6 +396,19 @@ class LLWv4LightningModule(pl.LightningModule):
             g_loss = g_loss + l_nce * float(loss_cfg.patchnce_weight)
             self.log('train/loss_patchnce', l_nce.detach(), on_step=False, on_epoch=True)
 
+        if self.use_align:
+            l_reg = self.align_criterions['deform_reg'](phi)
+            g_loss = g_loss + l_reg
+            self.log('train/loss_deform_reg', l_reg.detach(), on_step=False, on_epoch=True)
+            l_psc = self.align_criterions['psc_anchor'](fake, opt_aligned, m_psc)
+            g_loss = g_loss + l_psc * self.psc_anchor_weight
+            self.log('train/loss_psc_anchor', l_psc.detach(), on_step=False, on_epoch=True)
+            l_bsc = self.align_criterions['bsc'](fake, sar)
+            g_loss = g_loss + l_bsc * self.bsc_weight
+            self.log('train/loss_bsc', l_bsc.detach(), on_step=False, on_epoch=True)
+            with torch.no_grad():
+                self.log('train/phi_abs_mean', phi.abs().mean(), on_step=False, on_epoch=True)
+
         opt_g.zero_grad()
         if not torch.isfinite(g_loss):
             self.log('train/g_loss_nan_skip', 1.0, on_step=False, on_epoch=True, reduce_fx='sum')
@@ -371,6 +421,8 @@ class LLWv4LightningModule(pl.LightningModule):
                 g_clip_params.extend(self.criterions['per_band'].parameters())
             if 'patchnce' in self.criterions:
                 g_clip_params.extend(self.criterions['patchnce'].parameters())
+            if getattr(self, 'use_align', False) and self.aligner is not None:
+                g_clip_params = g_clip_params + list(self.aligner.parameters())
             # Same fused finite-check as the D side: one sync via clip_grad_norm_
             # instead of the per-param isfinite().all() loop.
             g_gnorm = torch.nn.utils.clip_grad_norm_(
