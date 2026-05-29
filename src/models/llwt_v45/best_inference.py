@@ -52,7 +52,7 @@ from torchmetrics.image import (
 )
 from torchmetrics.image.fid import FrechetInceptionDistance
 
-from src.data.sen12_full.datamodule import SEN12FullDataModule
+from src.models.llwt_v45.inference import _build_datamodule
 from src.models.llwt_v45.gen import LLWv4Generator
 
 
@@ -73,9 +73,18 @@ _CLIP_STD  = (0.26862954, 0.26130258, 0.27577711)
 
 
 def _scene_of(dataset, vidx: int) -> str:
-    """``items[vidx] = (season, s1_<scene>, s2_<scene>, s1_fname, s2_fname)``."""
-    s1_d = dataset.items[vidx][1]
-    return s1_d[len('s1_'):]                # strip the 's1_' prefix → scene id
+    """Return scene id for a dataset index.
+
+    SEN12Full layout: ``items[vidx] = (season, s1_<scene>, s2_<scene>, s1_fname, s2_fname)``.
+    QXS layout: ``items[vidx] = <filename>`` (flat, no scene partition) — bucket all
+    samples under the single label ``'qxs'`` so the per-scene aggregation degrades to a
+    single global aggregation.
+    """
+    entry = dataset.items[vidx]
+    if isinstance(entry, str):
+        return 'qxs'
+    s1_d = entry[1]
+    return s1_d[len('s1_'):]
 
 
 def _save_triplet(sar_t, opt_t, gen_t, psnr_val, ssim_val, lpips_val, scene, out_path):
@@ -128,21 +137,7 @@ def main():
     cfg = OmegaConf.load('./src/models/llwt_v45/config.yaml')
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-    dm = SEN12FullDataModule(
-        data_dir=cfg.data.data_dir.sen12_full,
-        batch_size=cfg.data.get('val_batch_size', cfg.data.batch_size),
-        image_size=cfg.data.image_size,
-        num_workers=cfg.data.num_workers,
-        persistent_workers=cfg.data.persistent_workers,
-        prefetch_factor=cfg.data.prefetch_factor,
-        train_val_split_ratio=cfg.data.train_val_split_ratio,
-        seed=cfg.data.seed,
-        sar_channels=cfg.data.sar_channels,
-        use_augmentation=cfg.data.use_train_common_transform,
-        scenes=list(cfg.data.scenes),
-        train_crop_size=None,
-        val_batch_size=cfg.data.get('val_batch_size', None),
-    )
+    dm = _build_datamodule(cfg)
     dm.setup("fit")
 
     dataset = dm.val_dataset if SPLIT == "val" else dm.train_dataset

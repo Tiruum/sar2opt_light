@@ -12,6 +12,13 @@ import functools
 import os
 import sys
 
+# Expandable-segments CUDA allocator: prevents caching-allocator fragmentation
+# that causes a smooth per-epoch slowdown (reserved VRAM stays flat in
+# nvidia-smi while allocations do progressively more synchronizing
+# cudaMalloc/Free). Must be set before the CUDA allocator initializes.
+# setdefault keeps a shell override (`$env:PYTORCH_CUDA_ALLOC_CONF=...`).
+os.environ.setdefault('PYTORCH_CUDA_ALLOC_CONF', 'expandable_segments:True')
+
 import torch
 import lightning.pytorch as pl
 from lightning.pytorch import Trainer
@@ -37,7 +44,8 @@ def _patched_load(*args, **kwargs):
 
 torch.load = _patched_load
 
-from src.data.sen12_full.datamodule import SEN12FullDataModule
+# SEN12FullDataModule is imported conditionally inside main() — raw vs aligned
+# tree is selected by cfg.data.dataset (both modules expose the same class API).
 from src.models.llwt_v45 import factory
 from src.models.llwt_v45.main import LLWv4LightningModule
 from src.utils.cleanup_memory import full_cleanup
@@ -83,8 +91,29 @@ def _load_weights_ckpt(model: LLWv4LightningModule, ckpt_path: str,
 def main():
     cfg = OmegaConf.load(CONFIG_PATH)
 
-    dm = SEN12FullDataModule(
-        data_dir=cfg.data.data_dir.sen12_full,
+    # Dataset selection via cfg.data.dataset:
+    #   sen12_full / sen12_full_align — SEN1-2 (raw or ECC-aligned mirror).
+    #   qxs_saropt                    — QXSLAB SAR-OPT (Gaofen-3, transfer target).
+    # SEN12FullDataModule and QXSSAROPTDataModule expose the same constructor
+    # signature; QXS ignores `scenes` (flat layout, no scene partition).
+    dataset_name = str(cfg.data.dataset)
+    if dataset_name == 'sen12_full':
+        from src.data.sen12_full.datamodule import SEN12FullDataModule as _DM
+    elif dataset_name == 'sen12_full_align':
+        from src.data.sen12_full_align.datamodule import SEN12FullDataModule as _DM
+    elif dataset_name == 'qxs_saropt':
+        from src.data.qxs_saropt.datamodule import QXSSAROPTDataModule as _DM
+    else:
+        raise ValueError(
+            f"cfg.data.dataset='{dataset_name}' unsupported "
+            "(expected 'sen12_full', 'sen12_full_align', or 'qxs_saropt')."
+        )
+    data_root = cfg.data.data_dir[dataset_name]
+    print(f"[train] dataset={dataset_name} | data_root={data_root}")
+
+    scenes_arg = None if dataset_name == 'qxs_saropt' else list(cfg.data.scenes)
+    dm_kwargs = dict(
+        data_dir=data_root,
         batch_size=cfg.data.batch_size,
         image_size=cfg.data.image_size,
         num_workers=cfg.data.num_workers,
@@ -94,10 +123,14 @@ def main():
         seed=cfg.data.seed,
         sar_channels=cfg.data.sar_channels,
         use_augmentation=cfg.data.use_train_common_transform,
-        scenes=list(cfg.data.scenes),
+        scenes=scenes_arg,
         train_crop_size=cfg.data.get('train_crop_size', None),
         val_batch_size=cfg.data.get('val_batch_size', None),
     )
+    # sar_lognorm is QXS-only — SEN12 datamodules don't expose it.
+    if dataset_name == 'qxs_saropt':
+        dm_kwargs['sar_lognorm'] = bool(cfg.data.get('sar_lognorm', False))
+    dm = _DM(**dm_kwargs)
     model = LLWv4LightningModule(cfg)
 
     checkpoints = ModelCheckpoint(

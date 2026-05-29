@@ -738,7 +738,17 @@ class LPIPSLoss(nn.Module):
             p.requires_grad_(False)
 
     def forward(self, pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
-        return self._lpips(pred.float(), target.float())
+        # Call the internal LPIPS network directly instead of the torchmetrics
+        # Metric.forward(). As a Metric, forward() ACCUMULATES global state (a
+        # cat-list of per-batch scores) on every call and never frees it when
+        # used as a per-step loss (no reset) — leaking ~1 tensor/step. That
+        # growing autograd/Python bookkeeping is the +15s/epoch train-time ramp
+        # (GPU mem stays flat because the leaked tensors are tiny). ``net(...)``
+        # is stateless and bit-identical to the metric value (verified). With
+        # normalize=False the inputs are already in [-1, 1], exactly what
+        # ``_lpips.net`` expects. ``.net`` keeps the same submodule, so the
+        # module state_dict (and warm-start/resume) is unchanged.
+        return self._lpips.net(pred.float(), target.float()).mean()
 
 
 class FFLLoss(nn.Module):

@@ -225,10 +225,25 @@ class LLWv4Generator(nn.Module):
             self.encoder = encoder
         else:
             from transformers import AutoBackbone
-            self.encoder = AutoBackbone.from_pretrained(
-                backbone_name,
-                out_indices=out_indices,
-            )
+            try:
+                self.encoder = AutoBackbone.from_pretrained(
+                    backbone_name,
+                    out_indices=out_indices,
+                )
+            except Exception as e:
+                # HF Hub network flakiness (SSL EOF / timeout in the repo_exists
+                # precheck) crashes boot even when the backbone is already cached
+                # — and HF_HUB_OFFLINE=1 doesn't help because repo_exists raises
+                # under offline mode. Retry forcing the local cache so a transient
+                # Hub outage can't kill a training run on startup.
+                print(f"[gen] AutoBackbone Hub load failed "
+                      f"({type(e).__name__}: {e}); retrying from local cache "
+                      f"(local_files_only=True).")
+                self.encoder = AutoBackbone.from_pretrained(
+                    backbone_name,
+                    out_indices=out_indices,
+                    local_files_only=True,
+                )
 
         hidden_sizes = getattr(self.encoder.config, 'hidden_sizes', None)
         if hidden_sizes is None:

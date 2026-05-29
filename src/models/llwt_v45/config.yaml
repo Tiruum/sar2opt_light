@@ -1,28 +1,32 @@
 data:
   data_dir:
-    sen12:      "./data/sen12"
-    sen12_full: "./data/sen12_full"
-  dataset:               "sen12_full"
+    sen12:            "./data/sen12"
+    sen12_full:       "./data/sen12_full"
+    sen12_full_align: "./data/sen12_full_align"   # gradient-domain phaseCorrelate->ECC aligned mirror (scripts/align_pairs.py); SAR byte-identical, optical warped
+    qxs_saropt:       "./data/QXSLAB_SAROPT"      # QXSLAB SAR-OPT (Gaofen-3 SAR + Google Earth optical), 20k 256x256 paired patches; flat layout sar_256_oc_0.2/ + opt_256_oc_0.2/
+  dataset:               "sen12_full_align"        # switch: "sen12_full" (raw) | "sen12_full_align" (aligned A/B) | "qxs_saropt" (QXSLAB transfer-learning target). train.py picks the matching datamodule + data_root.
   # Same 5-scene subset for the smoke. Switch to the 9-list before the
   # production run: ["5","10","25","35","45","47","52","84","100"].
+  # NOTE: ignored when dataset=='qxs_saropt' (QXS layout has no scene partition).
   scenes:                ["5", "45", "52", "84", "100"]
-  batch_size:            8                          # train @ 256 full-res; ~same pixel budget as bs=16 @ 128 was
+  batch_size:            8                          # train @ 256 full-res (tiny backbone)
   val_batch_size:        4                          # val @ 256 full-res
   image_size:            256                        # train + val same resolution — back to full-res training
   train_crop_size:       null                       # patch-train disabled; null means no RandomCrop in the train pipeline
   num_workers:           10                         # raised 6->10: train was GPU-starved (16% util); feed the loader harder
   prefetch_factor:       4                           # raised 2->4: deeper per-worker prefetch queue to hide cv2 decode latency
-  persistent_workers:    true
+  persistent_workers:    true                       # MUST stay true on Windows: false respawns all workers each epoch via spawn (~6s torch re-import x num_workers = ~60s/epoch wasted) and did NOT fix the ramp.
   use_train_common_transform: true
   train_val_split_ratio: 0.8
   seed:                  42
   sar_channels:          1
+  sar_lognorm:           false                      # true = log1p-stretch SAR before mean/std normalize. Recommended for raw-amplitude SAR (QXS Gaofen-3: skew +1.37 -> -0.31 with log1p). Leave false for SEN1-2 (GRD already pre-stretched, mean≈median≈126).
 
 model:
   gen:
     # HuggingFace AutoBackbone name. Tiny = 28.6 M params, hidden_sizes=(96,192,384,768).
-    # Switch to ``facebook/convnextv2-atto-1k-224`` for faster smoke / lower VRAM, or
-    # ``facebook/convnextv2-base-22k-224`` for higher capacity (likely OOM at bs=16).
+    # gen.py reads hidden_sizes from the encoder config so dims auto-adapt. The base
+    # (88M) variant lives in the separate src/models/llwt_v45_base module.
     backbone:         "facebook/convnextv2-tiny-22k-224"
     out_indices:      [1, 2, 3, 4]                  # HF ConvNeXt V2 stage_names = stem + stage1..4; want the 4 stages
     use_sar_physics:  true                          # SARAdapter (raw / channel2 / Sobel-grad) before Haar-Stem
@@ -46,7 +50,7 @@ optimizer:
   beta1:          0.5
   beta2:          0.999
   weight_decay_g: 0.0
-  use_bnb_8bit:   true                              # bnb 8-bit AdamW/Adam — ~700 MB VRAM saved vs fp32 fused
+  use_bnb_8bit:   false                             # false = torch fused AdamW/Adam (fp32 state, no quant noise, +~700MB VRAM). true = bnb 8-bit (saves ~700MB). NOTE: switching changes optimizer state — break strict resume_ckpt; fine for fresh / weights_ckpt warm-start.
 
 scheduler:
   type:                "linear_decay"                # v0.4.3 headline: constant LR for first (max_epochs - linear_decay_epochs) epochs, then linear decay to eta_min — avoids cosine restart wreckage AND constant-LR late oscillation
@@ -144,10 +148,12 @@ system:
   limit_train_batches: 1.0                           # prod: full train set per epoch
   limit_val_batches:   1.0                           # prod: full val set per epoch
   check_val_every_n_epoch: 1
+  use_kid:        false                              # KID val metric. false drops the 23.9M InceptionV3 (VRAM + per-step EMA-floor savings; skips val KID compute). FID still reported. NOTE: toggling changes module state_dict — break strict resume_ckpt; use weights_ckpt (strict=False) across the switch.
+  empty_cache_each_epoch: false                      # OFF: the per-epoch ramp was a torchmetrics-LPIPS-as-loss tensor leak (fixed in losses.py), NOT allocator fragmentation. empty_cache() here was proven ineffective (ON==OFF in A/B) and only adds cudaFree+malloc cost per epoch. Mem probes in main.py stay on to confirm train_epoch_sec is flat post-fix.
 
-  tb_version:    "llwt-v0.4.5-cnx-overhaul"         # Arm A: ConvNeXtV2 + loss overhaul (MS-SSIM+LPIPS+FFL) + PatchNCE; warm-start from R2 ep56
-  weights_ckpt:  null  # warm from R2 W2 (PSNR 14.26, FID 81 — golden balanced ckpt)
-  resume_ckpt:   "checkpoints/llwt_v45/llwt-v0.4.5-cnx-overhaul/last.ckpt"                               # warm-start, not resume
+  tb_version:    "llwt-v0.4.6-align-ws"               # tiny convnextv2 on sen12_full_align, warm-started from raw ep199 then resumed. (base variant = src/models/llwt_v45_base)
+  weights_ckpt:  null                               # resuming, not warm-starting
+  resume_ckpt:   "checkpoints/llwt_v45/llwt-v0.4.6-align-ws/last.ckpt"   # continue the aligned tiny run (LPIPS fix, use_kid=false, torch Adam). Strict-resume safe.
   debug:         false
   checkpoints_dir: "checkpoints/llwt_v45"
   output_dir:      "./output/llwt_v45"

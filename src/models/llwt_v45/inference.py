@@ -33,7 +33,6 @@ from torchmetrics.image import (
     PeakSignalNoiseRatio, StructuralSimilarityIndexMeasure,
 )
 
-from src.data.sen12_full.datamodule import SEN12FullDataModule
 from src.models.llwt_v45.gen import LLWv4Generator
 
 
@@ -45,12 +44,21 @@ DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 USE_LIVE_WEIGHTS = False
 
 
-def main():
-    cfg = OmegaConf.load('./src/models/llwt_v45/config.yaml')
-    os.makedirs(OUTPUT_DIR, exist_ok=True)
-
-    dm = SEN12FullDataModule(
-        data_dir=cfg.data.data_dir.sen12_full,
+def _build_datamodule(cfg):
+    """Dispatch on cfg.data.dataset — mirrors train.py selection logic."""
+    dataset_name = str(cfg.data.dataset)
+    if dataset_name == 'sen12_full':
+        from src.data.sen12_full.datamodule import SEN12FullDataModule as _DM
+    elif dataset_name == 'sen12_full_align':
+        from src.data.sen12_full_align.datamodule import SEN12FullDataModule as _DM
+    elif dataset_name == 'qxs_saropt':
+        from src.data.qxs_saropt.datamodule import QXSSAROPTDataModule as _DM
+    else:
+        raise ValueError(f"cfg.data.dataset='{dataset_name}' unsupported")
+    data_root = cfg.data.data_dir[dataset_name]
+    scenes_arg = None if dataset_name == 'qxs_saropt' else list(cfg.data.scenes)
+    dm_kwargs = dict(
+        data_dir=data_root,
         batch_size=cfg.data.get('val_batch_size', cfg.data.batch_size),
         image_size=cfg.data.image_size,
         num_workers=cfg.data.num_workers,
@@ -60,10 +68,20 @@ def main():
         seed=cfg.data.seed,
         sar_channels=cfg.data.sar_channels,
         use_augmentation=cfg.data.use_train_common_transform,
-        scenes=list(cfg.data.scenes),
+        scenes=scenes_arg,
         train_crop_size=None,
         val_batch_size=cfg.data.get('val_batch_size', None),
     )
+    if dataset_name == 'qxs_saropt':
+        dm_kwargs['sar_lognorm'] = bool(cfg.data.get('sar_lognorm', False))
+    return _DM(**dm_kwargs)
+
+
+def main():
+    cfg = OmegaConf.load('./src/models/llwt_v45/config.yaml')
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+    dm = _build_datamodule(cfg)
     dm.setup("fit")
 
     loader = dm.val_dataloader() if SPLIT == "val" else dm.train_dataloader()

@@ -21,6 +21,7 @@ mode-collapse abort gates) is identical to v0.3.x.
 """
 from __future__ import annotations
 
+import time
 from typing import Optional
 
 import torch
@@ -100,8 +101,15 @@ class LLWv4LightningModule(pl.LightningModule):
         self.lpips = LearnedPerceptualImagePatchSimilarity(net_type='alex', normalize=False)
         self.fid = FrechetInceptionDistance(feature=2048, reset_real_features=True, normalize=True)
         # KID (kernel Inception distance) — unbiased, more reliable than FID on
-        # small val sets; a key photorealism metric for the thesis.
-        self.kid = KernelInceptionDistance(subset_size=int(getattr(cfg.system, 'kid_subset', 50)), normalize=True)
+        # small val sets; a key photorealism metric for the thesis. Gated by
+        # cfg.system.use_kid: off skips its val update/compute AND drops the
+        # 23.9M-param InceptionV3 from the module (saves VRAM + the per-step EMA
+        # averaging of those frozen params). NOTE: toggling use_kid changes the
+        # module state_dict — resuming a ckpt saved under the other setting needs
+        # the strict=False weights_ckpt path, not strict resume_ckpt.
+        self.use_kid = bool(getattr(cfg.system, 'use_kid', True))
+        if self.use_kid:
+            self.kid = KernelInceptionDistance(subset_size=int(getattr(cfg.system, 'kid_subset', 50)), normalize=True)
 
     # ------------------------------------------------------------------ optims
 
@@ -388,6 +396,25 @@ class LLWv4LightningModule(pl.LightningModule):
 
     # ------------------------------------------------------------------ val
 
+    def on_train_epoch_start(self):
+        # Per-epoch slowdown mitigation + probe. The train loop allocates many
+        # variably-sized transients each step (MS-SSIM scales, FFL rfft2 complex
+        # temporaries, PatchNCE randperm gathers, LAB matmuls, per-band einsum).
+        # That churns the CUDA caching allocator: `reserved` stays flat under
+        # expandable_segments but segment fragmentation makes cudaMalloc/free
+        # bookkeeping slower every step -> a smooth per-step ramp (confirmed:
+        # ~0.37s/step -> ~1.0s/step over 40 epochs, resets on every process
+        # restart, flat VRAM). One empty_cache() at the epoch boundary forces
+        # segment cleanup so each epoch starts un-fragmented. Costs a few slow
+        # warmup steps (fresh cudaMalloc) but flattens the ramp. Gate it off to
+        # A/B the effect: cfg.system.empty_cache_each_epoch.
+        if torch.cuda.is_available() and bool(getattr(self.cfg.system, 'empty_cache_each_epoch', True)):
+            torch.cuda.empty_cache()
+        self._t_train = time.perf_counter()
+
+    def on_validation_epoch_start(self):
+        self._t_val = time.perf_counter()
+
     def validation_step(self, batch, batch_idx):
         sar, opt = batch
         if self.use_channels_last:
@@ -402,31 +429,34 @@ class LLWv4LightningModule(pl.LightningModule):
         opt01 = ((opt + 1) / 2).clamp(0, 1).float()
         self.fid.update(fake01, real=False)
         self.fid.update(opt01, real=True)
-        self.kid.update(fake01, real=False)
-        self.kid.update(opt01, real=True)
+        if self.use_kid:
+            self.kid.update(fake01, real=False)
+            self.kid.update(opt01, real=True)
 
     def on_validation_epoch_end(self):
         psnr_now = float(self.psnr.compute())
         ssim_now = float(self.ssim.compute())
         lpips_now = float(self.lpips.compute())
         fid_now = float(self.fid.compute())
-        try:
-            kid_mean, _ = self.kid.compute()
-            kid_now = float(kid_mean)
-        except Exception:
-            kid_now = float('nan')   # too few val samples for subset_size
-        self.log_dict({
+        log_payload = {
             'val/psnr':  psnr_now,
             'val/ssim':  ssim_now,
             'val/lpips': lpips_now,
             'val/fid':   fid_now,
-            'val/kid':   kid_now,
-        }, prog_bar=True)
+        }
+        if self.use_kid:
+            try:
+                kid_mean, _ = self.kid.compute()
+                log_payload['val/kid'] = float(kid_mean)
+            except Exception:
+                log_payload['val/kid'] = float('nan')   # too few val samples for subset_size
+        self.log_dict(log_payload, prog_bar=True)
         self.psnr.reset()
         self.ssim.reset()
         self.lpips.reset()
         self.fid.reset()
-        self.kid.reset()
+        if self.use_kid:
+            self.kid.reset()
 
         # Mode-collapse abort gate (val side).
         if self._prev_val_psnr is not None:
@@ -443,9 +473,43 @@ class LLWv4LightningModule(pl.LightningModule):
                 self._mode_collapse_strikes = 0
         self._prev_val_psnr = psnr_now
 
+        if getattr(self, '_t_val', None) is not None:
+            self.log('time/val_epoch_sec', time.perf_counter() - self._t_val, on_step=False, on_epoch=True)
+
     def on_train_epoch_end(self):
         self.sched_g.step()
         self.sched_d.step()
+
+        # Fragmentation probe: if reserved climbs while allocated stays flat over
+        # epochs, the per-epoch slowdown is CUDA allocator fragmentation (fixed by
+        # PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True in train.py).
+        if torch.cuda.is_available():
+            self.log('mem/reserved_gb',  torch.cuda.memory_reserved()  / 2**30, on_step=False, on_epoch=True)
+            self.log('mem/allocated_gb', torch.cuda.memory_allocated() / 2**30, on_step=False, on_epoch=True)
+            # Per-epoch-ramp root-cause probes (logging-only). If the train-time
+            # ramp is allocator fragmentation, `alloc_retries` and `segments`
+            # climb across epochs while `allocated`/`reserved` stay flat. If both
+            # stay flat but cpu_rss climbs, the leak is host-side (e.g. bnb 8-bit)
+            # — point the next fix at the optimizer instead of the allocator.
+            stats = torch.cuda.memory_stats()
+            self.log('mem/alloc_retries', float(stats.get('num_alloc_retries', 0)), on_step=False, on_epoch=True)
+            self.log('mem/segments',      float(stats.get('segment.all.current', 0)), on_step=False, on_epoch=True)
+        try:
+            import psutil
+            import os as _os
+            rss_gb = psutil.Process(_os.getpid()).memory_info().rss / 2**30
+            self.log('mem/cpu_rss_gb', rss_gb, on_step=False, on_epoch=True)
+        except Exception:
+            pass
+
+        # Train-loop wall time + throughput (epoch-level; ~0 overhead). Split
+        # from val time so the per-epoch ramp can be attributed to train vs val.
+        if getattr(self, '_t_train', None) is not None:
+            dt = time.perf_counter() - self._t_train
+            nb = float(getattr(self.trainer, 'num_training_batches', 0) or 0)
+            self.log('time/train_epoch_sec', dt, on_step=False, on_epoch=True)
+            if nb > 0:
+                self.log('time/train_it_per_sec', nb / dt, on_step=False, on_epoch=True)
         if 'adaptive' in self.criterions:
             adaptive = self.criterions['adaptive']
             weights = adaptive.effective_weights()
