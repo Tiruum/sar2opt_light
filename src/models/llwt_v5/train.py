@@ -53,7 +53,7 @@ from src.utils.cleanup_memory import full_cleanup
 
 os.environ['NO_ALBUMENTATIONS_UPDATE'] = '1'
 
-CONFIG_PATH = sys.argv[1] if len(sys.argv) > 1 else 'src/models/llwt_v45/config.yaml'
+CONFIG_PATH = sys.argv[1] if len(sys.argv) > 1 else 'src/models/llwt_v5/config.yaml'
 
 
 def _load_weights_ckpt(model: LLWv4LightningModule, ckpt_path: str,

@@ -78,7 +78,7 @@ def _build_datamodule(cfg):
 
 
 def main():
-    cfg = OmegaConf.load('./src/models/llwt_v45/config.yaml')
+    cfg = OmegaConf.load('./src/models/llwt_v5/config.yaml')
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
     dm = _build_datamodule(cfg)
