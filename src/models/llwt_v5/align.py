@@ -76,6 +76,33 @@ class DeformationAligner(nn.Module):
                              padding_mode='border', align_corners=True)
 
 
+def psc_detect(sar: torch.Tensor, topk: int = 64, despeckle_sigma: float = 1.0,
+               splat_sigma: float = 2.0, thresh_k: float = 1.0) -> torch.Tensor:
+    """Deterministic Point-Scattering-Center heatmap from SAR (B,1,H,W) in [-1,1].
+
+    Despeckle (gaussian) -> local maxima (3x3) above mean+k*std -> keep top-K by value
+    -> gaussian-splat -> per-image normalize to [0,1].  No grad, no params.
+    Returns (B,1,H,W) in [0,1].
+    """
+    with torch.no_grad():
+        blur = gaussian_blur(sar, sigma=despeckle_sigma)
+        mx = F.max_pool2d(blur, kernel_size=3, stride=1, padding=1)
+        is_max = (blur >= mx)
+        mean = blur.mean(dim=(2, 3), keepdim=True)
+        std = blur.std(dim=(2, 3), keepdim=True)
+        peaks = is_max & (blur > mean + thresh_k * std)             # (B,1,H,W) bool
+        B, _, H, W = sar.shape
+        flat = blur.flatten(1)                                      # (B, H*W)
+        neg = flat.new_full((), -1e9)
+        peak_vals = torch.where(peaks.flatten(1), flat, neg)
+        k = min(topk, H * W)
+        _, idx = peak_vals.topk(k, dim=1)                           # (B, k)
+        mask = torch.zeros_like(flat).scatter(1, idx, 1.0).view(B, 1, H, W)
+        heat = gaussian_blur(mask, sigma=splat_sigma)
+        amax = heat.amax(dim=(2, 3), keepdim=True).clamp_min(1e-6)
+        return (heat / amax).to(sar.dtype)
+
+
 def _smoke_aligner() -> None:
     print("[align smoke] DeformationAligner identity-at-init + warp shape")
     torch.manual_seed(0)
@@ -91,6 +118,14 @@ def _smoke_aligner() -> None:
     err = (warped - opt).abs().max().item()
     assert err < 1e-3, f"identity warp error {err}"  # float32 bilinear-sampling rounding tolerance; a real grid-convention bug gives O(1) error
     print(f"  [OK] phi zero-init, identity warp max err = {err:.2e}")
+    print("[align smoke] psc_detect shape/range")
+    sar = torch.randn(2, 1, 256, 256)
+    heat = psc_detect(sar, topk=64)
+    assert heat.shape == (2, 1, 256, 256), f"heat shape {tuple(heat.shape)}"
+    assert heat.min().item() >= 0.0 and heat.max().item() <= 1.0 + 1e-5, \
+        f"heat range [{heat.min().item()}, {heat.max().item()}]"
+    assert heat.amax(dim=(2, 3)).min().item() > 0.5, "no peaks splatted"
+    print(f"  [OK] psc heat {tuple(heat.shape)} range [{heat.min():.3f}, {heat.max():.3f}]")
     print("[align smoke] PASS")
 
 
