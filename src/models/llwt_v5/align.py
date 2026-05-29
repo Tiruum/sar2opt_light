@@ -89,7 +89,7 @@ def _smoke_aligner() -> None:
     warped = DeformationAligner.warp(opt, phi)
     assert warped.shape == opt.shape, f"warp shape {tuple(warped.shape)}"
     err = (warped - opt).abs().max().item()
-    assert err < 1e-4, f"identity warp error {err}"
+    assert err < 1e-3, f"identity warp error {err}"  # float32 bilinear-sampling rounding tolerance; a real grid-convention bug gives O(1) error
     print(f"  [OK] phi zero-init, identity warp max err = {err:.2e}")
     print("[align smoke] PASS")
 
