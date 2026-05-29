@@ -69,7 +69,9 @@ from `llwt_v45` unchanged. New pieces only.
   a v45 checkpoint loaded into v5 behaves identically at step 0.
 
 **`warp(img, φ)`** — `F.grid_sample(img, identity_grid + φ, mode='bilinear',
-padding_mode='border', align_corners=False)`.
+padding_mode='border', align_corners=True)`. (`align_corners=True` so that φ=0 is an
+*exact* identity warp — the warm-start contract; the `linspace(-1,1,N)` base grid matches
+this convention.)
 
 **`psc_detect(sar) -> M_psc`** — Point Scattering Center heatmap.
 - Source: **despeckled SAR** (reuse the SARAdapter log-domain adaptive-Lee output; or compute
