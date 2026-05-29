@@ -136,6 +136,19 @@ loss:
   grad_clip_g:            1.0
   grad_clip_d:            5.0
 
+align:
+  enabled:            true     # false => llwt_v5 == llwt_v45 (baseline ablation)
+  max_disp_px:        8.0      # tanh-bounded max deformation (pixels)
+  phi_hidden:         64       # aligner conv width
+  reg_smooth_weight:  10.0     # TV smoothness on phi (load-bearing)
+  reg_mag_weight:     1.0      # magnitude penalty on phi
+  psc_anchor_weight:  1.0      # contribution A master weight
+  psc_anchor_lambda:  4.0      # fidelity up-weight at scattering centers
+  psc_corr_weight:    1.0      # PSC<->structure correspondence sub-weight
+  psc_topk:           64       # scattering centers per patch
+  bsc_weight:         0.5      # contribution B master weight
+  bsc_struct_weight:  1.0      # structure-reward sub-weight inside BSC
+
 system:
   device:        "cuda"
   precision:     "bf16-mixed"
@@ -151,9 +164,9 @@ system:
   use_kid:        false                              # KID val metric. false drops the 23.9M InceptionV3 (VRAM + per-step EMA-floor savings; skips val KID compute). FID still reported. NOTE: toggling changes module state_dict — break strict resume_ckpt; use weights_ckpt (strict=False) across the switch.
   empty_cache_each_epoch: false                      # OFF: the per-epoch ramp was a torchmetrics-LPIPS-as-loss tensor leak (fixed in losses.py), NOT allocator fragmentation. empty_cache() here was proven ineffective (ON==OFF in A/B) and only adds cudaFree+malloc cost per epoch. Mem probes in main.py stay on to confirm train_epoch_sec is flat post-fix.
 
-  tb_version:    "llwt-v0.4.6-align-ws"               # tiny convnextv2 on sen12_full_align, warm-started from raw ep199 then resumed. (base variant = src/models/llwt_v45_base)
-  weights_ckpt:  null                               # resuming, not warm-starting
-  resume_ckpt:   "checkpoints/llwt_v45/llwt-v0.4.6-align-ws/last.ckpt"   # continue the aligned tiny run (LPIPS fix, use_kid=false, torch Adam). Strict-resume safe.
+  tb_version:    "llwt-v0.5.0-sawg"                  # SAWG-Φ: deformation-aligned llwt_v5 (base variant = src/models/llwt_v45_base)
+  weights_ckpt:  "checkpoints/llwt_v45/llwt-v0.4.6-align-ws/last.ckpt"   # warm-start G+D (strict=False)
+  resume_ckpt:   null
   debug:         false
   checkpoints_dir: "checkpoints/llwt_v45"
   output_dir:      "./output/llwt_v45"
