@@ -707,8 +707,41 @@ def _smoke_perband() -> None:
     print("[perband smoke] PASS — manual + adaptive contracts all clean")
 
 
+class DeformationRegLoss(nn.Module):
+    """Regularizer for the deformation field phi (B,2,H,W) in pixel units.
+
+    Load-bearing: without it the aligner collapses (warps GT to match fake, recon -> 0).
+    L = smooth_w * TV(phi) + mag_w * mean(||phi||^2).
+    """
+    def __init__(self, smooth_weight: float = 10.0, mag_weight: float = 1.0):
+        super().__init__()
+        self.smooth_weight = float(smooth_weight)
+        self.mag_weight = float(mag_weight)
+
+    def forward(self, phi: torch.Tensor) -> torch.Tensor:
+        dx = (phi[:, :, :, 1:] - phi[:, :, :, :-1]).abs().mean()
+        dy = (phi[:, :, 1:, :] - phi[:, :, :-1, :]).abs().mean()
+        tv = dx + dy
+        mag = (phi ** 2).mean()
+        return self.smooth_weight * tv + self.mag_weight * mag
+
+
+def _smoke_v5_losses() -> None:
+    """Tier-1 smokes for the SAWG-Phi loss extensions (Tasks 3-5)."""
+    print("[loss smoke] DeformationRegLoss")
+    _reg = DeformationRegLoss(smooth_weight=10.0, mag_weight=1.0)
+    _phi = torch.randn(2, 2, 256, 256, requires_grad=True)
+    _l = _reg(_phi)
+    assert torch.isfinite(_l), "reg loss not finite"
+    _l.backward()
+    assert _phi.grad is not None, "no grad to phi"
+    assert _reg(torch.zeros(2, 2, 64, 64)).item() == 0.0, "zero phi should give zero reg"
+    print(f"  [OK] DeformationRegLoss = {_l.item():.4f}, zero-phi=0")
+
+
 if __name__ == '__main__':
     _smoke_perband()
+    _smoke_v5_losses()
 
 
 # ---------------------------------------------------------------------------
