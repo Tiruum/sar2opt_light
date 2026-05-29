@@ -726,6 +726,37 @@ class DeformationRegLoss(nn.Module):
         return self.smooth_weight * tv + self.mag_weight * mag
 
 
+class PSCAnchorLoss(nn.Module):
+    """Physics-anchored alignment loss (contribution A).
+
+    Two terms, both keyed on the PSC heatmap m (B,1,H,W) in [0,1]:
+      * anchored fidelity: |fake - opt_aligned| weighted by (1 + lambda * m) -> match is
+        enforced hardest at scattering centers.
+      * correspondence: scatterers should land on optical structure -> maximize the
+        (negated) mean of m * gradient-magnitude(opt_aligned).
+    """
+    def __init__(self, lam: float = 4.0, corr_weight: float = 1.0):
+        super().__init__()
+        self.lam = float(lam)
+        self.corr_weight = float(corr_weight)
+
+    @staticmethod
+    def _grad_mag(x: torch.Tensor) -> torch.Tensor:
+        gx = (x[:, :, :, 1:] - x[:, :, :, :-1]).abs()
+        gy = (x[:, :, 1:, :] - x[:, :, :-1, :]).abs()
+        gx = F.pad(gx, (0, 1, 0, 0))
+        gy = F.pad(gy, (0, 0, 0, 1))
+        return (gx + gy).mean(dim=1, keepdim=True)            # (B,1,H,W)
+
+    def forward(self, fake: torch.Tensor, opt_aligned: torch.Tensor,
+                m: torch.Tensor) -> torch.Tensor:
+        w = 1.0 + self.lam * m
+        anchored = (w * (fake - opt_aligned).abs()).mean()
+        gmag = self._grad_mag(opt_aligned)
+        corr = -(m * gmag).mean()                              # maximize structure at PSCs
+        return anchored + self.corr_weight * corr
+
+
 def _smoke_v5_losses() -> None:
     """Tier-1 smokes for the SAWG-Phi loss extensions (Tasks 3-5)."""
     print("[loss smoke] DeformationRegLoss")
@@ -737,6 +768,17 @@ def _smoke_v5_losses() -> None:
     assert _phi.grad is not None, "no grad to phi"
     assert _reg(torch.zeros(2, 2, 64, 64)).item() == 0.0, "zero phi should give zero reg"
     print(f"  [OK] DeformationRegLoss = {_l.item():.4f}, zero-phi=0")
+
+    print("[loss smoke] PSCAnchorLoss")
+    _psc = PSCAnchorLoss(lam=4.0)
+    _fake = torch.randn(2, 3, 64, 64, requires_grad=True)
+    _opt = torch.randn(2, 3, 64, 64)
+    _m = torch.rand(2, 1, 64, 64)
+    _lp = _psc(_fake, _opt, _m)
+    assert torch.isfinite(_lp), "psc anchor loss not finite"
+    _lp.backward()
+    assert _fake.grad is not None, "no grad to fake"
+    print(f"  [OK] PSCAnchorLoss = {_lp.item():.4f}")
 
 
 if __name__ == '__main__':
