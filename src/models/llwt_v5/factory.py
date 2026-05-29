@@ -39,6 +39,7 @@ from src.models.llwt_v5.losses import (
 
 __all__ = [
     "build_models",
+    "build_aligner",
     "build_criterions",
     "build_optimizers",
     "build_lr_schedulers",
@@ -51,6 +52,36 @@ def build_models(cfg):
     netG = LLWv4Generator(cfg=cfg)
     netD = LLWFormerDiscriminator(cfg=cfg)
     return netG, netD
+
+
+def build_aligner(cfg):
+    """Return (aligner, align_criterions_dict) or (None, {}) when align disabled."""
+    align_cfg = getattr(cfg, 'align', None)
+    if align_cfg is None or not bool(getattr(align_cfg, 'enabled', False)):
+        return None, {}
+    from src.models.llwt_v5.align import DeformationAligner
+    from src.models.llwt_v5.losses import (
+        DeformationRegLoss, PSCAnchorLoss, BackscatterStructureLoss,
+    )
+    aligner = DeformationAligner(
+        ll_channels=3,
+        max_disp_px=float(getattr(align_cfg, 'max_disp_px', 8.0)),
+        hidden=int(getattr(align_cfg, 'phi_hidden', 64)),
+    )
+    crit = {
+        'deform_reg': DeformationRegLoss(
+            smooth_weight=float(getattr(align_cfg, 'reg_smooth_weight', 10.0)),
+            mag_weight=float(getattr(align_cfg, 'reg_mag_weight', 1.0)),
+        ),
+        'psc_anchor': PSCAnchorLoss(
+            lam=float(getattr(align_cfg, 'psc_anchor_lambda', 4.0)),
+            corr_weight=float(getattr(align_cfg, 'psc_corr_weight', 1.0)),
+        ),
+        'bsc': BackscatterStructureLoss(
+            struct_weight=float(getattr(align_cfg, 'bsc_struct_weight', 1.0)),
+        ),
+    }
+    return aligner, crit
 
 
 def build_criterions(cfg, netG=None) -> dict:
