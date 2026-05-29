@@ -42,7 +42,7 @@ from src.data.transforms import (
 from src.models.llwt_v5 import factory
 
 
-CONFIG_PATH = str(ROOT / 'src' / 'models' / 'llwt_v45' / 'config.yaml')
+CONFIG_PATH = str(ROOT / 'src' / 'models' / 'llwt_v5' / 'config.yaml')
 ITERATIONS = 800
 BATCH_SIZE = 4
 PSNR_TARGET = 22.0
