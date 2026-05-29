@@ -757,6 +757,40 @@ class PSCAnchorLoss(nn.Module):
         return anchored + self.corr_weight * corr
 
 
+class BackscatterStructureLoss(nn.Module):
+    """Backscatter <-> structure consistency (contribution B), anti-hallucination.
+
+    Despeckled SAR backscatter b (B,1,H,W), per-image min-max normalized to [0,1].
+    Low backscatter (flat: water/road) -> penalize optical gradient (no invented edges).
+    High backscatter -> encourage optical structure (reward gradient).
+    L = mean((1 - b) * gradmag(fake)) - struct_w * mean(b * gradmag(fake)).
+    """
+    def __init__(self, struct_weight: float = 1.0, despeckle_sigma: float = 1.0):
+        super().__init__()
+        self.struct_weight = float(struct_weight)
+        self.despeckle_sigma = float(despeckle_sigma)
+
+    @staticmethod
+    def _grad_mag(x: torch.Tensor) -> torch.Tensor:
+        gx = (x[:, :, :, 1:] - x[:, :, :, :-1]).abs()
+        gy = (x[:, :, 1:, :] - x[:, :, :-1, :]).abs()
+        gx = F.pad(gx, (0, 1, 0, 0))
+        gy = F.pad(gy, (0, 0, 0, 1))
+        return (gx + gy).mean(dim=1, keepdim=True)
+
+    def forward(self, fake: torch.Tensor, sar: torch.Tensor) -> torch.Tensor:
+        from src.models.llwt_v5.align import gaussian_blur
+        with torch.no_grad():
+            b = gaussian_blur(sar, sigma=self.despeckle_sigma)
+            bmin = b.amin(dim=(2, 3), keepdim=True)
+            bmax = b.amax(dim=(2, 3), keepdim=True)
+            b = (b - bmin) / (bmax - bmin).clamp_min(1e-6)        # [0,1], detached
+        g = self._grad_mag(fake)
+        flat_penalty = ((1.0 - b) * g).mean()
+        struct_reward = (b * g).mean()
+        return flat_penalty - self.struct_weight * struct_reward
+
+
 def _smoke_v5_losses() -> None:
     """Tier-1 smokes for the SAWG-Phi loss extensions (Tasks 3-5)."""
     print("[loss smoke] DeformationRegLoss")
@@ -779,6 +813,16 @@ def _smoke_v5_losses() -> None:
     _lp.backward()
     assert _fake.grad is not None, "no grad to fake"
     print(f"  [OK] PSCAnchorLoss = {_lp.item():.4f}")
+
+    print("[loss smoke] BackscatterStructureLoss")
+    _bsc = BackscatterStructureLoss(struct_weight=1.0)
+    _fake2 = torch.randn(2, 3, 64, 64, requires_grad=True)
+    _sar2 = torch.randn(2, 1, 64, 64)
+    _lb = _bsc(_fake2, _sar2)
+    assert torch.isfinite(_lb), "bsc loss not finite"
+    _lb.backward()
+    assert _fake2.grad is not None, "no grad to fake"
+    print(f"  [OK] BackscatterStructureLoss = {_lb.item():.4f}")
 
 
 if __name__ == '__main__':
