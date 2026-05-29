@@ -141,10 +141,10 @@ align:
   max_disp_px:        8.0      # tanh-bounded max deformation (pixels)
   phi_hidden:         64       # aligner conv width
   reg_smooth_weight:  10.0     # TV smoothness on phi (load-bearing)
-  reg_mag_weight:     1.0      # magnitude penalty on phi
+  reg_mag_weight:     2.0      # magnitude penalty on phi (council: 1->2 narrows phi's free-cheat band; reg was ~1-2 orders weaker than fidelity-warp incentive at small phi)
   psc_anchor_weight:  1.0      # contribution A master weight
   psc_anchor_lambda:  4.0      # fidelity up-weight at scattering centers
-  psc_corr_weight:    1.0      # PSC<->structure correspondence sub-weight
+  psc_corr_weight:    0.25     # PSC<->structure correspondence sub-weight (council: 1->0.25 de-risks the unbounded-negative corr term / runaway-sharpening pull on aligner; anchored-fidelity term alone delivers contribution A)
   psc_topk:           64       # scattering centers per patch
   bsc_weight:         0.5      # contribution B master weight
   bsc_struct_weight:  1.0      # structure-reward sub-weight inside BSC
