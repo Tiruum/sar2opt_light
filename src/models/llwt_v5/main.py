@@ -270,6 +270,7 @@ class LLWv4LightningModule(pl.LightningModule):
             ('spkdec' in self.criterions)
             or ('pr' in self.criterions)
             or ('per_band' in self.criterions)
+            or ('wavelet_swd' in self.criterions)
         )
         if need_internals:
             fake, predicted_sub, raw_feat = self.netG(sar, return_internals=True)
@@ -374,6 +375,15 @@ class LLWv4LightningModule(pl.LightningModule):
                 if bool(getattr(self.cfg.system, 'debug', False)):
                     for band, value in pb_loss_fn.last_per_band.items():
                         self.log(f'train/loss_pb_{band}', value, on_step=False, on_epoch=True)
+        if 'wavelet_swd' in self.criterions:
+            # FFS: sliced-Wasserstein distributional loss on the predicted Haar
+            # DETAIL subbands (LH/HL/HH, pre-IHaar) vs HaarDown(opt). Shift-
+            # invariant — penalises blur where per-band L1 rewards it under the
+            # residual SAR<->optical misalignment. ``predicted_sub`` is populated
+            # above (need_internals gate includes 'wavelet_swd').
+            l_swd = self.criterions['wavelet_swd'](predicted_sub, opt_aligned)
+            g_loss = g_loss + l_swd * float(loss_cfg.swd_weight)
+            self.log('train/loss_swd', l_swd.detach(), on_step=False, on_epoch=True)
         if 'lpips' in self.criterions:
             l_lp = self.criterions['lpips'](fake, opt_aligned)
             g_loss = g_loss + l_lp * float(loss_cfg.lpips_weight)

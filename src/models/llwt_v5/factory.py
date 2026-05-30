@@ -34,6 +34,7 @@ from src.models.llwt_v5.losses import (
     AdaptiveLoss, FeatureMatchingLoss, FFLLoss, FoundationPerceptualLoss,
     GANLoss, LABChromaL1Loss, LPIPSLoss, MSSSIMLoss, MultiLayerPatchNCE,
     PerBandWaveletL1Loss, PlainL1Loss, WaveletDetailL1Loss,
+    WaveletDetailSWDLoss,
 )
 
 
@@ -128,6 +129,15 @@ def build_criterions(cfg, netG=None) -> dict:
                     'hh': float(loss_cfg.get('per_band_hh', 1.0)),
                 },
             )
+    # FFS: sliced-Wasserstein distributional loss on the Haar DETAIL subbands
+    # (LH/HL/HH) of the predicted_sub tensor. Independent of per_band (which can
+    # supervise LL-only alongside, or coexist) — both share predicted_sub but
+    # SWD touches only the 3 detail bands. Shift-invariant blur penalty.
+    if loss_cfg.get('swd_weight', 0.0) > 0:
+        criterions['wavelet_swd'] = WaveletDetailSWDLoss(
+            n_proj=int(loss_cfg.get('swd_n_proj', 0)),
+            in_channels=3,
+        )
     if loss_cfg.get('lpips_weight', 0.0) > 0:
         criterions['lpips'] = LPIPSLoss(net_type='alex')
     if loss_cfg.get('ffl_weight', 0.0) > 0:

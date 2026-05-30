@@ -100,6 +100,18 @@ loss:
   # check is identical for both modes).
   per_band_adaptive:      false
   per_band_log_var_init:  0.0
+  # FFS — WaveletDetailSWDLoss (sliced-Wasserstein on the Haar detail subbands
+  # LH/HL/HH of predicted_sub). Shift-invariant blur penalty: compares the
+  # SORTED detail-coefficient distribution (not position-by-position), so a
+  # sharp-but-shifted edge is NOT punished and a blur (collapsed detail
+  # distribution) IS. Independent of per_band — both consume predicted_sub but
+  # SWD touches only the 3 detail bands, so they can coexist (e.g. per_band
+  # LL-only + SWD on detail). Default 0.0 = OFF (no behaviour change). Set ~2-5
+  # to opt in; raw l_swd ~ same order as per_band detail L1, so a comparable
+  # contribution needs a comparable weight. swd_n_proj>0 adds channel-sliced SW
+  # (resume-safe frozen directions); default 0 = per-channel sort only.
+  swd_weight:             0.0
+  swd_n_proj:             0
   # Fourier-D adversarial weights (v0.4.2 stage 3). Default 0.0 = stage-3 inert
   # (v0.4.0/v0.4.1 behaviour); set 1.0/10.0 to match gan_sub/fm_sub when enabled.
   gan_fourier_weight:     0.0
@@ -140,8 +152,8 @@ align:
   enabled:            true     # false => llwt_v5 == llwt_v45 (baseline ablation)
   max_disp_px:        8.0      # tanh-bounded max deformation (pixels)
   phi_hidden:         64       # aligner conv width
-  reg_smooth_weight:  10.0     # TV smoothness on phi (load-bearing)
-  reg_mag_weight:     2.0      # magnitude penalty on phi (council: 1->2 narrows phi's free-cheat band; reg was ~1-2 orders weaker than fidelity-warp incentive at small phi)
+  reg_smooth_weight:  3.0      # TV smoothness on phi. 10->3: diag_aligner proved reg pinned phi at 0.07px (g_reg/g_fid=0.89); loosened to let phi engage.
+  reg_mag_weight:     0.5      # magnitude penalty on phi. 2->0.5: mag grad ~4*phi dominated at small phi (the council 1->2 bump backfired = aligner inert). Reg-free ceiling was 0.21px so this should reach ~0.15-0.2px.
   psc_anchor_weight:  1.0      # contribution A master weight
   psc_anchor_lambda:  4.0      # fidelity up-weight at scattering centers
   psc_corr_weight:    0.25     # PSC<->structure correspondence sub-weight (council: 1->0.25 de-risks the unbounded-negative corr term / runaway-sharpening pull on aligner; anchored-fidelity term alone delivers contribution A)
