@@ -1,0 +1,231 @@
+% =====================================================================
+% Thesis section: High-Frequency Adversarial Supervision for SAR-to-Optical
+% Translation under Geometric Misregistration (LLW-Former v0.5.x / llwt_v5)
+%
+% Drop-in chapter/section. Requires: amsmath, booktabs, graphicx, siunitx (optional).
+% Figure/checkpoint placeholders marked <FILL>.
+% =====================================================================
+
+\section{High-Frequency Adversarial Supervision under Geometric Misregistration}
+\label{sec:hfd}
+
+\subsection{Motivation and problem analysis}
+\label{sec:hfd:motivation}
+
+The LLW-Former generator (Section~\ref{sec:llwformer}) attains competitive low-frequency
+fidelity on Sentinel-1/2 (SEN1-2) SAR$\rightarrow$optical translation, yet its outputs remain
+perceptibly soft. To locate the bottleneck precisely we profiled a trained checkpoint on a
+held-out set of \num{320} aligned validation patches and decomposed the error by spatial
+frequency and by Haar wavelet sub-band (Table~\ref{tab:errorprofile}).
+
+\begin{table}[t]
+\centering
+\caption{Error profile of the baseline generator on held-out aligned validation patches.
+Relative band error is the per-band $L_1$ normalised by that band's energy; the radial power
+ratio is $P_\text{fake}/P_\text{opt}$ in each spatial-frequency octave (target $=1.0$).}
+\label{tab:errorprofile}
+\begin{tabular}{lcc}
+\toprule
+Quantity & Value & Interpretation \\
+\midrule
+Luminance / chrominance error & $9.43$ / $4.5$ & colour is \emph{not} the bottleneck \\
+Global colour bias & $-0.003$ & no cast \\
+Rel.\ error LL (low-freq.) & $0.33$ & coarse structure recovered \\
+Rel.\ error detail (LH,HL,HH) mean & $\geq 1.3$ & detail phase-\emph{decorrelated} \\
+Detail / LL relative error ratio & $4.2$ & detail $4\times$ worse than LL \\
+Mid-freq.\ power ratio & $0.66$ & \textbf{blur} (missing mid structure) \\
+High-freq.\ power ratio & $1.14$ & incoherent over-energy (noise) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Three facts emerge. (i) The deficit is \emph{structural, not chromatic}: chrominance error is
+roughly half the luminance error and the global colour bias is negligible. (ii) The model
+recovers the low-frequency band (LL relative error $0.33$) but its detail sub-bands are
+phase-decorrelated (relative error $>1$, i.e.\ the error exceeds the band's own energy). (iii)
+Spectrally, the generator \emph{under-produces} mid frequencies (power ratio $0.66$, the blur
+signature) while \emph{over-producing} incoherent high frequencies (ratio $1.14$). The worst
+patches are low-texture water/river scenes, consistent with the one-to-many nature of the
+mapping: from speckled SAR, the exact optical micro-texture of a smooth surface is
+underdetermined.
+
+A second, compounding factor is geometric: paired SEN1-2 patches are misregistered. Estimating
+per-pair rigid alignment (gradient-domain phase correlation refined by ECC) over \num{300}
+sampled pairs of the training scenes yields a median shift of \SI{1.23}{px} (p90
+\SI{5.3}{px}; $58\%$ of pairs exceed \SI{1}{px}, $31\%$ exceed \SI{2}{px}), plus a small
+rotational component (mean $0.38^\circ$). Such misregistration makes position-exact
+supervision of high-frequency content unreliable.
+
+\subsection{Methodology: hypothesis-driven elimination}
+\label{sec:hfd:method}
+
+Rather than commit compute to a full \SI{200}{epoch} run per idea, each candidate was first
+validated (or refuted) by a targeted, inference- or short-optimisation-level experiment. This
+discipline produced two negative results that are contributions in their own right and that
+directly motivate the final method.
+
+\subsubsection{Negative result 1: dense learned registration is infeasible for SAR$\to$optical}
+\label{sec:hfd:neg1}
+
+The natural response to misregistration is to learn a dense deformation field $\phi$ that warps
+the target into the generator's geometry before computing fidelity losses (a self-aligning
+translator). We implemented such an aligner, estimating $\phi$ from the speckle-robust LL Haar
+band, and found it \emph{inert}: across \num{130} training epochs $\lvert\phi\rvert$ remained
+pinned at ${\sim}\SI{0.07}{px}$ (the bf16 sampling-noise floor), confirmed identical in fp32.
+Controlled probes isolated the cause. With the regulariser removed and the generator frozen,
+the fidelity gradient could drive $\phi$ only to ${\sim}\SI{0.2}{px}$, far below the measured
+\SI{1.23}{px} misalignment. The reason is a modality gap: the \emph{local} cross-modal
+gradient normalised cross-correlation between SAR and optical is near zero
+(NCC~${\approx}0.02$). The misalignment is real and \emph{globally} detectable (rigid phase
+correlation), but it carries no \emph{dense, local} similarity signal for a learned field to
+climb. A direct local-NCC registration objective likewise produced gradient but could not
+reduce its loss. \textbf{Conclusion: dense unsupervised SAR$\to$optical registration cannot be
+learned from image similarity; misalignment must be handled by a shift-tolerant supervision
+signal rather than by correction.}
+
+\subsubsection{Negative result 2: distributional losses rank sharpness but do not synthesise it}
+\label{sec:hfd:neg2}
+
+If misregistration cannot be corrected, the alternative is to supervise detail with a
+\emph{shift-invariant} loss. We tested a sliced-Wasserstein (SWD) loss on the Haar detail
+sub-bands (matching the sorted coefficient distribution, hence permutation- and
+shift-invariant). At the \emph{loss level} the property held decisively: under a synthetic
+\SI{1.5}{px} shift, $L_1$ on detail \emph{prefers a blurred prediction} over a
+sharp-but-shifted one ($0.037 < 0.056$), whereas SWD \emph{prefers the sharp prediction}
+($0.0095 < 0.025$, a $2.6\times$ margin) and is shift-invariant (shift-sensitivity index
+$0.13$). This mechanistically explains the blur: pixel losses reward smearing when the target
+is misaligned.
+
+However, a fair held-out generalisation A/B (Section~\ref{sec:hfd:exp}) refuted the loss as a
+\emph{training driver}: replacing detail $L_1$ with detail SWD made the output marginally
+\emph{softer}, not sharper (mid-freq power $0.629$ vs.\ $0.655$; detail-band power $0.582$ vs.\
+$0.626$; LPIPS $0.311$ vs.\ $0.305$). \textbf{Conclusion: a loss that \emph{ranks} a sharp
+output above a blurry one does not, by minimisation, \emph{produce} sharp output.} Matching a
+coefficient histogram fixes the energy budget but supplies no spatial gradient to place
+coherent structure; the perceptual and adversarial terms then dominate. This points to the
+operative principle behind the final method: only an \emph{adversarial} signal (or a
+position-aligned pixel signal, which is unavailable here) carves coherent high-frequency
+structure.
+
+\subsection{Method: a high-frequency discriminator}
+\label{sec:hfd:hfd}
+
+We introduce a dedicated \emph{high-frequency discriminator} (HF-D) that supplies adversarial
+pressure specifically on the deficient frequency band. Let $h(x) = x - g_\sigma * x$ be the
+high-pass residual of an image, where $g_\sigma$ is a Gaussian kernel ($\sigma=2$). The HF-D,
+$D_H$, is a conditional spectral-normalised PatchGAN that receives the SAR condition $s$
+concatenated with the high-pass of the optical image:
+\begin{equation}
+D_H\big([\,s,\; h(y)\,]\big),
+\end{equation}
+and is trained adversarially against the generator output $\hat{y}=G(s)$. With LSGAN losses,
+the discriminator and generator high-frequency terms are
+\begin{align}
+\mathcal{L}_{D_H} &= \tfrac{1}{2}\,\mathbb{E}\big[(D_H([s,h(y)])-1)^2\big]
+                   + \tfrac{1}{2}\,\mathbb{E}\big[D_H([s,h(\hat{y})])^2\big],\\
+\mathcal{L}^{G}_{H} &= \mathbb{E}\big[(D_H([s,h(\hat{y})])-1)^2\big],
+\end{align}
+and the generator objective adds $\lambda_H\,\mathcal{L}^{G}_{H}$ to the existing loss stack
+(adversarial main discriminator, feature matching, MS-SSIM, LPIPS, focal-frequency, and
+per-band $L_1$). Because the HF-D judges the \emph{realism of detail} rather than its
+position-by-position match, it is tolerant to the residual misregistration that defeats pixel
+supervision, while still imposing the coherence that distributional losses lack. Operating on
+the high-pass residual focuses the discriminator's capacity on exactly the mid/high-frequency
+octaves identified as deficient in Table~\ref{tab:errorprofile}.
+
+Spectral normalisation on every convolution is essential: an earlier sub-band discriminator
+without it diverged (logits ${\sim}10^5$). With spectral normalisation the HF-D is stable
+(Section~\ref{sec:hfd:exp}). The HF-D is additive to, and independent of, the main conditional
+discriminator; setting $\lambda_H=0$ recovers the baseline exactly, giving a clean single-knob
+ablation.
+
+\subsection{Experimental verification}
+\label{sec:hfd:exp}
+
+\paragraph{Protocol.} Because the target effect is a \emph{generalisation} phenomenon
+(misalignment-induced blur appears only when the model cannot memorise each pair's specific
+shift), single-batch overfitting is the wrong probe---it favours pixel $L_1$ by memorisation.
+We therefore evaluate on a \emph{held-out} A/B: from a common warm-started initialisation, two
+arms are trained for \num{2200} generator steps on raw (unregistered) SEN1-2 data, identical in
+every respect except the variable under test, and measured on a fixed held-out set of
+\num{32} pairs never seen in training. Sharpness is read from the radial mid-frequency power
+ratio (target $1.0$); coherence from the high-frequency power ratio (values $\gg 1.15$ indicate
+incoherent noise); perceptual quality from LPIPS. PSNR/SSIM are reported but are \emph{not}
+used as sharpness judges, since under misaligned ground truth they reward blur.
+
+\paragraph{Results.} Table~\ref{tab:hfd_ab} reports the held-out A/B. The HF-D arm increases the
+mid-frequency power ratio at every checkpoint and raises detail-band energy toward the target,
+while the high-frequency ratio rises but remains below $1.0$---the added detail is coherent, not
+noise. LPIPS is unchanged and the discriminator is stable throughout ($d$-loss
+$0.23\!\rightarrow\!0.25$, no divergence). The same harness refuted the distributional (SWD)
+loss, which moved the metrics the wrong way.
+
+\begin{table}[t]
+\centering
+\caption{Held-out generalisation A/B after \num{2200} steps on raw (misaligned) SEN1-2.
+Mid-freq.\ and detail power ratios target $1.0$ (higher $=$ sharper); high-freq.\ ratio should
+approach $1.0$ from below (values $\gg 1.15$ indicate incoherent noise). Baseline $=$ full loss
+stack; HF-D $=$ baseline $+\,\lambda_H\mathcal{L}^G_H$. The rejected sliced-Wasserstein arm is
+shown for contrast.}
+\label{tab:hfd_ab}
+\begin{tabular}{lccc}
+\toprule
+Metric (held-out) & Baseline & \textbf{HF-D} & SWD (rejected) \\
+\midrule
+Mid-freq.\ power ratio $\uparrow$   & $0.652$ & $\mathbf{0.695}$ & $0.629$ \\
+Detail-band power ratio $\uparrow$  & $0.626$ & $\mathbf{0.687}$ & $0.582$ \\
+High-freq.\ ratio ($\to 1.0$)       & $0.643$ & $0.696$          & --- \\
+LPIPS $\downarrow$                  & $0.307$ & $0.307$          & $0.311$ \\
+PSNR (not a sharpness judge)        & $17.08$ & $16.98$          & $17.14$ \\
+SSIM                                & $0.298$ & $0.294$          & $0.300$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Scope of the claim.} The \num{2200}-step A/B establishes the \emph{sign} and
+\emph{coherence} of the effect (HF-D sharpens, the added energy is coherent, no perceptual or
+stability regression), not its saturated magnitude; the absolute margins at this horizon are
+modest (mid-freq.\ ${+}0.04$) because both arms are far from convergence. The full-length
+training results are reported in Table~\ref{tab:hfd_final} (run
+\texttt{llwt-v0.5.1-hfd}; \,$\langle$\textsc{fill}$\rangle$).
+
+\begin{table}[t]
+\centering
+\caption{Final \texttt{llwt-v0.5.1-hfd} versus the $\lambda_H{=}0$ baseline at convergence
+($\langle$\textsc{fill after run}$\rangle$).}
+\label{tab:hfd_final}
+\begin{tabular}{lcccc}
+\toprule
+Model & PSNR & SSIM & LPIPS & FID \\
+\midrule
+Baseline ($\lambda_H{=}0$)          & \textsc{fill} & \textsc{fill} & \textsc{fill} & \textsc{fill} \\
+\textbf{HF-D} ($\lambda_H{=}1$)     & \textsc{fill} & \textsc{fill} & \textsc{fill} & \textsc{fill} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Ablation and reproducibility}
+\label{sec:hfd:ablation}
+
+The headline ablation is a single flag: \texttt{model.dis.highfreq.enabled} (equivalently
+$\lambda_H \in \{0,1\}$), with all other settings, data order, and the warm-start checkpoint
+held fixed---an exact single-variable comparison. Secondary controls, all refuted cheaply and
+reported as negative results, are: the learned dense aligner (Section~\ref{sec:hfd:neg1}) and
+the sliced-Wasserstein detail loss (Section~\ref{sec:hfd:neg2}). All experiments are driven by
+config flags in \texttt{src/models/llwt\_v5/config.yaml}; the verification harness
+(\texttt{proof\_hfd\_generalize.py}) and the diagnostic scripts are version-controlled.
+
+\subsection{Limitations and future work}
+\label{sec:hfd:limits}
+
+The HF-D sharpens by imposing realistic detail statistics, not ground-truth-exact detail; under
+misaligned references this is the correct objective, but it means PSNR (which rewards blur here)
+is a poor progress metric and may even decrease slightly. The high-frequency power ratio must be
+monitored over long training: should it overshoot $1.0$ substantially, $\lambda_H$ should be
+reduced (e.g.\ $1.0\!\rightarrow\!0.5$) to avoid re-introducing incoherent texture. The
+one-to-many ambiguity of low-texture (water) regions is mitigated but not solved by adversarial
+pressure alone; an explicit aleatoric-uncertainty head, or semantic conditioning from a frozen
+self-supervised optical encoder, is a natural extension. Finally, the modality-gap result
+(Section~\ref{sec:hfd:neg1}) suggests that any future alignment component should operate on a
+global/low-degree-of-freedom transform supervised by an offline rigid estimate, rather than on a
+dense field learned from image similarity.
