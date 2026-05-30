@@ -43,7 +43,7 @@ model:
       ndf:            32                            # matches subband ndf; drop to 16 if VRAM tight
       use_sn:         true                          # spectral norm; keep on for tri-D stability
     highfreq:
-      enabled:        false                         # HF-D: conditional SN-PatchGAN on optical high-pass (x - gaussian_blur(x,sigma)). Forces COHERENT high-freq detail. Gated ALSO by loss.hfd_weight>0. Spectral-norm on every conv is ESSENTIAL (subband-D exploded to 1e5 without it).
+      enabled:        true                          # HF-D: conditional SN-PatchGAN on optical high-pass (x - gaussian_blur(x,sigma)). Forces COHERENT high-freq detail. VERIFIED on held-out A/B: mid-freq 0.65->0.70, detail-power 0.63->0.69, high-band stayed <1.0 (coherent not noise), LPIPS flat, D stable. Gated ALSO by loss.hfd_weight>0. Spectral-norm on every conv is ESSENTIAL (subband-D exploded to 1e5 without it).
       ndf:            64                            # mirrors main-D coarse branch width
       sigma:          2.0                           # gaussian-blur sigma for the high-pass split
   log_summary: true
@@ -125,7 +125,7 @@ loss:
   # highpass(real) vs highpass(fake.detach()), and the G-phase adds
   # hfd_weight * gan_loss(HF_D(highpass(fake)), real=True). Additive to the
   # main D. ~1.0 matches gan_main_weight scale. Default 0.0 = OFF.
-  hfd_weight:             0.0
+  hfd_weight:             1.0                       # VERIFIED winning lever — adversarial high-freq detail sharpening (held-out A/B beat baseline + the rejected SWD/aligner). Matches gan_main scale.
   lpips_weight:           2.0                       # v0.4.5: AlexNet perceptual anchor (~0.9 contribution; main photorealism driver)
   # v0.4.5 Focal Frequency Loss (Jiang ICCV 2021) — global FFT-domain sharpener.
   # Complementary to per_band (local Haar subbands); needs `focal-frequency-loss`.
@@ -159,7 +159,7 @@ loss:
   grad_clip_d:            5.0
 
 align:
-  enabled:            true     # false => llwt_v5 == llwt_v45 (baseline ablation)
+  enabled:            false    # DISABLED: learned dense aligner proven INERT (SAR-opt local NCC~0.02 modality gap; phi pinned ~0.07px). Turns off aligner + deform_reg/psc_anchor/bsc. Headline contribution is the HF-D (model.dis.highfreq + loss.hfd_weight). false also = clean baseline vs HF-D ablation.
   max_disp_px:        8.0      # tanh-bounded max deformation (pixels)
   phi_hidden:         64       # aligner conv width
   reg_smooth_weight:  3.0      # TV smoothness on phi. 10->3: diag_aligner proved reg pinned phi at 0.07px (g_reg/g_fid=0.89); loosened to let phi engage.
@@ -186,7 +186,7 @@ system:
   use_kid:        false                              # KID val metric. false drops the 23.9M InceptionV3 (VRAM + per-step EMA-floor savings; skips val KID compute). FID still reported. NOTE: toggling changes module state_dict — break strict resume_ckpt; use weights_ckpt (strict=False) across the switch.
   empty_cache_each_epoch: false                      # OFF: the per-epoch ramp was a torchmetrics-LPIPS-as-loss tensor leak (fixed in losses.py), NOT allocator fragmentation. empty_cache() here was proven ineffective (ON==OFF in A/B) and only adds cudaFree+malloc cost per epoch. Mem probes in main.py stay on to confirm train_epoch_sec is flat post-fix.
 
-  tb_version:    "llwt-v0.5.0-sawg"                  # SAWG-Φ: deformation-aligned llwt_v5 (base variant = src/models/llwt_v45_base)
+  tb_version:    "llwt-v0.5.1-hfd"                   # HF-D headline: high-frequency discriminator for coherent detail (aligner/FFS rejected). Warm from align ep199.
   weights_ckpt:  "checkpoints/llwt_v45/llwt-v0.4.6-align-ws/last.ckpt"   # warm-start G+D (strict=False)
   resume_ckpt:   null
   debug:         false
