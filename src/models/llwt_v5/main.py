@@ -105,6 +105,15 @@ class LLWv4LightningModule(pl.LightningModule):
         self.gan_fourier_weight = float(getattr(cfg.loss, 'gan_fourier_weight', 1.0))
         self.fm_fourier_weight  = float(getattr(cfg.loss, 'fm_fourier_weight',  10.0))
 
+        # High-frequency D (high-pass-optical conditional SN-PatchGAN). Gated by
+        # loss.hfd_weight > 0 AND the wrapper having built the head
+        # (model.dis.highfreq.enabled). Additive to the main D — never replaces
+        # it. Default hfd_weight=0 => v0.5.0 behaviour unchanged.
+        self.hfd_weight = float(getattr(cfg.loss, 'hfd_weight', 0.0))
+        self.use_highfreq_d = (
+            self.hfd_weight > 0.0 and getattr(self.netD, 'highfreq', None) is not None
+        )
+
         # Mode-collapse abort-gate state (pure GAN+FM recipe has no pixel
         # anchor; without these checks we can train through a silent collapse).
         self._prev_val_psnr: Optional[float] = None
@@ -202,6 +211,17 @@ class LLWv4LightningModule(pl.LightningModule):
                     )
                     d_loss = d_loss + d_loss_fourier
                     self.log('train/d_loss_fourier', d_loss_fourier.detach(), on_step=False, on_epoch=True)
+                if self.use_highfreq_d:
+                    hp_real = self.netD.highfreq.highpass(opt, self.netD.highfreq.sigma)
+                    hp_fake = self.netD.highfreq.highpass(fake_d, self.netD.highfreq.sigma)
+                    real_hf, _ = self.netD.highfreq(sar.float(), hp_real)
+                    fake_hf, _ = self.netD.highfreq(sar.float(), hp_fake)
+                    d_loss_hf = 0.5 * (
+                        self.criterions['gan'](real_hf, is_real=True) +
+                        self.criterions['gan'](fake_hf, is_real=False)
+                    )
+                    d_loss = d_loss + d_loss_hf
+                    self.log('train/d_loss_hf', d_loss_hf.detach(), on_step=False, on_epoch=True)
             self.log('train/r1_main', r1.detach(), on_step=False, on_epoch=True)
         else:
             # Batched D real+fake forward (bit-identical to two calls; one set
@@ -239,6 +259,20 @@ class LLWv4LightningModule(pl.LightningModule):
                 )
                 d_loss = d_loss + d_loss_fourier
                 self.log('train/d_loss_fourier', d_loss_fourier.detach(), on_step=False, on_epoch=True)
+            if self.use_highfreq_d:
+                # HF-D on highpass(real) vs highpass(fake.detach()). Batched real+fake.
+                hf = self.netD.highfreq
+                hp_doubled = torch.cat([hf.highpass(opt_real, hf.sigma),
+                                        hf.highpass(fake_d, hf.sigma)], dim=0)
+                hf_both, _ = hf(sar_doubled, hp_doubled)
+                real_hf = hf_both[:B]
+                fake_hf = hf_both[B:]
+                d_loss_hf = 0.5 * (
+                    self.criterions['gan'](real_hf, is_real=True) +
+                    self.criterions['gan'](fake_hf, is_real=False)
+                )
+                d_loss = d_loss + d_loss_hf
+                self.log('train/d_loss_hf', d_loss_hf.detach(), on_step=False, on_epoch=True)
         opt_d.zero_grad()
         self.manual_backward(d_loss)
         # Single fused grad-finiteness check: clip_grad_norm_ returns the total
@@ -338,6 +372,18 @@ class LLWv4LightningModule(pl.LightningModule):
                 l_fm_fourier = self.criterions['fm'](fake_feats_fourier, real_feats_fourier)
                 g_loss = g_loss + l_fm_fourier * self.fm_fourier_weight
                 self.log('train/fm_fourier', l_fm_fourier.detach(), on_step=False, on_epoch=True)
+
+        if self.use_highfreq_d:
+            # HF-D adversarial pressure on the high-pass of the FAKE (fresh
+            # forward, grads flow to G). Additive to gan_main; pushes G toward
+            # COHERENT high-frequency structure rather than the speckle-noise
+            # the spectral diagnostics flag (high-band power ratio >> 1).
+            hf = self.netD.highfreq
+            hp_fake_g = hf.highpass(fake, hf.sigma)
+            fake_hf_g, _ = hf(sar.float(), hp_fake_g)
+            l_gan_hf = self.criterions['gan'](fake_hf_g, is_real=True, for_d=False)
+            g_loss = g_loss + l_gan_hf * self.hfd_weight
+            self.log('train/gan_hf', l_gan_hf.detach(), on_step=False, on_epoch=True)
 
         # Optional reconstruction stack (all zero-weighted in v0.4.0; kept for
         # the §15.6 anchored-fallback path if pure GAN+FM collapses).

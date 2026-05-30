@@ -36,7 +36,7 @@ import torch.nn.functional as F
 from torch.nn.utils import spectral_norm
 
 
-__all__ = ["LLWFormerDiscriminator", "MainDis", "SubbandDis", "FourierDis", "FixedHaarDWT"]
+__all__ = ["LLWFormerDiscriminator", "MainDis", "SubbandDis", "FourierDis", "HighFreqDis", "FixedHaarDWT"]
 
 
 def _sn(ci: int, co: int, k: int, s: int, p: int) -> nn.Conv2d:
@@ -278,6 +278,68 @@ class FourierDis(nn.Module):
 
 
 # ---------------------------------------------------------------------------
+# High-frequency D — conditional PatchGAN on the high-pass of the optical
+# ---------------------------------------------------------------------------
+
+
+class HighFreqDis(nn.Module):
+    """Conditional spectral-norm PatchGAN on the *high-pass* of the optical.
+
+    Rationale (the evidence chain):
+      The generator UNDER-produces mid-frequency (blur) and OVER-produces
+      INCOHERENT high-frequency (speckle-noise). Distributional/statistical
+      losses match energy budgets but don't carve coherent structure. The
+      proven sharpening mechanism is a discriminator that *sees* the high
+      frequencies and forces COHERENT detail.
+
+    Input is ``[InstanceNorm(SAR), highpass(opt_or_fake)]`` where
+    ``highpass(x) = x - gaussian_blur(x, sigma)``.  Conditioning on SAR keeps
+    the adversarial signal tied to the input geometry (a free-floating
+    unconditional high-pass D could reward plausible-but-wrong detail).
+
+    Spectral norm is ESSENTIAL — the disabled subband-D exploded to ~1e5
+    without it (config note model.dis.subband.enabled).  Every conv here is
+    spectral-norm wrapped via ``_sn``.  Mirrors the 5-layer 70x70 RF
+    :class:`_CoarsePatchBranch` depth/width, but SN-gated unconditionally.
+
+    Forward: ``(sar, opt_highpass) -> ((B,1,h,w), feats)`` where ``feats`` are
+    the intermediate LeakyReLU activations (layer-0 dropped, matching MainDis
+    FM convention) for an optional feature-matching contribution.
+    """
+    def __init__(self, in_ch: int = 4, ndf: int = 64, sigma: float = 2.0):
+        super().__init__()
+        self.sigma = float(sigma)
+        self.layers = nn.ModuleList([
+            nn.Sequential(_sn(in_ch,    ndf,     4, 2, 1), nn.LeakyReLU(0.2, inplace=True)),
+            nn.Sequential(_sn(ndf,      ndf * 2, 4, 2, 1), nn.LeakyReLU(0.2, inplace=True)),
+            nn.Sequential(_sn(ndf * 2,  ndf * 4, 4, 2, 1), nn.LeakyReLU(0.2, inplace=True)),
+            nn.Sequential(_sn(ndf * 4,  ndf * 8, 4, 1, 1), nn.LeakyReLU(0.2, inplace=True)),
+            _sn(ndf * 8, 1, 4, 1, 1),
+        ])
+
+    @staticmethod
+    def highpass(img: torch.Tensor, sigma: float = 2.0) -> torch.Tensor:
+        """``img - gaussian_blur(img, sigma)`` — residual high-pass.
+
+        ``gaussian_blur`` is reused verbatim from ``src.models.llwt_v5.align``
+        (separable, channel-wise).  Run in fp32 so the blur kernel conv is
+        numerically tight under bf16 autocast.
+        """
+        from src.models.llwt_v5.align import gaussian_blur
+        x = img.float()
+        return x - gaussian_blur(x, sigma=sigma)
+
+    def forward(self, sar: torch.Tensor, opt_highpass: torch.Tensor):
+        sar_n = F.instance_norm(sar)
+        x = torch.cat([sar_n, opt_highpass], dim=1)
+        feats: List[torch.Tensor] = []
+        for layer in self.layers[:-1]:
+            x = layer(x)
+            feats.append(x)
+        return self.layers[-1](x), feats[1:]
+
+
+# ---------------------------------------------------------------------------
 # Wrapper: main + subband + fourier
 # ---------------------------------------------------------------------------
 
@@ -313,12 +375,24 @@ class LLWFormerDiscriminator(nn.Module):
         self.use_fourier = bool(_g(fourier_cfg, 'enabled', False))
         ndf_fourier     = int(_g(fourier_cfg, 'ndf', 32))
         use_sn_fourier  = bool(_g(fourier_cfg, 'use_sn', True))
+        # High-frequency D (conditional SN-PatchGAN on optical high-pass).
+        # Gated separately by model.dis.highfreq.enabled; default OFF. Kept as
+        # a sibling attribute (NOT in the 6-tuple forward) so it is purely
+        # additive — existing main.py / proof-script unpacking is untouched.
+        hf_cfg          = _g(dcfg, 'highfreq', None)
+        self.use_highfreq = bool(_g(hf_cfg, 'enabled', False))
+        ndf_hf          = int(_g(hf_cfg, 'ndf', 64))
+        sigma_hf        = float(_g(hf_cfg, 'sigma', 2.0))
 
         self.main = MainDis(in_ch=in_ch, ndf=ndf_main)
         self.sub  = SubbandDis(ndf=ndf_sub) if self.use_sub else None
         self.fourier = (
             FourierDis(ndf=ndf_fourier, use_sn=use_sn_fourier)
             if self.use_fourier else None
+        )
+        self.highfreq = (
+            HighFreqDis(in_ch=in_ch, ndf=ndf_hf, sigma=sigma_hf)
+            if self.use_highfreq else None
         )
 
     def forward(self, sar: torch.Tensor, opt: torch.Tensor):

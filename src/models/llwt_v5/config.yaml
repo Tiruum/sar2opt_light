@@ -42,6 +42,10 @@ model:
       enabled:        false                         # S-stage (S1+S2) rejected — FourierDis redundant with SubbandDis Haar discrimination
       ndf:            32                            # matches subband ndf; drop to 16 if VRAM tight
       use_sn:         true                          # spectral norm; keep on for tri-D stability
+    highfreq:
+      enabled:        false                         # HF-D: conditional SN-PatchGAN on optical high-pass (x - gaussian_blur(x,sigma)). Forces COHERENT high-freq detail. Gated ALSO by loss.hfd_weight>0. Spectral-norm on every conv is ESSENTIAL (subband-D exploded to 1e5 without it).
+      ndf:            64                            # mirrors main-D coarse branch width
+      sigma:          2.0                           # gaussian-blur sigma for the high-pass split
   log_summary: true
 
 optimizer:
@@ -116,6 +120,12 @@ loss:
   # (v0.4.0/v0.4.1 behaviour); set 1.0/10.0 to match gan_sub/fm_sub when enabled.
   gan_fourier_weight:     0.0
   fm_fourier_weight:      0.0
+  # High-frequency D adversarial weight (G-side). When > 0 AND
+  # model.dis.highfreq.enabled, the D-phase also updates the HF-D on
+  # highpass(real) vs highpass(fake.detach()), and the G-phase adds
+  # hfd_weight * gan_loss(HF_D(highpass(fake)), real=True). Additive to the
+  # main D. ~1.0 matches gan_main_weight scale. Default 0.0 = OFF.
+  hfd_weight:             0.0
   lpips_weight:           2.0                       # v0.4.5: AlexNet perceptual anchor (~0.9 contribution; main photorealism driver)
   # v0.4.5 Focal Frequency Loss (Jiang ICCV 2021) — global FFT-domain sharpener.
   # Complementary to per_band (local Haar subbands); needs `focal-frequency-loss`.
