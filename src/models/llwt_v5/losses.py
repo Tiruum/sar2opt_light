@@ -355,6 +355,125 @@ class PerBandWaveletL1Loss(nn.Module):
         return weighted_sum / weights.sum().clamp_min(1e-8)
 
 
+class WaveletDetailSWDLoss(nn.Module):
+    """Sliced-Wasserstein distributional loss on Haar detail subbands (LH,HL,HH).
+
+    Shift-invariant, blur-penalizing alternative to per-band L1 for the
+    inherently one-to-many / misaligned high-frequency content of SAR->optical.
+    Matches the *distribution* of detail coefficients (1D sliced-Wasserstein =
+    distance between sorted coefficient vectors), per band, per channel.
+    LL band is intentionally NOT handled here (supervise LL with pixel L1).
+
+    Why this fixes the blur incentive
+    ----------------------------------
+    Pixel L1 on detail bands compares coefficients *position by position*.  Under
+    the dataset's ~1.2px SAR<->optical misalignment, a SHARP but shifted edge has
+    its detail energy in the wrong location -> large per-position |Δ|; a BLURRY
+    prediction smears low-magnitude energy everywhere that overlaps the target's
+    smear -> small per-position |Δ|.  So L1 *rewards* blur.  SWD instead compares
+    the *sorted* coefficient vectors (the marginal distribution of detail
+    magnitudes), which is invariant to where the energy sits.  A sharp prediction
+    reproduces the heavy-tailed detail distribution of natural optical imagery; a
+    blur collapses that distribution toward zero -> SWD *penalizes* blur.
+
+    Input API (drop-in for :class:`PerBandWaveletL1Loss`)
+    -----------------------------------------------------
+    ``forward(sub_pred, opt)`` mirrors ``PerBandWaveletL1Loss`` exactly:
+
+    * ``sub_pred`` — predicted Haar subband tensor ``(B, C, 4, H/2, W/2)`` with
+      dim=2 order ``[LL, LH, HL, HH]`` (the ``predicted_sub`` returned by
+      ``LLWv4Generator.forward(sar, return_internals=True)``).
+    * ``opt`` — full-res optical target ``(B, C, H, W)``; detail subbands are
+      derived inline by orthonormal Haar (same matrix / order as ``HaarDown``).
+
+    Sliced-Wasserstein-1 detail
+    ---------------------------
+    For each detail band b in {LH, HL, HH}: flatten the spatial dims to a vector
+    per ``(B, channel)``, sort both pred and target along that vector, and take
+    ``mean |sorted_pred - sorted_target|`` (the exact 1D Wasserstein-1 distance).
+    ``torch.sort`` is differentiable (it scatters the gradient back through the
+    sort permutation), so this is a valid generator loss.  Averaged over the 3
+    detail bands and all channels/batch.
+
+    Optional channel projections (``n_proj > 0``)
+    ---------------------------------------------
+    Adds a sliced-Wasserstein term over the *channel* dimension: project the
+    per-pixel channel vector onto ``n_proj`` directions, sort the resulting 1D
+    projections spatially, and SW-1 those.  Directions are derived
+    deterministically (a fixed-seed generator, materialised once at __init__ and
+    registered as a buffer) so resume/EMA shadow-zips stay reproducible — we
+    never call ``torch.randn`` at forward time.  The per-channel sort is the
+    core; projections are a refinement and default OFF.
+    """
+    _HAAR = torch.tensor([
+        [ 1.0,  1.0,  1.0,  1.0],   # LL
+        [-1.0,  1.0, -1.0,  1.0],   # LH
+        [-1.0, -1.0,  1.0,  1.0],   # HL
+        [ 1.0, -1.0, -1.0,  1.0],   # HH
+    ], dtype=torch.float32) * 0.5
+    _DETAIL_IDX = (1, 2, 3)         # LH, HL, HH (skip LL at index 0)
+
+    def __init__(self, n_proj: int = 0, detail_only: bool = True, in_channels: int = 3):
+        super().__init__()
+        self.detail_only = bool(detail_only)
+        self.n_proj = int(n_proj)
+        self.register_buffer('haar_weights', self._HAAR.clone())
+        if self.n_proj > 0:
+            # Resume-safe random unit directions over the channel dim: drawn once
+            # from a FIXED-seed generator and frozen as a buffer (no forward-time
+            # randomness -> EMA/resume reproducible).
+            g = torch.Generator().manual_seed(0)
+            proj = torch.randn(self.n_proj, int(in_channels), generator=g)
+            proj = proj / proj.norm(dim=1, keepdim=True).clamp_min(1e-8)
+            self.register_buffer('channel_proj', proj)     # (n_proj, C)
+
+    def _dwt(self, x: torch.Tensor) -> torch.Tensor:
+        x = x.contiguous()
+        B, C, H, W = x.shape
+        x_blocks = F.pixel_unshuffle(x, 2).view(B, C, 4, H // 2, W // 2)
+        w = self.haar_weights.to(dtype=x.dtype)
+        return torch.einsum('bcihw, oi -> bcohw', x_blocks, w)
+
+    @staticmethod
+    def _swd1d(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
+        """1D Wasserstein-1 over the LAST dim: mean |sort(a) - sort(b)|.
+
+        ``a``/``b`` are ``(..., N)``; sort is taken along ``N`` (the spatial
+        coefficient axis).  ``torch.sort`` is differentiable in ``a``.
+        """
+        a_sorted, _ = torch.sort(a, dim=-1)
+        b_sorted, _ = torch.sort(b, dim=-1)
+        return (a_sorted - b_sorted).abs().mean()
+
+    def forward(self, sub_pred: torch.Tensor, opt: torch.Tensor) -> torch.Tensor:
+        # fp32 — matches MSSSIM / per_band / LPIPS convention; trivial on
+        # (B, C, 4, H/2, W/2) and avoids bf16 sort/abs drift.
+        sub_pred_f = sub_pred.float()
+        sub_real = self._dwt(opt.float())                  # (B, C, 4, H/2, W/2)
+        B, C = sub_pred_f.shape[0], sub_pred_f.shape[1]
+
+        total = sub_pred_f.new_zeros(())
+        for i in self._DETAIL_IDX:
+            # (B, C, h, w) -> (B*C, h*w): per-(image,channel) coefficient vector.
+            p = sub_pred_f[:, :, i].reshape(B * C, -1)
+            r = sub_real[:, :, i].reshape(B * C, -1)
+            total = total + self._swd1d(p, r)
+
+            if self.n_proj > 0:
+                # Channel-sliced SW: project per-pixel channel vectors onto the
+                # frozen directions, then SW-1 the spatial distribution per proj.
+                proj = self.channel_proj.to(dtype=sub_pred_f.dtype)       # (P, C)
+                pp = sub_pred_f[:, :, i]                                  # (B, C, h, w)
+                rr = sub_real[:, :, i]
+                # (B, P, h*w): one projected scalar field per direction.
+                pproj = torch.einsum('pc, bchw -> bphw', proj, pp).reshape(B * self.n_proj, -1)
+                rproj = torch.einsum('pc, bchw -> bphw', proj, rr).reshape(B * self.n_proj, -1)
+                total = total + self._swd1d(pproj, rproj)
+
+        n_terms = len(self._DETAIL_IDX) * (2 if self.n_proj > 0 else 1)
+        return total / float(n_terms)
+
+
 class FoundationPerceptualLoss(nn.Module):
     """Perceptual loss using a frozen pretrained foundation model.
 
@@ -825,9 +944,53 @@ def _smoke_v5_losses() -> None:
     print(f"  [OK] BackscatterStructureLoss = {_lb.item():.4f}")
 
 
+def _smoke_swd() -> None:
+    """Tier-1 smoke for :class:`WaveletDetailSWDLoss`: finite, grad, self==0."""
+    torch.manual_seed(0)
+    print("[swd smoke] WaveletDetailSWDLoss contract checks")
+
+    opt = torch.randn(2, 3, 64, 64)
+    haar = WaveletDetailSWDLoss()
+    sub_target = haar._dwt(opt)                       # (B, 3, 4, H/2, W/2)
+
+    # 1) self-distance ~ 0: SWD(HaarDown(opt), opt) on the detail bands.
+    self_loss = float(haar(sub_target, opt).item())
+    status_a = 'OK' if self_loss < 1e-5 else 'FAIL'
+    print(f"  [{status_a}] self-distance: SWD(HaarDown(opt), opt) = {self_loss:.2e}  (expect ~0)")
+    assert self_loss < 1e-5, f"self-distance not zero: {self_loss}"
+
+    # 2) finite + grad flows to pred.
+    sub_pred = (sub_target + 0.1 * torch.randn_like(sub_target)).requires_grad_(True)
+    loss = haar(sub_pred, opt)
+    assert torch.isfinite(loss), f"SWD not finite: {loss}"
+    loss.backward()
+    assert sub_pred.grad is not None, "no grad to sub_pred"
+    assert torch.isfinite(sub_pred.grad).all(), "non-finite grad to sub_pred"
+    gmag = float(sub_pred.grad.abs().mean())
+    print(f"  [OK] finite loss = {float(loss):.4f}, grad flows (|grad|.mean = {gmag:.2e})")
+    assert gmag > 0, "gradient is identically zero — sort disconnected"
+
+    # 3) projection variant: also finite + differentiable + resume-safe buffer.
+    haar_p = WaveletDetailSWDLoss(n_proj=4, in_channels=3)
+    sub_pred_p = (sub_target + 0.1 * torch.randn_like(sub_target)).requires_grad_(True)
+    loss_p = haar_p(sub_pred_p, opt)
+    assert torch.isfinite(loss_p), f"SWD(n_proj=4) not finite: {loss_p}"
+    loss_p.backward()
+    assert sub_pred_p.grad is not None and torch.isfinite(sub_pred_p.grad).all(), "bad grad (n_proj)"
+    # determinism of frozen projection directions across instances.
+    haar_p2 = WaveletDetailSWDLoss(n_proj=4, in_channels=3)
+    same = torch.allclose(haar_p.channel_proj, haar_p2.channel_proj)
+    status_d = 'OK' if same else 'FAIL'
+    print(f"  [{status_d}] n_proj=4 loss = {float(loss_p):.4f}, projections deterministic = {same}")
+    assert same, "channel_proj not deterministic across instances — resume-unsafe"
+
+    print("[swd smoke] PASS")
+
+
 if __name__ == '__main__':
     _smoke_perband()
     _smoke_v5_losses()
+    _smoke_swd()
 
 
 # ---------------------------------------------------------------------------
