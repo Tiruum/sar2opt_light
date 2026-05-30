@@ -1,4 +1,3 @@
-
 \documentclass[border=8pt, multi, tikz]{standalone}
 \usepackage{import}
 \subimport{../layers/}{init}
@@ -11,7 +10,7 @@
 
 \def\ConvColor{rgb:yellow,5;red,2.5;white,5}
 \def\ConvReluColor{rgb:yellow,5;red,5;white,5}
-\def\HaarColor{rgb:green,3;blue,1;white,2}
+\def\HFColor{rgb:cyan,4;blue,1;white,3}
 \def\OutColor{rgb:magenta,5;black,7}
 
 \begin{document}
@@ -25,7 +24,7 @@
 %% Входы
 %% ══════════════════════════════════════════════════════════════════════
 
-%% OPT — trunk input (центр)
+%% OPT — общий вход (центр)
 \pic[shift={(0,0,0)}] at (0,0,0) {Box={
   name=opt,
   caption=ОПТ,
@@ -35,7 +34,7 @@
   height=22, width=2, depth=22
 }};
 
-%% SAR — paired with OPT in MainDis only (верх)
+%% SAR — для основного дискриминатора (верх)
 \pic[shift={(0,8,0)}] at (0,0,0) {Box={
   name=sar,
   caption=РЛС,
@@ -46,7 +45,7 @@
 }};
 
 %% ══════════════════════════════════════════════════════════════════════
-%% MainDis  (верхняя ветка, y = 8)
+%% MainDis  (верхняя ветка, y = 8) — условный многомасштабный PatchGAN
 %% ══════════════════════════════════════════════════════════════════════
 
 \pic[shift={(1.7,8,0)}] at (0,0,0) {Box={
@@ -93,59 +92,64 @@
 \draw[connection] (mconv-east) -- node {\midarrow} (m46-west);
 
 %% ══════════════════════════════════════════════════════════════════════
-%% SubbandDis  (нижняя ветка, y = -7)
+%% HF-D  (нижняя ветка, y = -8) — условный SN-PatchGAN на ВЧ-остатке оптики
 %% ══════════════════════════════════════════════════════════════════════
 
+%% Высокочастотный остаток оптики: h(x) = x - G_sigma * x  (sigma=2)
 \pic[shift={(1.7,0,0)}] at (0,0,0) {Box={
-  name=haar,
-  caption={Haar DWT\\L=1},
-  xlabel={{12, }},
-  zlabel=128,
-  fill=\HaarColor,
-  height=16, width=2, depth=16
+  name=hp,
+  caption={ВЧ-остаток\\$x{-}G_\sigma{*}x$\\$\sigma{=}2$},
+  xlabel={{3, }},
+  zlabel=256,
+  fill=\HFColor,
+  height=22, width=2, depth=22
 }};
 
-\pic[shift={(1.5,0,0)}] at (haar-east) {RightBandedBox={
-  name=sconv,
+\pic[shift={(3.6,0,0)}] at (0,0,0) {Box={
+  name=hcat,
+  caption={Concat\\РЛС+ВЧ},
+  xlabel={{4, }},
+  zlabel=256,
+  fill=\ConvColor,
+  height=22, width=2, depth=22
+}};
+\draw[connection] (hp-east)   -- node {\midarrow} (hcat-west);
+\draw[connection] (sar-east) -- ++(0,-4,0) -| node {\midarrow} (hcat-west);
+
+\pic[shift={(1.5,0,0)}] at (hcat-east) {RightBandedBox={
+  name=hconv,
   caption={4×Conv\\SN LeakyReLU},
-  xlabel={{32, 64, 128, 256}},
+  xlabel={{64, 128, 256, 512}},
   zlabel=30,
   fill=\ConvColor,
   bandfill=\ConvReluColor,
-  height=6, width={2,3,3,4}, depth=6
+  height=8, width={3,3,4,5}, depth=8
 }};
-\draw[connection] (haar-east) -- node {\midarrow} (sconv-west);
+\draw[connection] (hcat-east) -- node {\midarrow} (hconv-west);
 
-\pic[shift={(1.5,0,0)}] at (sconv-east) {Box={
-  name=sout,
-  caption={logits+FM},
+\pic[shift={(2,0,0)}] at (hconv-east) {Box={
+  name=hout,
+  caption={logits\\70×70},
   xlabel={{1, }},
-  zlabel=30,
+  zlabel=70,
   fill=\OutColor,
   opacity=0.7,
-  height=5, width=2, depth=5
+  height=12, width=2, depth=12
 }};
-\draw[connection] (sconv-east) -- node {\midarrow} (sout-west);
-
+\draw[connection] (hconv-east) -- node {\midarrow} (hout-west);
 %% ══════════════════════════════════════════════════════════════════════
-%% Fork: OPT → верхняя ветка (MainDis) + нижняя ветка (SubbandDis)
-%% fork_x = 1.2  (чуть правее opt-east ≈ 0.4)
+%% Развилка OPT: вверх (MainDis) + вниз (HF-D через ВЧ-остаток)
 %% ══════════════════════════════════════════════════════════════════════
 \coordinate (Dfork)     at (1.2,  0);
-\coordinate (DforkUp)   at (1.2,  8);   % y MainDis
-\coordinate (DforkDown) at (1.2, 0);   % y SubbandDis
+\coordinate (DforkUp)   at (1.2,  8);
+\coordinate (DforkDown) at (1.2, 0);
 
-% trunk: opt → fork
 \draw[trunk] (opt-east) -- (Dfork);
-% vertical spine
 \draw[trunk] (DforkDown) -- (DforkUp);
-% arrows into each branch's first block
 \draw[trunk, -Stealth] (DforkUp)   -- (mcat-west);
-\draw[trunk, -Stealth] (DforkDown) -- (haar-west);
+\draw[trunk, -Stealth] (DforkDown) -- (hp-west);
 
-% dot at fork point
 \filldraw[fill=\edgecolor, draw=\edgecolor, opacity=0.9] (Dfork) circle (2.5pt);
-
 
 \end{tikzpicture}
 \end{document}

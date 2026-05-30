@@ -1,8 +1,8 @@
 %%% Работа с русским языком
 \usepackage{cmap}			 % поиск в PDF
 \usepackage{mathtext} 		 % русские буквы в формулах
-% \usepackage[T2A]{fontenc}	 % кодировка
 \usepackage[utf8]{inputenc}	 % кодировка исходного текста
+\usepackage[T2A]{fontenc}	 % кодировка шрифта (до babel, иначе babel грузит T2A с предупреждением)
 \usepackage[russian]{babel}	 % локализация и переносы
 
 %%% Пакеты для работы с математикой
@@ -30,7 +30,6 @@
 \usepackage{caption}
 \captionsetup{justification=centering} % центрирование подписей к картинкам
 \usepackage{graphicx}                  % Для вставки рисунков
-\usepackage{caption}
 \usepackage{subcaption}
 \usepackage{transparent}               % Настройка прозрачности
 \graphicspath{{images/}{images2/}}     % папки с картинками
@@ -49,7 +48,6 @@
 
 %% Интервалы
 \linespread{1.25}
-\usepackage{multirow}
 
 %% TikZ
 \usepackage{tikz}
@@ -68,7 +66,6 @@
 %% дополнения
 \usepackage{float}   % Добавляет возможность работы с командой [H] которая улучшает расположение на странице
 \usepackage{gensymb} % Красивые градусы
-\usepackage{caption} % Пакет для подписей к рисункам, в частности, для работы caption*
 
 % подключаем hyperref (для ссылок внутри  pdf)
 \usepackage[unicode, pdftex]{hyperref}
