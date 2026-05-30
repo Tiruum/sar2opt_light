@@ -1,0 +1,151 @@
+
+\documentclass[border=8pt, multi, tikz]{standalone}
+\usepackage{import}
+\subimport{../layers/}{init}
+\usetikzlibrary{positioning}
+\usetikzlibrary{3d}
+\usetikzlibrary{calc}
+\usepackage[T2A]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[main=russian,english]{babel}
+
+\def\ConvColor{rgb:yellow,5;red,2.5;white,5}
+\def\ConvReluColor{rgb:yellow,5;red,5;white,5}
+\def\HaarColor{rgb:green,3;blue,1;white,2}
+\def\OutColor{rgb:magenta,5;black,7}
+
+\begin{document}
+\begin{tikzpicture}
+\tikzstyle{connection}=[ultra thick,
+  every node/.style={sloped,allow upside down},
+  draw=\edgecolor, opacity=0.7]
+\tikzstyle{trunk}=[ultra thick, draw=\edgecolor, opacity=0.7]
+
+%% ══════════════════════════════════════════════════════════════════════
+%% Входы
+%% ══════════════════════════════════════════════════════════════════════
+
+%% OPT — trunk input (центр)
+\pic[shift={(0,0,0)}] at (0,0,0) {Box={
+  name=opt,
+  caption=ОПТ,
+  xlabel={{3, }},
+  zlabel=256,
+  fill={rgb:green,2;yellow,1;white,2},
+  height=22, width=2, depth=22
+}};
+
+%% SAR — paired with OPT in MainDis only (верх)
+\pic[shift={(0,8,0)}] at (0,0,0) {Box={
+  name=sar,
+  caption=РЛС,
+  xlabel={{1, }},
+  zlabel=256,
+  fill={rgb:blue,1;black,0.3},
+  height=22, width=1.5, depth=22
+}};
+
+%% ══════════════════════════════════════════════════════════════════════
+%% MainDis  (верхняя ветка, y = 8)
+%% ══════════════════════════════════════════════════════════════════════
+
+\pic[shift={(1.7,8,0)}] at (0,0,0) {Box={
+  name=mcat,
+  caption={Concat\\РЛС+ОПТ},
+  xlabel={{4, }},
+  zlabel=256,
+  fill=\ConvColor,
+  height=22, width=2, depth=22
+}};
+\draw[connection] (sar-east) -- node {\midarrow} (mcat-west);
+
+\pic[shift={(1.5,0,0)}] at (mcat-east) {RightBandedBox={
+  name=mconv,
+  caption={4×Conv\\LeakyReLU},
+  xlabel={{64, 128, 256, 512}},
+  zlabel=30,
+  fill=\ConvColor,
+  bandfill=\ConvReluColor,
+  height=8, width={3,3,4,5}, depth=8
+}};
+\draw[connection] (mcat-east) -- node {\midarrow} (mconv-west);
+
+\pic[shift={(2,2,0)}] at (mconv-east) {Box={
+  name=m70,
+  caption={logits\\70×70},
+  xlabel={{1, }},
+  zlabel=70,
+  fill=\OutColor,
+  opacity=0.7,
+  height=12, width=2, depth=12
+}};
+\draw[connection] (mconv-east) -- node {\midarrow} (m70-west);
+
+\pic[shift={(2,-2,0)}] at (mconv-east) {Box={
+  name=m46,
+  caption={logits\\46×46},
+  xlabel={{1, }},
+  zlabel=46,
+  fill=\OutColor,
+  opacity=0.7,
+  height=8, width=2, depth=8
+}};
+\draw[connection] (mconv-east) -- node {\midarrow} (m46-west);
+
+%% ══════════════════════════════════════════════════════════════════════
+%% SubbandDis  (нижняя ветка, y = -7)
+%% ══════════════════════════════════════════════════════════════════════
+
+\pic[shift={(1.7,0,0)}] at (0,0,0) {Box={
+  name=haar,
+  caption={Haar DWT\\L=1},
+  xlabel={{12, }},
+  zlabel=128,
+  fill=\HaarColor,
+  height=16, width=2, depth=16
+}};
+
+\pic[shift={(1.5,0,0)}] at (haar-east) {RightBandedBox={
+  name=sconv,
+  caption={4×Conv\\SN LeakyReLU},
+  xlabel={{32, 64, 128, 256}},
+  zlabel=30,
+  fill=\ConvColor,
+  bandfill=\ConvReluColor,
+  height=6, width={2,3,3,4}, depth=6
+}};
+\draw[connection] (haar-east) -- node {\midarrow} (sconv-west);
+
+\pic[shift={(1.5,0,0)}] at (sconv-east) {Box={
+  name=sout,
+  caption={logits+FM},
+  xlabel={{1, }},
+  zlabel=30,
+  fill=\OutColor,
+  opacity=0.7,
+  height=5, width=2, depth=5
+}};
+\draw[connection] (sconv-east) -- node {\midarrow} (sout-west);
+
+%% ══════════════════════════════════════════════════════════════════════
+%% Fork: OPT → верхняя ветка (MainDis) + нижняя ветка (SubbandDis)
+%% fork_x = 1.2  (чуть правее opt-east ≈ 0.4)
+%% ══════════════════════════════════════════════════════════════════════
+\coordinate (Dfork)     at (1.2,  0);
+\coordinate (DforkUp)   at (1.2,  8);   % y MainDis
+\coordinate (DforkDown) at (1.2, 0);   % y SubbandDis
+
+% trunk: opt → fork
+\draw[trunk] (opt-east) -- (Dfork);
+% vertical spine
+\draw[trunk] (DforkDown) -- (DforkUp);
+% arrows into each branch's first block
+\draw[trunk, -Stealth] (DforkUp)   -- (mcat-west);
+\draw[trunk, -Stealth] (DforkDown) -- (haar-west);
+
+% dot at fork point
+\filldraw[fill=\edgecolor, draw=\edgecolor, opacity=0.9] (Dfork) circle (2.5pt);
+
+
+\end{tikzpicture}
+\end{document}

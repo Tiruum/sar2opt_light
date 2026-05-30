@@ -1,0 +1,1979 @@
+This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026) (preloaded format=pdflatex 2026.5.11)  30 MAY 2026 21:21
+entering extended mode
+ restricted \write18 enabled.
+ file:line:error style messages enabled.
+ %&-line parsing enabled.
+**/Users/timur/Desktop/diploma/main.tex
+(/Users/timur/Desktop/diploma/main.tex
+LaTeX2e <2025-11-01>
+L3 programming layer <2026-01-19>
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/base/book.cls
+Document Class: book 2025/01/22 v1.4n Standard LaTeX document class
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/base/bk10.clo
+File: bk10.clo 2025/01/22 v1.4n Standard LaTeX file (size option)
+)
+\c@part=\count275
+\c@chapter=\count276
+\c@section=\count277
+\c@subsection=\count278
+\c@subsubsection=\count279
+\c@paragraph=\count280
+\c@subparagraph=\count281
+\c@figure=\count282
+\c@table=\count283
+\abovecaptionskip=\skip49
+\belowcaptionskip=\skip50
+\bibindent=\dimen148
+) (/usr/local/texlive/2026basic/texmf-dist/tex/latex/abstract/abstract.sty
+Package: abstract 2009/06/08 v1.2a configurable abstracts
+\abstitleskip=\skip51
+\absleftindent=\skip52
+\absrightindent=\skip53
+\absparindent=\skip54
+\absparsep=\skip55
+) (./include/preambule.tex (/usr/local/texlive/2026basic/texmf-dist/tex/latex/cmap/cmap.sty
+Package: cmap 2021/02/06 v1.0j CMap support: searchable PDF
+) (/usr/local/texlive/2026basic/texmf-dist/tex/latex/t2/mathtext.sty
+Package: mathtext 2018/04/14 v1.0 transparent text-and-math defs
+LaTeX Info: Redefining \halign on input line 121.
+) (/usr/local/texlive/2026basic/texmf-dist/tex/latex/base/inputenc.sty
+Package: inputenc 2024/02/08 v1.3d Input encoding file
+\inpenc@prehook=\toks17
+\inpenc@posthook=\toks18
+) (/usr/local/texlive/2026basic/texmf-dist/tex/generic/babel/babel.sty
+Package: babel 2026/02/14 v26.3 The multilingual framework for LuaLaTeX, pdfLaTeX and XeLaTeX
+\babel@savecnt=\count284
+LaTeX Encoding Info:    Redeclaring text command \ij (encoding OT1) on input line 2078.
+LaTeX Encoding Info:    Redeclaring text command \IJ (encoding OT1) on input line 2080.
+LaTeX Encoding Info:    Redeclaring text command \ij (encoding T1) on input line 2082.
+LaTeX Encoding Info:    Redeclaring text command \IJ (encoding T1) on input line 2083.
+LaTeX Encoding Info:    Ignoring declaration for text command \ij (encoding ?) on input line 2084.
+LaTeX Encoding Info:    Ignoring declaration for text command \IJ (encoding ?) on input line 2086.
+LaTeX Encoding Info:    Ignoring declaration for text command \SS (encoding ?) on input line 2111.
+\U@D=\dimen149
+\l@unhyphenated=\language33
+ (/usr/local/texlive/2026basic/texmf-dist/tex/generic/babel/txtbabel.def)
+\bbl@readstream=\read2
+\bbl@dirlevel=\count285
+ (/usr/local/texlive/2026basic/texmf-dist/tex/generic/babel/locale/ru/babel-russian.tex)
+Package babel Info: Importing font and identification data for russian
+(babel)             from babel-ru.ini. Reported on input line 4330.
+ (/usr/local/texlive/2026basic/texmf-dist/tex/generic/babel-russian/russianb.ldf
+File: russianb.ldf 2021/01/10 1.3m Russian support for the Babel system
+Language: russian 2020/09/09 1.3k Russian support for the Babel system
+
+
+Package babel Warning: No Cyrillic font encoding has been loaded so far.
+(babel)                A font encoding should be declared before babel.
+(babel)                Default `T2A' encoding will be loaded  on input line 78.
+
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/cyrillic/t2aenc.def
+File: t2aenc.def 2023/11/07 v1.0k Cyrillic encoding definition file
+Now handling font encoding T2A ...
+... processing UTF-8 mapping file for font encoding T2A
+ (/usr/local/texlive/2026basic/texmf-dist/tex/latex/base/t2aenc.dfu
+File: t2aenc.dfu 2022/06/07 v1.3c UTF-8 support
+   defining Unicode char U+00A4 (decimal 164)
+   defining Unicode char U+00A7 (decimal 167)
+   defining Unicode char U+00AB (decimal 171)
+   defining Unicode char U+00BB (decimal 187)
+   defining Unicode char U+0131 (decimal 305)
+   defining Unicode char U+0237 (decimal 567)
+   defining Unicode char U+0400 (decimal 1024)
+   defining Unicode char U+0401 (decimal 1025)
+   defining Unicode char U+0402 (decimal 1026)
+   defining Unicode char U+0403 (decimal 1027)
+   defining Unicode char U+0404 (decimal 1028)
+   defining Unicode char U+0405 (decimal 1029)
+   defining Unicode char U+0406 (decimal 1030)
+   defining Unicode char U+0407 (decimal 1031)
+   defining Unicode char U+0408 (decimal 1032)
+   defining Unicode char U+0409 (decimal 1033)
+   defining Unicode char U+040A (decimal 1034)
+   defining Unicode char U+040B (decimal 1035)
+   defining Unicode char U+040C (decimal 1036)
+   defining Unicode char U+040D (decimal 1037)
+   defining Unicode char U+040E (decimal 1038)
+   defining Unicode char U+040F (decimal 1039)
+   defining Unicode char U+0410 (decimal 1040)
+   defining Unicode char U+0411 (decimal 1041)
+   defining Unicode char U+0412 (decimal 1042)
+   defining Unicode char U+0413 (decimal 1043)
+   defining Unicode char U+0414 (decimal 1044)
+   defining Unicode char U+0415 (decimal 1045)
+   defining Unicode char U+0416 (decimal 1046)
+   defining Unicode char U+0417 (decimal 1047)
+   defining Unicode char U+0418 (decimal 1048)
+   defining Unicode char U+0419 (decimal 1049)
+   defining Unicode char U+041A (decimal 1050)
+   defining Unicode char U+041B (decimal 1051)
+   defining Unicode char U+041C (decimal 1052)
+   defining Unicode char U+041D (decimal 1053)
+   defining Unicode char U+041E (decimal 1054)
+   defining Unicode char U+041F (decimal 1055)
+   defining Unicode char U+0420 (decimal 1056)
+   defining Unicode char U+0421 (decimal 1057)
+   defining Unicode char U+0422 (decimal 1058)
+   defining Unicode char U+0423 (decimal 1059)
+   defining Unicode char U+0424 (decimal 1060)
+   defining Unicode char U+0425 (decimal 1061)
+   defining Unicode char U+0426 (decimal 1062)
+   defining Unicode char U+0427 (decimal 1063)
+   defining Unicode char U+0428 (decimal 1064)
+   defining Unicode char U+0429 (decimal 1065)
+   defining Unicode char U+042A (decimal 1066)
+   defining Unicode char U+042B (decimal 1067)
+   defining Unicode char U+042C (decimal 1068)
+   defining Unicode char U+042D (decimal 1069)
+   defining Unicode char U+042E (decimal 1070)
+   defining Unicode char U+042F (decimal 1071)
+   defining Unicode char U+0430 (decimal 1072)
+   defining Unicode char U+0431 (decimal 1073)
+   defining Unicode char U+0432 (decimal 1074)
+   defining Unicode char U+0433 (decimal 1075)
+   defining Unicode char U+0434 (decimal 1076)
+   defining Unicode char U+0435 (decimal 1077)
+   defining Unicode char U+0436 (decimal 1078)
+   defining Unicode char U+0437 (decimal 1079)
+   defining Unicode char U+0438 (decimal 1080)
+   defining Unicode char U+0439 (decimal 1081)
+   defining Unicode char U+043A (decimal 1082)
+   defining Unicode char U+043B (decimal 1083)
+   defining Unicode char U+043C (decimal 1084)
+   defining Unicode char U+043D (decimal 1085)
+   defining Unicode char U+043E (decimal 1086)
+   defining Unicode char U+043F (decimal 1087)
+   defining Unicode char U+0440 (decimal 1088)
+   defining Unicode char U+0441 (decimal 1089)
+   defining Unicode char U+0442 (decimal 1090)
+   defining Unicode char U+0443 (decimal 1091)
+   defining Unicode char U+0444 (decimal 1092)
+   defining Unicode char U+0445 (decimal 1093)
+   defining Unicode char U+0446 (decimal 1094)
+   defining Unicode char U+0447 (decimal 1095)
+   defining Unicode char U+0448 (decimal 1096)
+   defining Unicode char U+0449 (decimal 1097)
+   defining Unicode char U+044A (decimal 1098)
+   defining Unicode char U+044B (decimal 1099)
+   defining Unicode char U+044C (decimal 1100)
+   defining Unicode char U+044D (decimal 1101)
+   defining Unicode char U+044E (decimal 1102)
+   defining Unicode char U+044F (decimal 1103)
+   defining Unicode char U+0450 (decimal 1104)
+   defining Unicode char U+0451 (decimal 1105)
+   defining Unicode char U+0452 (decimal 1106)
+   defining Unicode char U+0453 (decimal 1107)
+   defining Unicode char U+0454 (decimal 1108)
+   defining Unicode char U+0455 (decimal 1109)
+   defining Unicode char U+0456 (decimal 1110)
+   defining Unicode char U+0457 (decimal 1111)
+   defining Unicode char U+0458 (decimal 1112)
+   defining Unicode char U+0459 (decimal 1113)
+   defining Unicode char U+045A (decimal 1114)
+   defining Unicode char U+045B (decimal 1115)
+   defining Unicode char U+045C (decimal 1116)
+   defining Unicode char U+045D (decimal 1117)
+   defining Unicode char U+045E (decimal 1118)
+   defining Unicode char U+045F (decimal 1119)
+   defining Unicode char U+0490 (decimal 1168)
+   defining Unicode char U+0491 (decimal 1169)
+   defining Unicode char U+0492 (decimal 1170)
+   defining Unicode char U+0493 (decimal 1171)
+   defining Unicode char U+0496 (decimal 1174)
+   defining Unicode char U+0497 (decimal 1175)
+   defining Unicode char U+0498 (decimal 1176)
+   defining Unicode char U+0499 (decimal 1177)
+   defining Unicode char U+049A (decimal 1178)
+   defining Unicode char U+049B (decimal 1179)
+   defining Unicode char U+049C (decimal 1180)
+   defining Unicode char U+049D (decimal 1181)
+   defining Unicode char U+04A0 (decimal 1184)
+   defining Unicode char U+04A1 (decimal 1185)
+   defining Unicode char U+04A2 (decimal 1186)
+   defining Unicode char U+04A3 (decimal 1187)
+   defining Unicode char U+04A4 (decimal 1188)
+   defining Unicode char U+04A5 (decimal 1189)
+   defining Unicode char U+04AA (decimal 1194)
+   defining Unicode char U+04AB (decimal 1195)
+   defining Unicode char U+04AE (decimal 1198)
+   defining Unicode char U+04AF (decimal 1199)
+   defining Unicode char U+04B0 (decimal 1200)
+   defining Unicode char U+04B1 (decimal 1201)
+   defining Unicode char U+04B2 (decimal 1202)
+   defining Unicode char U+04B3 (decimal 1203)
+   defining Unicode char U+04B6 (decimal 1206)
+   defining Unicode char U+04B7 (decimal 1207)
+   defining Unicode char U+04B8 (decimal 1208)
+   defining Unicode char U+04B9 (decimal 1209)
+   defining Unicode char U+04BA (decimal 1210)
+   defining Unicode char U+04BB (decimal 1211)
+   defining Unicode char U+04C0 (decimal 1216)
+   defining Unicode char U+04C1 (decimal 1217)
+   defining Unicode char U+04C2 (decimal 1218)
+   defining Unicode char U+04D0 (decimal 1232)
+   defining Unicode char U+04D1 (decimal 1233)
+   defining Unicode char U+04D2 (decimal 1234)
+   defining Unicode char U+04D3 (decimal 1235)
+   defining Unicode char U+04D4 (decimal 1236)
+   defining Unicode char U+04D5 (decimal 1237)
+   defining Unicode char U+04D6 (decimal 1238)
+   defining Unicode char U+04D7 (decimal 1239)
+   defining Unicode char U+04D8 (decimal 1240)
+   defining Unicode char U+04D9 (decimal 1241)
+   defining Unicode char U+04DA (decimal 1242)
+   defining Unicode char U+04DB (decimal 1243)
+   defining Unicode char U+04DC (decimal 1244)
+   defining Unicode char U+04DD (decimal 1245)
+   defining Unicode char U+04DE (decimal 1246)
+   defining Unicode char U+04DF (decimal 1247)
+   defining Unicode char U+04E2 (decimal 1250)
+   defining Unicode char U+04E3 (decimal 1251)
+   defining Unicode char U+04E4 (decimal 1252)
+   defining Unicode char U+04E5 (decimal 1253)
+   defining Unicode char U+04E6 (decimal 1254)
+   defining Unicode char U+04E7 (decimal 1255)
+   defining Unicode char U+04E8 (decimal 1256)
+   defining Unicode char U+04E9 (decimal 1257)
+   defining Unicode char U+04EC (decimal 1260)
+   defining Unicode char U+04ED (decimal 1261)
+   defining Unicode char U+04EE (decimal 1262)
+   defining Unicode char U+04EF (decimal 1263)
+   defining Unicode char U+04F0 (decimal 1264)
+   defining Unicode char U+04F1 (decimal 1265)
+   defining Unicode char U+04F2 (decimal 1266)
+   defining Unicode char U+04F3 (decimal 1267)
+   defining Unicode char U+04F4 (decimal 1268)
+   defining Unicode char U+04F5 (decimal 1269)
+   defining Unicode char U+04F8 (decimal 1272)
+   defining Unicode char U+04F9 (decimal 1273)
+   defining Unicode char U+200C (decimal 8204)
+   defining Unicode char U+2013 (decimal 8211)
+   defining Unicode char U+2014 (decimal 8212)
+   defining Unicode char U+2018 (decimal 8216)
+   defining Unicode char U+2019 (decimal 8217)
+   defining Unicode char U+201C (decimal 8220)
+   defining Unicode char U+201D (decimal 8221)
+   defining Unicode char U+201E (decimal 8222)
+   defining Unicode char U+2030 (decimal 8240)
+   defining Unicode char U+2031 (decimal 8241)
+   defining Unicode char U+2116 (decimal 8470)
+   defining Unicode char U+2329 (decimal 9001)
+   defining Unicode char U+3008 (decimal 12296)
+   defining Unicode char U+232A (decimal 9002)
+   defining Unicode char U+3009 (decimal 12297)
+   defining Unicode char U+2423 (decimal 9251)
+   defining Unicode char U+27E8 (decimal 10216)
+   defining Unicode char U+27E9 (decimal 10217)
+   defining Unicode char U+FB00 (decimal 64256)
+   defining Unicode char U+FB01 (decimal 64257)
+   defining Unicode char U+FB02 (decimal 64258)
+   defining Unicode char U+FB03 (decimal 64259)
+   defining Unicode char U+FB04 (decimal 64260)
+   defining Unicode char U+FB05 (decimal 64261)
+   defining Unicode char U+FB06 (decimal 64262)
+)
+\symT2Aletters=\mathgroup4
+)
+Package babel Info: Making " an active character on input line 124.
+Package babel Info: Default for \cyrdash is provided on input line 163.
+)) (/usr/local/texlive/2026basic/texmf-dist/tex/latex/amsmath/amsmath.sty
+Package: amsmath 2025/07/09 v2.17z AMS math features
+\@mathmargin=\skip56
+
+For additional information on amsmath, use the `?' option.
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/amsmath/amstext.sty
+Package: amstext 2024/11/17 v2.01 AMS text
+ (/usr/local/texlive/2026basic/texmf-dist/tex/latex/amsmath/amsgen.sty
+File: amsgen.sty 1999/11/30 v2.0 generic functions
+\@emptytoks=\toks19
+\ex@=\dimen150
+)) (/usr/local/texlive/2026basic/texmf-dist/tex/latex/amsmath/amsbsy.sty
+Package: amsbsy 1999/11/29 v1.2d Bold Symbols
+\pmbraise@=\dimen151
+) (/usr/local/texlive/2026basic/texmf-dist/tex/latex/amsmath/amsopn.sty
+Package: amsopn 2022/04/08 v2.04 operator names
+)
+\inf@bad=\count286
+LaTeX Info: Redefining \frac on input line 233.
+\uproot@=\count287
+\leftroot@=\count288
+LaTeX Info: Redefining \overline on input line 398.
+LaTeX Info: Redefining \colon on input line 409.
+\classnum@=\count289
+\DOTSCASE@=\count290
+LaTeX Info: Redefining \ldots on input line 495.
+LaTeX Info: Redefining \dots on input line 498.
+LaTeX Info: Redefining \cdots on input line 619.
+\Mathstrutbox@=\box53
+\strutbox@=\box54
+LaTeX Info: Redefining \big on input line 721.
+LaTeX Info: Redefining \Big on input line 722.
+LaTeX Info: Redefining \bigg on input line 723.
+LaTeX Info: Redefining \Bigg on input line 724.
+\big@size=\dimen152
+LaTeX Font Info:    Redeclaring font encoding OML on input line 742.
+\symOMLletters=\mathgroup5
+LaTeX Font Info:    Redeclaring font encoding OMS on input line 743.
+\symOMSletters=\mathgroup6
+\macc@depth=\count291
+LaTeX Info: Redefining \bmod on input line 904.
+LaTeX Info: Redefining \pmod on input line 909.
+LaTeX Info: Redefining \smash on input line 939.
+LaTeX Info: Redefining \relbar on input line 969.
+LaTeX Info: Redefining \Relbar on input line 970.
+\c@MaxMatrixCols=\count292
+\dotsspace@=\muskip17
+\c@parentequation=\count293
+\dspbrk@lvl=\count294
+\tag@help=\toks20
+\row@=\count295
+\column@=\count296
+\maxfields@=\count297
+\andhelp@=\toks21
+\eqnshift@=\dimen153
+\alignsep@=\dimen154
+\tagshift@=\dimen155
+\tagwidth@=\dimen156
+\totwidth@=\dimen157
+\lineht@=\dimen158
+\@envbody=\toks22
+\multlinegap=\skip57
+\multlinetaggap=\skip58
+\mathdisplay@stack=\toks23
+LaTeX Info: Redefining \[ on input line 2950.
+LaTeX Info: Redefining \] on input line 2951.
+) (/usr/local/texlive/2026basic/texmf-dist/tex/latex/amsfonts/amsfonts.sty
+Package: amsfonts 2013/01/14 v3.01 Basic AMSFonts support
+\symAMSa=\mathgroup7
+\symAMSb=\mathgroup8
+LaTeX Font Info:    Redeclaring math symbol \hbar on input line 98.
+LaTeX Font Info:    Overwriting math alphabet `\mathfrak' in version `bold'
+(Font)                  U/euf/m/n --> U/euf/b/n on input line 106.
+) (/usr/local/texlive/2026basic/texmf-dist/tex/latex/amsfonts/amssymb.sty
+Package: amssymb 2013/01/14 v3.01 AMS font symbols
+) (/usr/local/texlive/2026basic/texmf-dist/tex/latex/amscls/amsthm.sty
+Package: amsthm 2020/05/29 v2.20.6
+\thm@style=\toks24
+\thm@bodyfont=\toks25
+\thm@headfont=\toks26
+\thm@notefont=\toks27
+\thm@headpunct=\toks28
+\thm@preskip=\skip59
+\thm@postskip=\skip60
+\thm@headsep=\skip61
+\dth@everypar=\toks29
+) (/usr/local/texlive/2026basic/texmf-dist/tex/latex/mathtools/mathtools.sty
+Package: mathtools 2024/10/04 v1.31 mathematical typesetting tools
+ (/usr/local/texlive/2026basic/texmf-dist/tex/latex/graphics/keyval.sty
+Package: keyval 2022/05/29 v1.15 key=value parser (DPC)
+\KV@toks@=\toks30
+) (/usr/local/texlive/2026basic/texmf-dist/tex/latex/tools/calc.sty
+Package: calc 2025/03/01 v4.3b Infix arithmetic (KKT,FJ)
+\calc@Acount=\count298
+\calc@Bcount=\count299
+\calc@Adimen=\dimen159
+\calc@Bdimen=\dimen160
+\calc@Askip=\skip62
+\calc@Bskip=\skip63
+LaTeX Info: Redefining \setlength on input line 86.
+LaTeX Info: Redefining \addtolength on input line 87.
+\calc@Ccount=\count300
+\calc@Cskip=\skip64
+) (/usr/local/texlive/2026basic/texmf-dist/tex/latex/mathtools/mhsetup.sty
+Package: mhsetup 2021/03/18 v1.4 programming setup (MH)
+)
+\g_MT_multlinerow_int=\count301
+\l_MT_multwidth_dim=\dimen161
+\origjot=\skip65
+\l_MT_shortvdotswithinadjustabove_dim=\dimen162
+\l_MT_shortvdotswithinadjustbelow_dim=\dimen163
+\l_MT_above_intertext_sep=\dimen164
+\l_MT_below_intertext_sep=\dimen165
+\l_MT_above_shortintertext_sep=\dimen166
+\l_MT_below_shortintertext_sep=\dimen167
+\xmathstrut@box=\box55
+\xmathstrut@dim=\dimen168
+) (/usr/local/texlive/2026basic/texmf-dist/tex/latex/was/icomma.sty
+Package: icomma 2002/03/10 v2.0 (WaS)
+) (/usr/local/texlive/2026basic/texmf-dist/tex/latex/amsfonts/euscript.sty
+Package: euscript 2009/06/22 v3.00 Euler Script fonts
+LaTeX Font Info:    Overwriting math alphabet `\EuScript' in version `bold'
+(Font)                  U/eus/m/n --> U/eus/b/n on input line 33.
+) (/usr/local/texlive/2026basic/texmf-dist/tex/latex/jknapltx/mathrsfs.sty
+Package: mathrsfs 1996/01/01 Math RSFS package v1.0 (jk)
+\symrsfs=\mathgroup9
+) (/usr/local/texlive/2026basic/texmf-dist/tex/latex/geometry/geometry.sty
+Package: geometry 2020/01/02 v5.9 Page Geometry
+ (/usr/local/texlive/2026basic/texmf-dist/tex/generic/iftex/ifvtex.sty
+Package: ifvtex 2019/10/25 v1.7 ifvtex legacy package. Use iftex instead.
+ (/usr/local/texlive/2026basic/texmf-dist/tex/generic/iftex/iftex.sty
+Package: iftex 2024/12/12 v1.0g TeX engine tests
+))
+\Gm@cnth=\count302
+\Gm@cntv=\count303
+\c@Gm@tempcnt=\count304
+\Gm@bindingoffset=\dimen169
+\Gm@wd@mp=\dimen170
+\Gm@odd@mp=\dimen171
+\Gm@even@mp=\dimen172
+\Gm@layoutwidth=\dimen173
+\Gm@layoutheight=\dimen174
+\Gm@layouthoffset=\dimen175
+\Gm@layoutvoffset=\dimen176
+\Gm@dimlist=\toks31
+) (/usr/local/texlive/2026basic/texmf-dist/tex/latex/enumitem/enumitem.sty
+Package: enumitem 2025/02/06 v3.11 Customized lists
+\labelindent=\skip66
+\enit@outerparindent=\dimen177
+\enit@toks=\toks32
+\enit@inbox=\box56
+\enit@count@id=\count305
+\enitdp@description=\count306
+) (/usr/local/texlive/2026basic/texmf-dist/tex/latex/caption/caption.sty
+Package: caption 2023/08/05 v3.6o Customizing captions (AR)
+ (/usr/local/texlive/2026basic/texmf-dist/tex/latex/caption/caption3.sty
+Package: caption3 2023/07/31 v2.4d caption3 kernel (AR)
+\caption@tempdima=\dimen178
+\captionmargin=\dimen179
+\caption@leftmargin=\dimen180
+\caption@rightmargin=\dimen181
+\caption@width=\dimen182
+\caption@indent=\dimen183
+\caption@parindent=\dimen184
+\caption@hangindent=\dimen185
+Package caption Info: Standard document class detected.
+)
+\c@caption@flags=\count307
+\c@continuedfloat=\count308
+) (/usr/local/texlive/2026basic/texmf-dist/tex/latex/graphics/graphicx.sty
+Package: graphicx 2024/12/31 v1.2e Enhanced LaTeX Graphics (DPC,SPQR)
+ (/usr/local/texlive/2026basic/texmf-dist/tex/latex/graphics/graphics.sty
+Package: graphics 2024/08/06 v1.4g Standard LaTeX Graphics (DPC,SPQR)
+ (/usr/local/texlive/2026basic/texmf-dist/tex/latex/graphics/trig.sty
+Package: trig 2023/12/02 v1.11 sin cos tan (DPC)
+) (/usr/local/texlive/2026basic/texmf-dist/tex/latex/graphics-cfg/graphics.cfg
+File: graphics.cfg 2016/06/04 v1.11 sample graphics configuration
+)
+Package graphics Info: Driver file: pdftex.def on input line 106.
+ (/usr/local/texlive/2026basic/texmf-dist/tex/latex/graphics-def/pdftex.def
+File: pdftex.def 2025/09/29 v1.2d Graphics/color driver for pdftex
+))
+\Gin@req@height=\dimen186
+\Gin@req@width=\dimen187
+) (/usr/local/texlive/2026basic/texmf-dist/tex/latex/caption/subcaption.sty
+Package: subcaption 2023/07/28 v1.6b Sub-captions (AR)
+Package caption Info: New subtype `subfigure' on input line 238.
+\c@subfigure=\count309
+Package caption Info: New subtype `subtable' on input line 238.
+\c@subtable=\count310
+) (/usr/local/texlive/2026basic/texmf-dist/tex/latex/transparent/transparent.sty
+Package: transparent 2025-06-23 v1.6 Transparency with color stacks
+ (/usr/local/texlive/2026basic/texmf-dist/tex/latex/transparent/transparent-nometadata.sty
+Package: transparent-nometadata 2025-06-23 v1.6 Transparency via pdfTeX's color stack (HO)
+ (/usr/local/texlive/2026basic/texmf-dist/tex/latex/auxhook/auxhook.sty
+Package: auxhook 2019-12-17 v1.6 Hooks for auxiliary files (HO)
+))) (/usr/local/texlive/2026basic/texmf-dist/tex/latex/wrapfig/wrapfig.sty
+\wrapoverhang=\dimen188
+\WF@size=\dimen189
+\c@WF@wrappedlines=\count311
+\WF@box=\box57
+\WF@everypar=\toks33
+Package: wrapfig 2003/01/31  v 3.6
+) (/usr/local/texlive/2026basic/texmf-dist/tex/latex/tools/array.sty
+Package: array 2025/09/25 v2.6n Tabular extension package (FMi)
+\col@sep=\dimen190
+\ar@mcellbox=\box58
+\extrarowheight=\dimen191
+\NC@list=\toks34
+\extratabsurround=\skip67
+\backup@length=\skip68
+\ar@cellbox=\box59
+) (/usr/local/texlive/2026basic/texmf-dist/tex/latex/tools/tabularx.sty
+Package: tabularx 2023/12/11 v2.12a `tabularx' package (DPC)
+\TX@col@width=\dimen192
+\TX@old@table=\dimen193
+\TX@old@col=\dimen194
+\TX@target=\dimen195
+\TX@delta=\dimen196
+\TX@cols=\count312
+\TX@ftn=\toks35
+) (/usr/local/texlive/2026basic/texmf-dist/tex/latex/tabulary/tabulary.sty
+Package: tabulary 2024/06/04 v0.11 tabulary package (DPC)
+\TY@count=\count313
+\TY@linewidth=\dimen197
+\tymin=\dimen198
+\tymax=\dimen199
+\TY@tablewidth=\dimen256
+) (/usr/local/texlive/2026basic/texmf-dist/tex/latex/booktabs/booktabs.sty
+Package: booktabs 2020/01/12 v1.61803398 Publication quality tables
+\heavyrulewidth=\dimen257
+\lightrulewidth=\dimen258
+\cmidrulewidth=\dimen259
+\belowrulesep=\dimen260
+\belowbottomsep=\dimen261
+\aboverulesep=\dimen262
+\abovetopsep=\dimen263
+\cmidrulesep=\dimen264
+\cmidrulekern=\dimen265
+\defaultaddspace=\dimen266
+\@cmidla=\count314
+\@cmidlb=\count315
+\@aboverulesep=\dimen267
+\@belowrulesep=\dimen268
+\@thisruleclass=\count316
+\@lastruleclass=\count317
+\@thisrulewidth=\dimen269
+) (/usr/local/texlive/2026basic/texmf-dist/tex/latex/tools/longtable.sty
+Package: longtable 2025-10-13 v4.24 Multi-page Table package (DPC)
+\LTleft=\skip69
+\LTright=\skip70
+\LTpre=\skip71
+\LTpost=\skip72
+\LTchunksize=\count318
+\LTcapwidth=\dimen270
+\LT@head=\box60
+\LT@firsthead=\box61
+\LT@foot=\box62
+\LT@lastfoot=\box63
+\LT@gbox=\box64
+\LT@cols=\count319
+\LT@rows=\count320
+\c@LT@tables=\count321
+\c@LT@chunks=\count322
+\LT@p@ftn=\toks36
+) (/usr/local/texlive/2026basic/texmf-dist/tex/latex/multirow/multirow.sty
+Package: multirow 2024/11/12 v2.9 Span multiple rows of a table
+\multirow@colwidth=\skip73
+\multirow@cntb=\count323
+\multirow@dima=\skip74
+\bigstrutjot=\dimen271
+) (/usr/local/texlive/2026basic/texmf-dist/tex/latex/pgf/frontendlayer/tikz.sty (/usr/local/texlive/2026basic/texmf-dist/tex/latex/pgf/basiclayer/pgf.sty (/usr/local/texlive/2026basic/texmf-dist/tex/latex/pgf/utilities/pgfrcs.sty (/usr/local/texlive/2026basic/texmf-dist/tex/generic/pgf/utilities/pgfutil-common.tex
+\pgfutil@everybye=\toks37
+\pgfutil@tempdima=\dimen272
+\pgfutil@tempdimb=\dimen273
+) (/usr/local/texlive/2026basic/texmf-dist/tex/generic/pgf/utilities/pgfutil-latex.def
+\pgfutil@abb=\box65
+) (/usr/local/texlive/2026basic/texmf-dist/tex/generic/pgf/utilities/pgfrcs.code.tex (/usr/local/texlive/2026basic/texmf-dist/tex/generic/pgf/pgf.revision.tex)
+Package: pgfrcs 2025-08-29 v3.1.11a (3.1.11a)
+))
+Package: pgf 2025-08-29 v3.1.11a (3.1.11a)
+ (/usr/local/texlive/2026basic/texmf-dist/tex/latex/pgf/basiclayer/pgfcore.sty (/usr/local/texlive/2026basic/texmf-dist/tex/latex/pgf/systemlayer/pgfsys.sty (/usr/local/texlive/2026basic/texmf-dist/tex/generic/pgf/systemlayer/pgfsys.code.tex
+Package: pgfsys 2025-08-29 v3.1.11a (3.1.11a)
+ (/usr/local/texlive/2026basic/texmf-dist/tex/generic/pgf/utilities/pgfkeys.code.tex
+\pgfkeys@pathtoks=\toks38
+\pgfkeys@temptoks=\toks39
+ (/usr/local/texlive/2026basic/texmf-dist/tex/generic/pgf/utilities/pgfkeyslibraryfiltered.code.tex
+\pgfkeys@tmptoks=\toks40
+))
+\pgf@x=\dimen274
+\pgf@y=\dimen275
+\pgf@xa=\dimen276
+\pgf@ya=\dimen277
+\pgf@xb=\dimen278
+\pgf@yb=\dimen279
+\pgf@xc=\dimen280
+\pgf@yc=\dimen281
+\pgf@xd=\dimen282
+\pgf@yd=\dimen283
+\w@pgf@writea=\write3
+\r@pgf@reada=\read3
+\c@pgf@counta=\count324
+\c@pgf@countb=\count325
+\c@pgf@countc=\count326
+\c@pgf@countd=\count327
+\t@pgf@toka=\toks41
+\t@pgf@tokb=\toks42
+\t@pgf@tokc=\toks43
+\pgf@sys@id@count=\count328
+ (/usr/local/texlive/2026basic/texmf-dist/tex/generic/pgf/systemlayer/pgf.cfg
+File: pgf.cfg 2025-08-29 v3.1.11a (3.1.11a)
+)
+Driver file for pgf: pgfsys-pdftex.def
+ (/usr/local/texlive/2026basic/texmf-dist/tex/generic/pgf/systemlayer/pgfsys-pdftex.def
+File: pgfsys-pdftex.def 2025-08-29 v3.1.11a (3.1.11a)
+ (/usr/local/texlive/2026basic/texmf-dist/tex/generic/pgf/systemlayer/pgfsys-common-pdf.def
+File: pgfsys-common-pdf.def 2025-08-29 v3.1.11a (3.1.11a)
+))) (/usr/local/texlive/2026basic/texmf-dist/tex/generic/pgf/systemlayer/pgfsyssoftpath.code.tex
+File: pgfsyssoftpath.code.tex 2025-08-29 v3.1.11a (3.1.11a)
+\pgfsyssoftpath@smallbuffer@items=\count329
+\pgfsyssoftpath@bigbuffer@items=\count330
+) (/usr/local/texlive/2026basic/texmf-dist/tex/generic/pgf/systemlayer/pgfsysprotocol.code.tex
+File: pgfsysprotocol.code.tex 2025-08-29 v3.1.11a (3.1.11a)
+)) (/usr/local/texlive/2026basic/texmf-dist/tex/latex/xcolor/xcolor.sty
+Package: xcolor 2024/09/29 v3.02 LaTeX color extensions (UK)
+ (/usr/local/texlive/2026basic/texmf-dist/tex/latex/graphics-cfg/color.cfg
+File: color.cfg 2016/01/02 v1.6 sample color configuration
+)
+Package xcolor Info: Driver file: pdftex.def on input line 274.
+ (/usr/local/texlive/2026basic/texmf-dist/tex/latex/graphics/mathcolor.ltx)
+Package xcolor Info: Model `cmy' substituted by `cmy0' on input line 1349.
+Package xcolor Info: Model `hsb' substituted by `rgb' on input line 1353.
+Package xcolor Info: Model `RGB' extended on input line 1365.
+Package xcolor Info: Model `HTML' substituted by `rgb' on input line 1367.
+Package xcolor Info: Model `Hsb' substituted by `hsb' on input line 1368.
+Package xcolor Info: Model `tHsb' substituted by `hsb' on input line 1369.
+Package xcolor Info: Model `HSB' substituted by `hsb' on input line 1370.
+Package xcolor Info: Model `Gray' substituted by `gray' on input line 1371.
+Package xcolor Info: Model `wave' substituted by `hsb' on input line 1372.
+) (/usr/local/texlive/2026basic/texmf-dist/tex/generic/pgf/basiclayer/pgfcore.code.tex
+Package: pgfcore 2025-08-29 v3.1.11a (3.1.11a)
+ (/usr/local/texlive/2026basic/texmf-dist/tex/generic/pgf/math/pgfmath.code.tex (/usr/local/texlive/2026basic/texmf-dist/tex/generic/pgf/math/pgfmathutil.code.tex) (/usr/local/texlive/2026basic/texmf-dist/tex/generic/pgf/math/pgfmathparser.code.tex
+\pgfmath@dimen=\dimen284
+\pgfmath@count=\count331
+\pgfmath@box=\box66
+\pgfmath@toks=\toks44
+\pgfmath@stack@operand=\toks45
+\pgfmath@stack@operation=\toks46
+) (/usr/local/texlive/2026basic/texmf-dist/tex/generic/pgf/math/pgfmathfunctions.code.tex) (/usr/local/texlive/2026basic/texmf-dist/tex/generic/pgf/math/pgfmathfunctions.basic.code.tex) (/usr/local/texlive/2026basic/texmf-dist/tex/generic/pgf/math/pgfmathfunctions.trigonometric.code.tex) (/usr/local/texlive/2026basic/texmf-dist/tex/generic/pgf/math/pgfmathfunctions.random.code.tex) (/usr/local/texlive/2026basic/texmf-dist/tex/generic/pgf/math/pgfmathfunctions.comparison.code.tex) (/usr/local/texlive/2026basic/texmf-dist/tex/generic/pgf/math/pgfmathfunctions.base.code.tex) (/usr/local/texlive/2026basic/texmf-dist/tex/generic/pgf/math/pgfmathfunctions.round.code.tex) (/usr/local/texlive/2026basic/texmf-dist/tex/generic/pgf/math/pgfmathfunctions.misc.code.tex) (/usr/local/texlive/2026basic/texmf-dist/tex/generic/pgf/math/pgfmathfunctions.integerarithmetics.code.tex) (/usr/local/texlive/2026basic/texmf-dist/tex/generic/pgf/math/pgfmathcalc.code.tex) (/usr/local/texlive/2026basic/texmf-dist/tex/generic/pgf/math/pgfmathfloat.code.tex
+\c@pgfmathroundto@lastzeros=\count332
+)) (/usr/local/texlive/2026basic/texmf-dist/tex/generic/pgf/math/pgfint.code.tex) (/usr/local/texlive/2026basic/texmf-dist/tex/generic/pgf/basiclayer/pgfcorepoints.code.tex
+File: pgfcorepoints.code.tex 2025-08-29 v3.1.11a (3.1.11a)
+\pgf@picminx=\dimen285
+\pgf@picmaxx=\dimen286
+\pgf@picminy=\dimen287
+\pgf@picmaxy=\dimen288
+\pgf@pathminx=\dimen289
+\pgf@pathmaxx=\dimen290
+\pgf@pathminy=\dimen291
+\pgf@pathmaxy=\dimen292
+\pgf@xx=\dimen293
+\pgf@xy=\dimen294
+\pgf@yx=\dimen295
+\pgf@yy=\dimen296
+\pgf@zx=\dimen297
+\pgf@zy=\dimen298
+) (/usr/local/texlive/2026basic/texmf-dist/tex/generic/pgf/basiclayer/pgfcorepathconstruct.code.tex
+File: pgfcorepathconstruct.code.tex 2025-08-29 v3.1.11a (3.1.11a)
+\pgf@path@lastx=\dimen299
+\pgf@path@lasty=\dimen300
+) (/usr/local/texlive/2026basic/texmf-dist/tex/generic/pgf/basiclayer/pgfcorepathusage.code.tex
+File: pgfcorepathusage.code.tex 2025-08-29 v3.1.11a (3.1.11a)
+\pgf@shorten@end@additional=\dimen301
+\pgf@shorten@start@additional=\dimen302
+) (/usr/local/texlive/2026basic/texmf-dist/tex/generic/pgf/basiclayer/pgfcorescopes.code.tex
+File: pgfcorescopes.code.tex 2025-08-29 v3.1.11a (3.1.11a)
+\pgfpic=\box67
+\pgf@hbox=\box68
+\pgf@layerbox@main=\box69
+\pgf@picture@serial@count=\count333
+) (/usr/local/texlive/2026basic/texmf-dist/tex/generic/pgf/basiclayer/pgfcoregraphicstate.code.tex
+File: pgfcoregraphicstate.code.tex 2025-08-29 v3.1.11a (3.1.11a)
+\pgflinewidth=\dimen303
+) (/usr/local/texlive/2026basic/texmf-dist/tex/generic/pgf/basiclayer/pgfcoretransformations.code.tex
+File: pgfcoretransformations.code.tex 2025-08-29 v3.1.11a (3.1.11a)
+\pgf@pt@x=\dimen304
+\pgf@pt@y=\dimen305
+\pgf@pt@temp=\dimen306
+) (/usr/local/texlive/2026basic/texmf-dist/tex/generic/pgf/basiclayer/pgfcorequick.code.tex
+File: pgfcorequick.code.tex 2025-08-29 v3.1.11a (3.1.11a)
+) (/usr/local/texlive/2026basic/texmf-dist/tex/generic/pgf/basiclayer/pgfcoreobjects.code.tex
+File: pgfcoreobjects.code.tex 2025-08-29 v3.1.11a (3.1.11a)
+) (/usr/local/texlive/2026basic/texmf-dist/tex/generic/pgf/basiclayer/pgfcorepathprocessing.code.tex
+File: pgfcorepathprocessing.code.tex 2025-08-29 v3.1.11a (3.1.11a)
+) (/usr/local/texlive/2026basic/texmf-dist/tex/generic/pgf/basiclayer/pgfcorearrows.code.tex
+File: pgfcorearrows.code.tex 2025-08-29 v3.1.11a (3.1.11a)
+\pgfarrowsep=\dimen307
+) (/usr/local/texlive/2026basic/texmf-dist/tex/generic/pgf/basiclayer/pgfcoreshade.code.tex
+File: pgfcoreshade.code.tex 2025-08-29 v3.1.11a (3.1.11a)
+\pgf@max=\dimen308
+\pgf@sys@shading@range@num=\count334
+\pgf@shadingcount=\count335
+) (/usr/local/texlive/2026basic/texmf-dist/tex/generic/pgf/basiclayer/pgfcoreimage.code.tex
+File: pgfcoreimage.code.tex 2025-08-29 v3.1.11a (3.1.11a)
+) (/usr/local/texlive/2026basic/texmf-dist/tex/generic/pgf/basiclayer/pgfcoreexternal.code.tex
+File: pgfcoreexternal.code.tex 2025-08-29 v3.1.11a (3.1.11a)
+\pgfexternal@startupbox=\box70
+) (/usr/local/texlive/2026basic/texmf-dist/tex/generic/pgf/basiclayer/pgfcorelayers.code.tex
+File: pgfcorelayers.code.tex 2025-08-29 v3.1.11a (3.1.11a)
+) (/usr/local/texlive/2026basic/texmf-dist/tex/generic/pgf/basiclayer/pgfcoretransparency.code.tex
+File: pgfcoretransparency.code.tex 2025-08-29 v3.1.11a (3.1.11a)
+) (/usr/local/texlive/2026basic/texmf-dist/tex/generic/pgf/basiclayer/pgfcorepatterns.code.tex
+File: pgfcorepatterns.code.tex 2025-08-29 v3.1.11a (3.1.11a)
+) (/usr/local/texlive/2026basic/texmf-dist/tex/generic/pgf/basiclayer/pgfcorerdf.code.tex
+File: pgfcorerdf.code.tex 2025-08-29 v3.1.11a (3.1.11a)
+))) (/usr/local/texlive/2026basic/texmf-dist/tex/generic/pgf/modules/pgfmoduleshapes.code.tex
+File: pgfmoduleshapes.code.tex 2025-08-29 v3.1.11a (3.1.11a)
+\pgfnodeparttextbox=\box71
+) (/usr/local/texlive/2026basic/texmf-dist/tex/generic/pgf/modules/pgfmoduleplot.code.tex
+File: pgfmoduleplot.code.tex 2025-08-29 v3.1.11a (3.1.11a)
+) (/usr/local/texlive/2026basic/texmf-dist/tex/latex/pgf/compatibility/pgfcomp-version-0-65.sty
+Package: pgfcomp-version-0-65 2025-08-29 v3.1.11a (3.1.11a)
+\pgf@nodesepstart=\dimen309
+\pgf@nodesepend=\dimen310
+) (/usr/local/texlive/2026basic/texmf-dist/tex/latex/pgf/compatibility/pgfcomp-version-1-18.sty
+Package: pgfcomp-version-1-18 2025-08-29 v3.1.11a (3.1.11a)
+)) (/usr/local/texlive/2026basic/texmf-dist/tex/latex/pgf/utilities/pgffor.sty (/usr/local/texlive/2026basic/texmf-dist/tex/latex/pgf/utilities/pgfkeys.sty (/usr/local/texlive/2026basic/texmf-dist/tex/generic/pgf/utilities/pgfkeys.code.tex)) (/usr/local/texlive/2026basic/texmf-dist/tex/latex/pgf/math/pgfmath.sty (/usr/local/texlive/2026basic/texmf-dist/tex/generic/pgf/math/pgfmath.code.tex)) (/usr/local/texlive/2026basic/texmf-dist/tex/generic/pgf/utilities/pgffor.code.tex
+Package: pgffor 2025-08-29 v3.1.11a (3.1.11a)
+\pgffor@iter=\dimen311
+\pgffor@skip=\dimen312
+\pgffor@stack=\toks47
+\pgffor@toks=\toks48
+)) (/usr/local/texlive/2026basic/texmf-dist/tex/generic/pgf/frontendlayer/tikz/tikz.code.tex
+Package: tikz 2025-08-29 v3.1.11a (3.1.11a)
+ (/usr/local/texlive/2026basic/texmf-dist/tex/generic/pgf/libraries/pgflibraryplothandlers.code.tex
+File: pgflibraryplothandlers.code.tex 2025-08-29 v3.1.11a (3.1.11a)
+\pgf@plot@mark@count=\count336
+\pgfplotmarksize=\dimen313
+)
+\tikz@lastx=\dimen314
+\tikz@lasty=\dimen315
+\tikz@lastxsaved=\dimen316
+\tikz@lastysaved=\dimen317
+\tikz@lastmovetox=\dimen318
+\tikz@lastmovetoy=\dimen319
+\tikzleveldistance=\dimen320
+\tikzsiblingdistance=\dimen321
+\tikz@figbox=\box72
+\tikz@figbox@bg=\box73
+\tikz@tempbox=\box74
+\tikz@tempbox@bg=\box75
+\tikztreelevel=\count337
+\tikznumberofchildren=\count338
+\tikznumberofcurrentchild=\count339
+\tikz@fig@count=\count340
+ (/usr/local/texlive/2026basic/texmf-dist/tex/generic/pgf/modules/pgfmodulematrix.code.tex
+File: pgfmodulematrix.code.tex 2025-08-29 v3.1.11a (3.1.11a)
+\pgfmatrixcurrentrow=\count341
+\pgfmatrixcurrentcolumn=\count342
+\pgf@matrix@numberofcolumns=\count343
+)
+\tikz@expandcount=\count344
+ (/usr/local/texlive/2026basic/texmf-dist/tex/generic/pgf/frontendlayer/tikz/libraries/tikzlibrarytopaths.code.tex
+File: tikzlibrarytopaths.code.tex 2025-08-29 v3.1.11a (3.1.11a)
+))) (/usr/local/texlive/2026basic/texmf-dist/tex/generic/pgf/frontendlayer/tikz/libraries/graphs/tikzlibrarygraphs.code.tex
+File: tikzlibrarygraphs.code.tex 2025-08-29 v3.1.11a (3.1.11a)
+\tikz@lib@auto@number=\count345
+\tikz@qnode@count=\count346
+) (/usr/local/texlive/2026basic/texmf-dist/tex/generic/pgf/frontendlayer/tikz/libraries/graphs/tikzlibrarygraphs.standard.code.tex
+File: tikzlibrarygraphs.standard.code.tex 2025-08-29 v3.1.11a (3.1.11a)
+) (/usr/local/texlive/2026basic/texmf-dist/tex/latex/fancyhdr/fancyhdr.sty
+Package: fancyhdr 2025/02/07 v5.2 Extensive control of page headers and footers
+\f@nch@headwidth=\skip75
+\f@nch@offset@elh=\skip76
+\f@nch@offset@erh=\skip77
+\f@nch@offset@olh=\skip78
+\f@nch@offset@orh=\skip79
+\f@nch@offset@elf=\skip80
+\f@nch@offset@erf=\skip81
+\f@nch@offset@olf=\skip82
+\f@nch@offset@orf=\skip83
+\f@nch@height=\skip84
+\f@nch@footalignment=\skip85
+\f@nch@widthL=\skip86
+\f@nch@widthC=\skip87
+\f@nch@widthR=\skip88
+\@temptokenb=\toks49
+) (/usr/local/texlive/2026basic/texmf-dist/tex/latex/float/float.sty
+Package: float 2001/11/08 v1.3d Float enhancements (AL)
+\c@float@type=\count347
+\float@exts=\toks50
+\float@box=\box76
+\@float@everytoks=\toks51
+\@floatcapt=\box77
+) (/usr/local/texlive/2026basic/texmf-dist/tex/latex/gensymb/gensymb.sty
+Package: gensymb 2022/10/17 v1.0.2 (KJH)
+)) (/usr/local/texlive/2026basic/texmf-dist/tex/latex/hyperref/hyperref.sty
+Package: hyperref 2026-01-29 v7.01p Hypertext links for LaTeX
+ (/usr/local/texlive/2026basic/texmf-dist/tex/latex/kvsetkeys/kvsetkeys.sty
+Package: kvsetkeys 2022-10-05 v1.19 Key value parser (HO)
+) (/usr/local/texlive/2026basic/texmf-dist/tex/generic/kvdefinekeys/kvdefinekeys.sty
+Package: kvdefinekeys 2019-12-19 v1.6 Define keys (HO)
+) (/usr/local/texlive/2026basic/texmf-dist/tex/generic/pdfescape/pdfescape.sty
+Package: pdfescape 2019/12/09 v1.15 Implements pdfTeX's escape features (HO)
+ (/usr/local/texlive/2026basic/texmf-dist/tex/generic/ltxcmds/ltxcmds.sty
+Package: ltxcmds 2023-12-04 v1.26 LaTeX kernel commands for general use (HO)
+) (/usr/local/texlive/2026basic/texmf-dist/tex/generic/pdftexcmds/pdftexcmds.sty
+Package: pdftexcmds 2020-06-27 v0.33 Utility functions of pdfTeX for LuaTeX (HO)
+ (/usr/local/texlive/2026basic/texmf-dist/tex/generic/infwarerr/infwarerr.sty
+Package: infwarerr 2019/12/03 v1.5 Providing info/warning/error messages (HO)
+)
+Package pdftexcmds Info: \pdf@primitive is available.
+Package pdftexcmds Info: \pdf@ifprimitive is available.
+Package pdftexcmds Info: \pdfdraftmode found.
+)) (/usr/local/texlive/2026basic/texmf-dist/tex/latex/hycolor/hycolor.sty
+Package: hycolor 2020-01-27 v1.10 Color options for hyperref/bookmark (HO)
+) (/usr/local/texlive/2026basic/texmf-dist/tex/latex/hyperref/nameref.sty
+Package: nameref 2026-01-29 v2.58 Cross-referencing by name of section
+ (/usr/local/texlive/2026basic/texmf-dist/tex/latex/refcount/refcount.sty
+Package: refcount 2019/12/15 v3.6 Data extraction from label references (HO)
+) (/usr/local/texlive/2026basic/texmf-dist/tex/generic/gettitlestring/gettitlestring.sty
+Package: gettitlestring 2019/12/15 v1.6 Cleanup title references (HO)
+ (/usr/local/texlive/2026basic/texmf-dist/tex/latex/kvoptions/kvoptions.sty
+Package: kvoptions 2022-06-15 v3.15 Key value format for package options (HO)
+))
+\c@section@level=\count348
+)
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/etoolbox/etoolbox.sty
+Package: etoolbox 2025/10/02 v2.5m e-TeX tools for LaTeX (JAW)
+\etb@tempcnta=\count349
+) (/usr/local/texlive/2026basic/texmf-dist/tex/generic/stringenc/stringenc.sty
+Package: stringenc 2019/11/29 v1.12 Convert strings between diff. encodings (HO)
+)
+\@linkdim=\dimen322
+\Hy@linkcounter=\count350
+\Hy@pagecounter=\count351
+ (/usr/local/texlive/2026basic/texmf-dist/tex/latex/hyperref/pd1enc.def
+File: pd1enc.def 2026-01-29 v7.01p Hyperref: PDFDocEncoding definition (HO)
+Now handling font encoding PD1 ...
+... no UTF-8 mapping file for font encoding PD1
+\symPD1letters=\mathgroup10
+) (/usr/local/texlive/2026basic/texmf-dist/tex/generic/intcalc/intcalc.sty
+Package: intcalc 2019/12/15 v1.3 Expandable calculations with integers (HO)
+)
+\Hy@SavedSpaceFactor=\count352
+ (/usr/local/texlive/2026basic/texmf-dist/tex/latex/hyperref/puenc.def
+File: puenc.def 2026-01-29 v7.01p Hyperref: PDF Unicode definition (HO)
+Now handling font encoding PU ...
+... no UTF-8 mapping file for font encoding PU
+\symPUletters=\mathgroup11
+)
+Package hyperref Info: Option `unicode' set `true' on input line 3166.
+Package hyperref Info: Option `unicode' set `true' on input line 4072.
+Package hyperref Info: Hyper figures OFF on input line 4201.
+Package hyperref Info: Link nesting OFF on input line 4206.
+Package hyperref Info: Hyper index ON on input line 4209.
+Package hyperref Info: Plain pages OFF on input line 4216.
+Package hyperref Info: Backreferencing OFF on input line 4221.
+Package hyperref Info: Implicit mode ON; LaTeX internals redefined.
+Package hyperref Info: Bookmarks ON on input line 4468.
+\c@Hy@tempcnt=\count353
+ (/usr/local/texlive/2026basic/texmf-dist/tex/latex/url/url.sty
+\Urlmuskip=\muskip18
+Package: url 2013/09/16  ver 3.4  Verb mode for urls, etc.
+)
+LaTeX Info: Redefining \url on input line 4807.
+\XeTeXLinkMargin=\dimen323
+ (/usr/local/texlive/2026basic/texmf-dist/tex/generic/bitset/bitset.sty
+Package: bitset 2019/12/09 v1.3 Handle bit-vector datatype (HO)
+ (/usr/local/texlive/2026basic/texmf-dist/tex/generic/bigintcalc/bigintcalc.sty
+Package: bigintcalc 2019/12/15 v1.5 Expandable calculations on big integers (HO)
+))
+\Fld@menulength=\count354
+\Field@Width=\dimen324
+\Fld@charsize=\dimen325
+Package hyperref Info: Hyper figures OFF on input line 6084.
+Package hyperref Info: Link nesting OFF on input line 6089.
+Package hyperref Info: Hyper index ON on input line 6092.
+Package hyperref Info: backreferencing OFF on input line 6099.
+Package hyperref Info: Link coloring OFF on input line 6104.
+Package hyperref Info: Link coloring with OCG OFF on input line 6109.
+Package hyperref Info: PDF/A mode OFF on input line 6114.
+\Hy@abspage=\count355
+\c@Item=\count356
+\c@Hfootnote=\count357
+)
+Package hyperref Info: Driver: hpdftex.
+ (/usr/local/texlive/2026basic/texmf-dist/tex/latex/hyperref/hpdftex.def
+File: hpdftex.def 2026-01-29 v7.01p Hyperref driver for pdfTeX
+\Fld@listcount=\count358
+\c@bookmark@seq@number=\count359
+ (/usr/local/texlive/2026basic/texmf-dist/tex/latex/rerunfilecheck/rerunfilecheck.sty
+Package: rerunfilecheck 2025-06-21 v1.11 Rerun checks for auxiliary files (HO)
+ (/usr/local/texlive/2026basic/texmf-dist/tex/generic/uniquecounter/uniquecounter.sty
+Package: uniquecounter 2019/12/15 v1.4 Provide unlimited unique counter (HO)
+)
+Package uniquecounter Info: New unique counter `rerunfilecheck' on input line 284.
+)
+\Hy@SectionHShift=\skip89
+) (/usr/local/texlive/2026basic/texmf-dist/tex/latex/l3backend/l3backend-pdftex.def
+File: l3backend-pdftex.def 2025-10-09 L3 backend support: PDF output (pdfTeX)
+\l__color_backend_stack_int=\count360
+)
+
+LaTeX Warning: Unused global option(s):
+    [14pt].
+
+(./main.aux
+LaTeX Font Info:    Trying to load font information for T2A+cmr on input line 10.
+ (/usr/local/texlive/2026basic/texmf-dist/tex/latex/cyrillic/t2acmr.fd
+File: t2acmr.fd 2001/08/11 v1.0a Computer Modern Cyrillic font definitions
+)<<t2a.cmap>>
+Package babel Info: 'russian' activates 'russian' shorthands.
+(babel)             Reported on input line 10.
+)
+\openout1 = `main.aux'.
+
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 14.
+LaTeX Font Info:    ... okay on input line 14.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 14.
+LaTeX Font Info:    ... okay on input line 14.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 14.
+LaTeX Font Info:    ... okay on input line 14.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 14.
+LaTeX Font Info:    ... okay on input line 14.
+LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 14.
+LaTeX Font Info:    ... okay on input line 14.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 14.
+LaTeX Font Info:    ... okay on input line 14.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 14.
+LaTeX Font Info:    ... okay on input line 14.
+LaTeX Font Info:    Checking defaults for T2A/cmr/m/n on input line 14.
+LaTeX Font Info:    ... okay on input line 14.
+LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 14.
+LaTeX Font Info:    ... okay on input line 14.
+LaTeX Font Info:    Checking defaults for PU/pdf/m/n on input line 14.
+LaTeX Font Info:    ... okay on input line 14.
+LaTeX Info: Redefining \th on input line 14.
+
+*geometry* driver: auto-detecting
+*geometry* detected driver: pdftex
+*geometry* verbose mode - [ preamble ] result:
+* driver: pdftex
+* paper: <default>
+* layout: <same size as paper>
+* layoutoffset:(h,v)=(0.0pt,0.0pt)
+* modes: twoside 
+* h-part:(L,W,R)=(85.35826pt, 472.03123pt, 56.9055pt)
+* v-part:(T,H,B)=(56.9055pt, 681.15898pt, 56.9055pt)
+* \paperwidth=614.295pt
+* \paperheight=794.96999pt
+* \textwidth=472.03123pt
+* \textheight=681.15898pt
+* \oddsidemargin=13.08827pt
+* \evensidemargin=-15.36449pt
+* \topmargin=-45.43198pt
+* \headheight=12.0pt
+* \headsep=18.06749pt
+* \topskip=10.0pt
+* \footskip=25.29494pt
+* \marginparwidth=125.0pt
+* \marginparsep=7.0pt
+* \columnsep=10.0pt
+* \skip\footins=9.0pt plus 4.0pt minus 2.0pt
+* \hoffset=0.0pt
+* \voffset=0.0pt
+* \mag=1000
+* \@twocolumnfalse
+* \@twosidetrue
+* \@mparswitchtrue
+* \@reversemarginfalse
+* (1in=72.27pt=25.4mm, 1cm=28.453pt)
+
+Package caption Info: Begin \AtBeginDocument code.
+Package caption Info: float package is loaded.
+Package caption Info: hyperref package is loaded.
+Package caption Info: longtable package is loaded.
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/caption/ltcaption.sty
+Package: ltcaption 2021/01/08 v1.4c longtable captions (AR)
+)
+Package caption Info: wrapfig package is loaded.
+Package caption Info: End \AtBeginDocument code.
+ (/usr/local/texlive/2026basic/texmf-dist/tex/context/base/mkii/supp-pdf.mkii
+[Loading MPS to PDF converter (version 2006.09.02).]
+\scratchcounter=\count361
+\scratchdimen=\dimen326
+\scratchbox=\box78
+\nofMPsegments=\count362
+\nofMParguments=\count363
+\everyMPshowfont=\toks52
+\MPscratchCnt=\count364
+\MPscratchDim=\dimen327
+\MPnumerator=\count365
+\makeMPintoPDFobject=\count366
+\everyMPtoPDFconversion=\toks53
+) (/usr/local/texlive/2026basic/texmf-dist/tex/latex/epstopdf-pkg/epstopdf-base.sty
+Package: epstopdf-base 2020-01-24 v2.11 Base part for package epstopdf
+Package epstopdf-base Info: Redefining graphics rule for `.eps' on input line 485.
+ (/usr/local/texlive/2026basic/texmf-dist/tex/latex/latexconfig/epstopdf-sys.cfg
+File: epstopdf-sys.cfg 2010/07/13 v1.3 Configuration of (r)epstopdf for TeX Live
+))
+LaTeX Info: Redefining \celsius on input line 14.
+Package gensymb Info: Faking symbols for \degree and \celsius on input line 14.
+
+
+Package gensymb Warning: Not defining \perthousand.
+
+LaTeX Info: Redefining \ohm on input line 14.
+Package gensymb Info: Using \Omega for \ohm on input line 14.
+
+Package gensymb Warning: Not defining \micro.
+
+Package hyperref Info: Link coloring OFF on input line 14.
+(./main.out) (./main.out)
+\@outlinefile=\write4
+\openout4 = `main.out'.
+
+ (./include/title.tex
+<images/MIPT_logo.jpg, id=228, 803.0pt x 401.5pt>
+File: images/MIPT_logo.jpg Graphic file (type jpg)
+<use images/MIPT_logo.jpg>
+Package pdftex.def Info: images/MIPT_logo.jpg  used on input line 43.
+(pdftex.def)             Requested size: 100.0pt x 49.99745pt.
+ [1
+
+{/usr/local/texlive/2026basic/texmf-var/fonts/map/pdftex/updmap/pdftex.map} <./images/MIPT_logo.jpg>]) (./parts/Annotation.tex [2
+
+]
+pdfTeX warning (ext4): destination with the same identifier (name{page.1}) has been already used, duplicate ignored
+<to be read again> 
+                   \relax 
+l.22 \end{abstract}
+                    [1]) (./main.toc<<ot1.cmap>>
+
+LaTeX Font Warning: Font shape `T2A/cmr/m/up' undefined
+(Font)              using `T2A/cmr/m/n' instead on input line 3.
+
+LaTeX Font Info:    Trying to load font information for OML+cmr on input line 3.
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/base/omlcmr.fd
+File: omlcmr.fd 2024/11/19 v2.5n Standard LaTeX font definitions
+)
+
+LaTeX Font Warning: Font shape `OML/cmr/m/up' undefined
+(Font)              using `OML/cmr/m/it' instead on input line 3.
+
+LaTeX Font Info:    Font shape `OML/cmr/m/it' in size <10> not available
+(Font)              Font shape `OML/cmm/m/it' tried instead on input line 3.
+LaTeX Font Info:    Font shape `OML/cmr/m/up' in size <7> not available
+(Font)              Font shape `OML/cmm/m/it' tried instead on input line 3.
+LaTeX Font Info:    Font shape `OML/cmr/m/up' in size <5> not available
+(Font)              Font shape `OML/cmm/m/it' tried instead on input line 3.
+LaTeX Font Info:    Trying to load font information for OMS+cmr on input line 3.
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/base/omscmr.fd
+File: omscmr.fd 2024/11/19 v2.5n Standard LaTeX font definitions
+)
+
+LaTeX Font Warning: Font shape `OMS/cmr/m/up' undefined
+(Font)              using `OMS/cmr/m/n' instead on input line 3.
+
+LaTeX Font Info:    Font shape `OMS/cmr/m/n' in size <10> not available
+(Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 3.
+LaTeX Font Info:    Font shape `OMS/cmr/m/up' in size <7> not available
+(Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 3.
+LaTeX Font Info:    Font shape `OMS/cmr/m/up' in size <5> not available
+(Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 3.
+LaTeX Font Info:    Trying to load font information for U+msa on input line 3.
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/amsfonts/umsa.fd
+File: umsa.fd 2013/01/14 v3.01 AMS symbols A
+)
+LaTeX Font Info:    Trying to load font information for U+msb on input line 3.
+ (/usr/local/texlive/2026basic/texmf-dist/tex/latex/amsfonts/umsb.fd
+File: umsb.fd 2013/01/14 v3.01 AMS symbols B
+)
+LaTeX Font Info:    Trying to load font information for U+rsfs on input line 3.
+ (/usr/local/texlive/2026basic/texmf-dist/tex/latex/jknapltx/ursfs.fd
+File: ursfs.fd 1998/03/24 rsfs font definition file (jk)
+)
+LaTeX Font Info:    Trying to load font information for PD1+cmr on input line 3.
+LaTeX Font Info:    No file PD1cmr.fd. on input line 3.
+
+
+LaTeX Font Warning: Font shape `PD1/cmr/m/up' undefined
+(Font)              using `PD1/pdf/m/n' instead on input line 3.
+
+LaTeX Font Info:    Trying to load font information for PU+cmr on input line 3.
+LaTeX Font Info:    No file PUcmr.fd. on input line 3.
+
+LaTeX Font Warning: Font shape `PU/cmr/m/up' undefined
+(Font)              using `PU/pdf/m/n' instead on input line 3.
+
+
+pdfTeX warning (ext4): destination with the same identifier (name{page.2}) has been already used, duplicate ignored
+<to be read again> 
+                   \relax 
+l.72 ...ЃРѕРІР°РЅРЅРѕСЃС‚Рё}{32}{subsection.4.2.1}
+                                                  % [2
+
+])
+\tf@toc=\write5
+\openout5 = `main.toc'.
+
+Package babel Info: 'russian' activates 'russian' shorthands.
+(babel)             Reported on input line 21.
+ [3] (./parts/Chapter0.tex
+{\cyrillictext \CYRG \cyrl \cyra \cyrv \cyra } 1.
+[4
+
+] [5] [6] [7]) (./parts/Chapter1.tex
+{\cyrillictext \CYRG \cyrl \cyra \cyrv \cyra } 2.
+[8
+
+]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 24.51453pt, for example:
+(fancyhdr)                \setlength{\headheight}{24.51453pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-12.51453pt}.
+
+[9]
+Underfull \hbox (badness 10000) in paragraph at lines 74--74
+[]|\T2A/cmr/bx/n/10 Радиолокационные дан-ные
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 74--75
+[]|\T2A/cmr/bx/n/10 Оптические дан-ные
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 90--90
+[]|\T2A/cmr/m/n/10 Семантическая ин-тер-
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 90--91
+[]|\T2A/cmr/m/n/10 Интуитивно по-нят-на, есте-
+ []
+
+<./images/sen12/ROIs1158_spring_s1_0_p19.png, id=372, 256.96pt x 256.96pt>
+File: ./images/sen12/ROIs1158_spring_s1_0_p19.png Graphic file (type png)
+<use ./images/sen12/ROIs1158_spring_s1_0_p19.png>
+Package pdftex.def Info: ./images/sen12/ROIs1158_spring_s1_0_p19.png  used on input line 104.
+(pdftex.def)             Requested size: 188.8096pt x 188.8104pt.
+<./images/sen12/ROIs1158_spring_s2_0_p19.png, id=373, 256.96pt x 256.96pt>
+File: ./images/sen12/ROIs1158_spring_s2_0_p19.png Graphic file (type png)
+<use ./images/sen12/ROIs1158_spring_s2_0_p19.png>
+Package pdftex.def Info: ./images/sen12/ROIs1158_spring_s2_0_p19.png  used on input line 111.
+(pdftex.def)             Requested size: 188.8096pt x 188.8104pt.
+<./images/sen12/ROIs1158_spring_s1_18_p42.png, id=376, 256.96pt x 256.96pt>
+File: ./images/sen12/ROIs1158_spring_s1_18_p42.png Graphic file (type png)
+<use ./images/sen12/ROIs1158_spring_s1_18_p42.png>
+Package pdftex.def Info: ./images/sen12/ROIs1158_spring_s1_18_p42.png  used on input line 127.
+(pdftex.def)             Requested size: 188.8096pt x 188.8104pt.
+<./images/sen12/ROIs1158_spring_s2_18_p42.png, id=377, 256.96pt x 256.96pt>
+File: ./images/sen12/ROIs1158_spring_s2_18_p42.png Graphic file (type png)
+<use ./images/sen12/ROIs1158_spring_s2_18_p42.png>
+Package pdftex.def Info: ./images/sen12/ROIs1158_spring_s2_18_p42.png  used on input line 134.
+(pdftex.def)             Requested size: 188.8096pt x 188.8104pt.
+<./images/sen12/ROIs1158_spring_s1_0_p22.png, id=380, 256.96pt x 256.96pt>
+File: ./images/sen12/ROIs1158_spring_s1_0_p22.png Graphic file (type png)
+<use ./images/sen12/ROIs1158_spring_s1_0_p22.png>
+Package pdftex.def Info: ./images/sen12/ROIs1158_spring_s1_0_p22.png  used on input line 150.
+(pdftex.def)             Requested size: 188.8096pt x 188.8104pt.
+<./images/sen12/ROIs1158_spring_s2_0_p22.png, id=381, 256.96pt x 256.96pt>
+File: ./images/sen12/ROIs1158_spring_s2_0_p22.png Graphic file (type png)
+<use ./images/sen12/ROIs1158_spring_s2_0_p22.png>
+Package pdftex.def Info: ./images/sen12/ROIs1158_spring_s2_0_p22.png  used on input line 157.
+(pdftex.def)             Requested size: 188.8096pt x 188.8104pt.
+<./images/sen12/ROIs1158_spring_s1_9_p155.png, id=384, 256.96pt x 256.96pt>
+File: ./images/sen12/ROIs1158_spring_s1_9_p155.png Graphic file (type png)
+<use ./images/sen12/ROIs1158_spring_s1_9_p155.png>
+Package pdftex.def Info: ./images/sen12/ROIs1158_spring_s1_9_p155.png  used on input line 173.
+(pdftex.def)             Requested size: 188.8096pt x 188.8104pt.
+<./images/sen12/ROIs1158_spring_s2_9_p155.png, id=385, 256.96pt x 256.96pt>
+File: ./images/sen12/ROIs1158_spring_s2_9_p155.png Graphic file (type png)
+<use ./images/sen12/ROIs1158_spring_s2_9_p155.png>
+Package pdftex.def Info: ./images/sen12/ROIs1158_spring_s2_9_p155.png  used on input line 180.
+(pdftex.def)             Requested size: 188.8096pt x 188.8104pt.
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 12.51453pt, for example:
+(fancyhdr)                \setlength{\headheight}{12.51453pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-0.51453pt}.
+
+[10]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 24.51453pt, for example:
+(fancyhdr)                \setlength{\headheight}{24.51453pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-12.51453pt}.
+
+[11 <./images/sen12/ROIs1158_spring_s1_0_p19.png (PNG copy)> <./images/sen12/ROIs1158_spring_s2_0_p19.png (PNG copy)>]
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 12.51453pt, for example:
+(fancyhdr)                \setlength{\headheight}{12.51453pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-0.51453pt}.
+
+[12 <./images/sen12/ROIs1158_spring_s1_18_p42.png (PNG copy)> <./images/sen12/ROIs1158_spring_s2_18_p42.png (PNG copy)> <./images/sen12/ROIs1158_spring_s1_0_p22.png (PNG copy)> <./images/sen12/ROIs1158_spring_s2_0_p22.png (PNG copy)>]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 24.51453pt, for example:
+(fancyhdr)                \setlength{\headheight}{24.51453pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-12.51453pt}.
+
+[13 <./images/sen12/ROIs1158_spring_s1_9_p155.png (PNG copy)> <./images/sen12/ROIs1158_spring_s2_9_p155.png (PNG copy)>]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 24.51453pt, for example:
+(fancyhdr)                \setlength{\headheight}{24.51453pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-12.51453pt}.
+
+[14]) (./parts/Chapter2.tex
+{\cyrillictext \CYRG \cyrl \cyra \cyrv \cyra } 3.
+[15
+
+] [16]
+Overfull \hbox (2.58633pt too wide) in paragraph at lines 113--114
+ []\T2A/cmr/bx/n/10 Пиксельные по-те-ри[] $\OML/cmm/m/it/10 `[]$\T2A/cmr/m/n/10 -потеря (сред-няя аб-со-лют-ная ошиб-ка) и $\OML/cmm/m/it/10 `[]$\T2A/cmr/m/n/10 -потеря (сред-не-квад-ра-тич-ная ошиб-
+ []
+
+[17] [18] [19]
+Underfull \hbox (badness 10000) in paragraph at lines 233--233
+[]|\T2A/cmr/m/n/10 Модельная
+ []
+
+
+Overfull \hbox (14.60481pt too wide) in paragraph at lines 233--233
+\T2A/cmr/m/n/10 (AlexNet/VGG)| 
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 234--234
+[]|\T2A/cmr/m/n/10 Модельная
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 234--234
+\T2A/cmr/m/n/10 (Inception-
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 235--235
+[]|\T2A/cmr/m/n/10 Модельная
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 240--240
+[]|\T2A/cmr/m/n/10 Численная
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 241--241
+[]|\T2A/cmr/m/n/10 Модельная
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 242--242
+[]|\T2A/cmr/m/n/10 Модельная
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 243--244
+[]|\T2A/cmr/m/n/10 Частотная со-гла-со-ван-ность; ми-ни-ми-зи-ру-ет
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 243--244
+\T2A/cmr/m/n/10 раз-ность Фурье-спектров. Предот-вра-ща-ет
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 244--244
+[]|\T2A/cmr/m/n/10 Модельная
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 244--244
+\T2A/cmr/m/n/10 (SAM-
+ []
+
+
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+ [20]
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+ [21]
+LaTeX Font Info:    Trying to load font information for T2A+cmtt on input line 263.
+ (/usr/local/texlive/2026basic/texmf-dist/tex/latex/cyrillic/t2acmtt.fd
+File: t2acmtt.fd 2001/08/11 v1.0a Computer Modern Cyrillic font definitions
+) [22] [23] [24]
+<./images/qxs_sar2opt/296_sar.png, id=560, 256.96pt x 256.96pt>
+File: ./images/qxs_sar2opt/296_sar.png Graphic file (type png)
+<use ./images/qxs_sar2opt/296_sar.png>
+Package pdftex.def Info: ./images/qxs_sar2opt/296_sar.png  used on input line 363.
+(pdftex.def)             Requested size: 188.8096pt x 188.8104pt.
+<./images/qxs_sar2opt/296_opt.png, id=561, 256.96pt x 256.96pt>
+File: ./images/qxs_sar2opt/296_opt.png Graphic file (type png)
+<use ./images/qxs_sar2opt/296_opt.png>
+Package pdftex.def Info: ./images/qxs_sar2opt/296_opt.png  used on input line 370.
+(pdftex.def)             Requested size: 188.8096pt x 188.8104pt.
+ [25 <./images/qxs_sar2opt/296_sar.png (PNG copy)> <./images/qxs_sar2opt/296_opt.png (PNG copy)>]
+Underfull \hbox (badness 3108) in paragraph at lines 410--411
+[]|\T2A/cmr/m/n/10 Прибрежные го-ро-да (Цин-дао,
+ []
+
+
+Overfull \hbox (13.45087pt too wide) in paragraph at lines 401--417
+ [][] 
+ []
+
+[26]
+File: ./images/sen12/ROIs1158_spring_s1_0_p19.png Graphic file (type png)
+<use ./images/sen12/ROIs1158_spring_s1_0_p19.png>
+Package pdftex.def Info: ./images/sen12/ROIs1158_spring_s1_0_p19.png  used on input line 435.
+(pdftex.def)             Requested size: 188.8096pt x 188.8104pt.
+File: ./images/sen12/ROIs1158_spring_s2_0_p19.png Graphic file (type png)
+<use ./images/sen12/ROIs1158_spring_s2_0_p19.png>
+Package pdftex.def Info: ./images/sen12/ROIs1158_spring_s2_0_p19.png  used on input line 442.
+(pdftex.def)             Requested size: 188.8096pt x 188.8104pt.
+<./images/qxs_sar2opt/1586_sar.png, id=582, 256.96pt x 256.96pt>
+File: ./images/qxs_sar2opt/1586_sar.png Graphic file (type png)
+<use ./images/qxs_sar2opt/1586_sar.png>
+Package pdftex.def Info: ./images/qxs_sar2opt/1586_sar.png  used on input line 449.
+(pdftex.def)             Requested size: 188.8096pt x 188.8104pt.
+<./images/qxs_sar2opt/1586_opt.png, id=583, 256.96pt x 256.96pt>
+File: ./images/qxs_sar2opt/1586_opt.png Graphic file (type png)
+<use ./images/qxs_sar2opt/1586_opt.png>
+Package pdftex.def Info: ./images/qxs_sar2opt/1586_opt.png  used on input line 456.
+(pdftex.def)             Requested size: 188.8096pt x 188.8104pt.
+
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+ [27 <./images/qxs_sar2opt/1586_sar.png (PNG copy)> <./images/qxs_sar2opt/1586_opt.png (PNG copy)>]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 12.51453pt, for example:
+(fancyhdr)                \setlength{\headheight}{12.51453pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-0.51453pt}.
+
+[28]) (./parts/Chapter3.tex
+{\cyrillictext \CYRG \cyrl \cyra \cyrv \cyra } 4.
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `math shift' on input line 1.
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `\rightarrow' on input line 1.
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `math shift' on input line 1.
+
+LaTeX Font Info:    Font shape `OML/cmr/m/up' in size <24.88> not available
+(Font)              Font shape `OML/cmm/m/it' tried instead on input line 1.
+LaTeX Font Info:    Font shape `OML/cmr/m/up' in size <20.74> not available
+(Font)              Font shape `OML/cmm/m/it' tried instead on input line 1.
+LaTeX Font Info:    Font shape `OML/cmr/m/up' in size <17.28> not available
+(Font)              Font shape `OML/cmm/m/it' tried instead on input line 1.
+LaTeX Font Info:    Font shape `OMS/cmr/m/up' in size <24.88> not available
+(Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 1.
+LaTeX Font Info:    Font shape `OMS/cmr/m/up' in size <20.74> not available
+(Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 1.
+LaTeX Font Info:    Font shape `OMS/cmr/m/up' in size <17.28> not available
+(Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 1.
+
+Overfull \hbox (5.1995pt too wide) in paragraph at lines 4--4
+[]\T2A/cmr/bx/n/14.4 Парные ме-то-ды на ос-но-ве услов-ных GAN (се-мей-ство Pix2Pix) 
+ []
+
+LaTeX Font Info:    Font shape `OML/cmr/m/up' in size <10> not available
+(Font)              Font shape `OML/cmm/m/it' tried instead on input line 7.
+LaTeX Font Info:    Font shape `OMS/cmr/m/up' in size <10> not available
+(Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 7.
+<images/pix2pix/pix2pix_example.png, id=593, 984.7992pt x 362.7954pt>
+File: images/pix2pix/pix2pix_example.png Graphic file (type png)
+<use images/pix2pix/pix2pix_example.png>
+Package pdftex.def Info: images/pix2pix/pix2pix_example.png  used on input line 13.
+(pdftex.def)             Requested size: 472.03123pt x 173.89622pt.
+
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+ [29
+
+ <./images/pix2pix/pix2pix_example.png>]
+<images/pix2pix/Pix2Pix.pdf, id=603, 911.405pt x 422.57875pt>
+File: images/pix2pix/Pix2Pix.pdf Graphic file (type pdf)
+<use images/pix2pix/Pix2Pix.pdf>
+Package pdftex.def Info: images/pix2pix/Pix2Pix.pdf  used on input line 24.
+(pdftex.def)             Requested size: 472.03123pt x 218.86528pt.
+<images/pix2pix/u-net-architecture.pdf, id=607, 1080.35823pt x 403.79556pt>
+File: images/pix2pix/u-net-architecture.pdf Graphic file (type pdf)
+<use images/pix2pix/u-net-architecture.pdf>
+Package pdftex.def Info: images/pix2pix/u-net-architecture.pdf  used on input line 35.
+(pdftex.def)             Requested size: 472.03123pt x 176.42598pt.
+<images/pix2pix/patchGAN.pdf, id=608, 350.72932pt x 234.64262pt>
+File: images/pix2pix/patchGAN.pdf Graphic file (type pdf)
+<use images/pix2pix/patchGAN.pdf>
+Package pdftex.def Info: images/pix2pix/patchGAN.pdf  used on input line 42.
+(pdftex.def)             Requested size: 236.01561pt x 157.90074pt.
+
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 12.51453pt, for example:
+(fancyhdr)                \setlength{\headheight}{12.51453pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-0.51453pt}.
+
+[30 <./images/pix2pix/Pix2Pix.pdf>]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 22.4317pt, for example:
+(fancyhdr)                \setlength{\headheight}{22.4317pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-10.4317pt}.
+
+[31 <./images/pix2pix/u-net-architecture.pdf> <./images/pix2pix/patchGAN.pdf>]
+Overfull \hbox (1.42923pt too wide) in paragraph at lines 71--72
+\T2A/cmr/m/up/10 непар-ных (unpaired) ме-то-дов транс-фе-ра. Ба-зо-вой ар-хи-тек-ту-рой в этом на-прав-ле-нии ста-ла CycleGAN [[]]
+ []
+
+<images/cyclegan/CycleGAN.pdf, id=754, 1283.79625pt x 467.7475pt>
+File: images/cyclegan/CycleGAN.pdf Graphic file (type pdf)
+<use images/cyclegan/CycleGAN.pdf>
+Package pdftex.def Info: images/cyclegan/CycleGAN.pdf  used on input line 75.
+(pdftex.def)             Requested size: 472.03123pt x 171.97899pt.
+[32 <./images/cyclegan/CycleGAN.pdf>]
+Overfull \hbox (16.5618pt too wide) in paragraph at lines 88--90
+\T2A/cmr/m/up/10 Полная це-ле-вая функ-ция име-ет вид $\OMS/cmsy/m/n/10 L \PU/cmr/m/up/10 = \OMS/cmsy/m/n/10 L[]\PU/cmr/m/up/10 (\OML/cmm/m/it/10 G[]; D[]; A; B\PU/cmr/m/up/10 ) + \OMS/cmsy/m/n/10 L[]\PU/cmr/m/up/10 (\OML/cmm/m/it/10 G[]; D[]; B; A\PU/cmr/m/up/10 ) + \OML/cmm/m/it/10 ^^U\OMS/cmsy/m/n/10 L[]\PU/cmr/m/up/10 (\OML/cmm/m/it/10 G[]; G[]\PU/cmr/m/up/10 )$\T2A/cmr/m/up/10 ,
+ []
+
+
+Overfull \hbox (9.0178pt too wide) in paragraph at lines 108--108
+[]\T2A/cmr/bx/n/12 Многостадийные и кросс-модальные струк-ту-ры (CFR, HRNet-подобные
+ []
+
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 22.4317pt, for example:
+(fancyhdr)                \setlength{\headheight}{22.4317pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-10.4317pt}.
+
+[33]
+<images/cfrwd/cfrwd_arch.png, id=874, 1153.30875pt x 512.91624pt>
+File: images/cfrwd/cfrwd_arch.png Graphic file (type png)
+<use images/cfrwd/cfrwd_arch.png>
+Package pdftex.def Info: images/cfrwd/cfrwd_arch.png  used on input line 118.
+(pdftex.def)             Requested size: 472.03123pt x 209.92917pt.
+<images/cfrwd/CFR.pdf, id=877, 575.14874pt x 270.00874pt>
+File: images/cfrwd/CFR.pdf Graphic file (type pdf)
+<use images/cfrwd/CFR.pdf>
+Package pdftex.def Info: images/cfrwd/CFR.pdf  used on input line 132.
+(pdftex.def)             Requested size: 472.03123pt x 221.60635pt.
+
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 12.51453pt, for example:
+(fancyhdr)                \setlength{\headheight}{12.51453pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-0.51453pt}.
+
+[34 <./images/cfrwd/cfrwd_arch.png>]
+<images/cfrwd/WD.pdf, id=890, 497.86pt x 173.64874pt>
+File: images/cfrwd/WD.pdf Graphic file (type pdf)
+<use images/cfrwd/WD.pdf>
+Package pdftex.def Info: images/cfrwd/WD.pdf  used on input line 155.
+(pdftex.def)             Requested size: 472.03123pt x 164.64476pt.
+
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 22.4317pt, for example:
+(fancyhdr)                \setlength{\headheight}{22.4317pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-10.4317pt}.
+
+[35 <./images/cfrwd/CFR.pdf>]
+
+LaTeX Warning: Citation `guo2022sar2color' on page 36 undefined on input line 166.
+
+
+LaTeX Warning: Citation `george2022wavelet' on page 36 undefined on input line 166.
+
+
+LaTeX Warning: Citation `qin2024conditional' on page 36 undefined on input line 166.
+
+
+LaTeX Warning: Citation `wang2025generative' on page 36 undefined on input line 166.
+
+
+LaTeX Warning: Citation `wang2025generative' on page 36 undefined on input line 169.
+
+
+LaTeX Warning: Citation `cabrera2021sar' on page 36 undefined on input line 173.
+
+
+LaTeX Warning: Citation `fu2024advanced' on page 36 undefined on input line 173.
+
+
+LaTeX Warning: Citation `guo2024scene' on page 36 undefined on input line 173.
+
+
+LaTeX Warning: Citation `zhu2024fusing' on page 36 undefined on input line 174.
+
+
+LaTeX Warning: Citation `bralet2024dem' on page 36 undefined on input line 174.
+
+
+LaTeX Warning: Citation `zhang2024interpretable' on page 36 undefined on input line 174.
+
+
+LaTeX Warning: Citation `kwak2024assessing' on page 36 undefined on input line 175.
+
+
+LaTeX Warning: Citation `liu2022modality' on page 36 undefined on input line 175.
+
+
+LaTeX Warning: Citation `wang2025generative' on page 36 undefined on input line 175.
+
+
+LaTeX Warning: Citation `wang2025generative' on page 36 undefined on input line 176.
+
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 12.51453pt, for example:
+(fancyhdr)                \setlength{\headheight}{12.51453pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-0.51453pt}.
+
+[36 <./images/cfrwd/WD.pdf>]
+
+LaTeX Warning: Citation `wang2025generative' on page 37 undefined on input line 179.
+
+
+LaTeX Warning: Citation `zhang2025seg' on page 37 undefined on input line 179.
+
+
+LaTeX Warning: Citation `wang2025generative' on page 37 undefined on input line 191.
+
+
+LaTeX Warning: Citation `kong2022multi' on page 37 undefined on input line 191.
+
+
+LaTeX Warning: Citation `wang2025generative' on page 37 undefined on input line 192.
+
+
+LaTeX Warning: Citation `luo2024contextual' on page 37 undefined on input line 192.
+
+
+LaTeX Warning: Citation `wang2025generative' on page 37 undefined on input line 193.
+
+
+LaTeX Warning: Citation `wang2025generative' on page 37 undefined on input line 198.
+
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 22.4317pt, for example:
+(fancyhdr)                \setlength{\headheight}{22.4317pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-10.4317pt}.
+
+[37]
+
+LaTeX Warning: Citation `kong2022multi' on page 38 undefined on input line 201.
+
+
+LaTeX Warning: Citation `wang2022hybrid' on page 38 undefined on input line 202.
+
+
+LaTeX Warning: Citation `zhao2025hvt' on page 38 undefined on input line 202.
+
+
+LaTeX Warning: Citation `wei2025sequential' on page 38 undefined on input line 203.
+
+
+LaTeX Warning: Citation `luo2024contextual' on page 38 undefined on input line 209.
+
+
+LaTeX Warning: Citation `wang2025generative' on page 38 undefined on input line 210.
+
+
+LaTeX Warning: Citation `zhao2025hvt' on page 38 undefined on input line 210.
+
+
+LaTeX Warning: Citation `kwak2024assessing' on page 38 undefined on input line 211.
+
+
+LaTeX Warning: Citation `liu2022modality' on page 38 undefined on input line 211.
+
+
+Overfull \hbox (11.69565pt too wide) in paragraph at lines 211--212
+[]\T2A/cmr/bx/n/10 Временное и меж-до-мен-ное вни-ма-ние. \T2A/cmr/m/up/10 В муль-ти-тем-по-раль-ных по-ста-нов-ках temporal co-attention
+ []
+
+[38]
+
+LaTeX Warning: Citation `wang2025generative' on page 39 undefined on input line 225.
+
+
+LaTeX Warning: Citation `zhao2025hvt' on page 39 undefined on input line 226.
+
+
+LaTeX Warning: Citation `wang2025generative' on page 39 undefined on input line 226.
+
+
+LaTeX Warning: Citation `wang2025generative' on page 39 undefined on input line 230.
+
+
+Overfull \hbox (5.86725pt too wide) in paragraph at lines 230--231
+[]\T2A/cmr/bx/n/10 Открытые ис-сле-до-ва-тель-ские во-про-сы \T2A/cmr/m/up/10 вклю-ча-ют: раз-ра-бот-ку об-лег-чјн-ных attention-вариантов
+ []
+
+
+Overfull \hbox (8.55939pt too wide) in paragraph at lines 238--251
+ [][] 
+ []
+
+<images/all_models_comparison.jpg, id=1160, 445.76135pt x 232.27579pt>
+File: images/all_models_comparison.jpg Graphic file (type jpg)
+<use images/all_models_comparison.jpg>
+Package pdftex.def Info: images/all_models_comparison.jpg  used on input line 255.
+(pdftex.def)             Requested size: 472.03123pt x 245.9666pt.
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 22.4317pt, for example:
+(fancyhdr)                \setlength{\headheight}{22.4317pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-10.4317pt}.
+
+[39]) (./parts/Chapter4.tex
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 24.51453pt, for example:
+(fancyhdr)                \setlength{\headheight}{24.51453pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-12.51453pt}.
+
+[40 <./images/all_models_comparison.jpg>]
+{\cyrillictext \CYRG \cyrl \cyra \cyrv \cyra } 5.
+[41
+
+]
+Overfull \hbox (39.74657pt too wide) in paragraph at lines 32--35
+ []\T2A/cmr/bx/n/10 Проблема ѕшах-мат-ной дос-киї[] \T2A/cmtt/m/n/10 ConvTranspose2d \T2A/cmr/m/up/10 был за-ме-нен на би-ли-ней-ную ин-тер-по-ля-цию (\T2A/cmtt/m/n/10 nn.Upsample\T2A/cmr/m/up/10 )
+ []
+
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 12.51453pt, for example:
+(fancyhdr)                \setlength{\headheight}{12.51453pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-0.51453pt}.
+
+[42]
+<images/pix2pix/output/pix2pix_labeled.png, id=1190, 1806.75pt x 2710.125pt>
+File: images/pix2pix/output/pix2pix_labeled.png Graphic file (type png)
+<use images/pix2pix/output/pix2pix_labeled.png>
+Package pdftex.def Info: images/pix2pix/output/pix2pix_labeled.png  used on input line 64.
+(pdftex.def)             Requested size: 377.62642pt x 566.41376pt.
+
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 24.51453pt, for example:
+(fancyhdr)                \setlength{\headheight}{24.51453pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-12.51453pt}.
+
+[43]
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 12.51453pt, for example:
+(fancyhdr)                \setlength{\headheight}{12.51453pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-0.51453pt}.
+
+[44 <./images/pix2pix/output/pix2pix_labeled.png (PNG copy)>]
+Overfull \hbox (11.4227pt too wide) in paragraph at lines 102--103
+[]\T2A/cmr/bx/n/10 Low-freq stream \T2A/cmr/m/up/10 ($\OML/cmm/m/it/10 LL[]$\T2A/cmr/m/up/10 ): струк-тур-ный кон-текст сце-ны, об-ра-ба-ты-ва-ет-ся че-рез \T2A/cmtt/m/n/10 WDResBlock \T2A/cmr/m/up/10 (bottleneck-
+ []
+
+
+Overfull \hbox (12.02005pt too wide) in paragraph at lines 103--104
+[]\T2A/cmr/bx/n/10 Mid-freq stream \T2A/cmr/m/up/10 ($\PU/cmr/m/up/10 [\OML/cmm/m/it/10 LH[]; HL[]; HH[]\PU/cmr/m/up/10 ]$\T2A/cmr/m/up/10 ): де-та-ли сред-не-го мас-шта-ба, об-ра-ба-ты-ва-ют-ся че-рез 6 \T2A/cmtt/m/n/10 WDResBlock
+ []
+
+
+Overfull \hbox (1.72113pt too wide) in paragraph at lines 109--111
+ []\T2A/cmr/bx/n/10 Пространственно-канальное вни-ма-ние в ча-стот-ной вет-ви[] \T2A/cmr/m/up/10 Для по-вы-ше-ния се-лек-тив-но-сти филь-
+ []
+
+
+Overfull \hbox (23.58656pt too wide) in paragraph at lines 118--120
+ []\T2A/cmr/bx/n/10 Стабилизация дис-кри-ми-на-то-ра и стра-те-гии оп-ти-ми-за-ции[] \T2A/cmr/m/up/10 Для по-вы-ше-ния устой-чи-во-сти \T2A/cmr/m/it/10 adversarial\T2A/cmr/m/up/10 -
+ []
+
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 24.51453pt, for example:
+(fancyhdr)                \setlength{\headheight}{24.51453pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-12.51453pt}.
+
+[45]
+<images/cfrwd/output/val/Figure_2.png, id=1224, 1011.78pt x 505.89pt>
+File: images/cfrwd/output/val/Figure_2.png Graphic file (type png)
+<use images/cfrwd/output/val/Figure_2.png>
+Package pdftex.def Info: images/cfrwd/output/val/Figure_2.png  used on input line 140.
+(pdftex.def)             Requested size: 448.42822pt x 224.21332pt.
+<images/cfrwd/output/val/Figure_5.png, id=1225, 1011.78pt x 505.89pt>
+File: images/cfrwd/output/val/Figure_5.png Graphic file (type png)
+<use images/cfrwd/output/val/Figure_5.png>
+Package pdftex.def Info: images/cfrwd/output/val/Figure_5.png  used on input line 147.
+(pdftex.def)             Requested size: 448.42822pt x 224.21332pt.
+<images/cfrwd/output/train/epoch_270.png, id=1229, 867.24pt x 867.24pt>
+File: images/cfrwd/output/train/epoch_270.png Graphic file (type png)
+<use images/cfrwd/output/train/epoch_270.png>
+Package pdftex.def Info: images/cfrwd/output/train/epoch_270.png  used on input line 156.
+(pdftex.def)             Requested size: 462.5886pt x 462.58598pt.
+
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 12.51453pt, for example:
+(fancyhdr)                \setlength{\headheight}{12.51453pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-0.51453pt}.
+
+[46 <./images/cfrwd/output/val/Figure_2.png>]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 24.51453pt, for example:
+(fancyhdr)                \setlength{\headheight}{24.51453pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-12.51453pt}.
+
+[47 <./images/cfrwd/output/val/Figure_5.png>]
+Overfull \hbox (45.48619pt too wide) in paragraph at lines 183--187
+[]\T2A/cmr/m/up/10 Для по-дав-ле-ния спекл-шума и по-вы-ше-ния се-лек-тив-но-сти филь-тра-ции внед-ре-ны ме-ха-низ-мы пространственно-
+ []
+
+
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 12.51453pt, for example:
+(fancyhdr)                \setlength{\headheight}{12.51453pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-0.51453pt}.
+
+[48 <./images/cfrwd/output/train/epoch_270.png>]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 24.51453pt, for example:
+(fancyhdr)                \setlength{\headheight}{24.51453pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-12.51453pt}.
+
+[49]
+<./images/convnextv2/output/val/huggingface_val_all.png, id=1261, 3537.215pt x 2441.12pt>
+File: ./images/convnextv2/output/val/huggingface_val_all.png Graphic file (type png)
+<use ./images/convnextv2/output/val/huggingface_val_all.png>
+Package pdftex.def Info: ./images/convnextv2/output/val/huggingface_val_all.png  used on input line 221.
+(pdftex.def)             Requested size: 472.03123pt x 325.73764pt.
+
+Overfull \hbox (15.93091pt too wide) in paragraph at lines 226--227
+ []\T2A/cmr/bx/n/10 Изображения[] \T2A/cmr/m/up/10 На изоб-ра-же-нии  []5.6[] пред-став-ле-ны ре-зуль-та-ты обу-че-ния мо-де-ли на ба-зе ConvNeXtV2.
+ []
+
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 12.51453pt, for example:
+(fancyhdr)                \setlength{\headheight}{12.51453pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-0.51453pt}.
+
+[50]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 24.51453pt, for example:
+(fancyhdr)                \setlength{\headheight}{24.51453pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-12.51453pt}.
+
+[51 <./images/convnextv2/output/val/huggingface_val_all.png>]) (./parts/Chapter5.tex
+{\cyrillictext \CYRG \cyrl \cyra \cyrv \cyra } 6.
+
+Overfull \hbox (18.58858pt too wide) in paragraph at lines 24--30
+[]\T2A/cmr/bx/n/10 Версия v0 (пред-ше-ствен-ник). \T2A/cmr/m/up/10 Ба-зой слу-жит услов-ный GAN на ос-но-ве пре-до-бу-чен-но-го ConvNeXt V2
+ []
+
+[52
+
+]
+Overfull \hbox (11.88402pt too wide) in paragraph at lines 107--115
+\T2A/cmr/m/up/10 Здесь $\OT1/cmr/bx/n/10 x[] \OMS/cmsy/m/n/10 2 \U/msb/m/n/10 R[]$ \T2A/cmr/m/up/10 --- од-но-ка-наль-ный SAR-вход, $\OT1/cmr/bx/n/10 x[] \OMS/cmsy/m/n/10 2 \U/msb/m/n/10 R[]$ \T2A/cmr/m/up/10 --- рас-ши-рен-ное физически-осмысленное
+ []
+
+
+LaTeX Warning: `!h' float specifier changed to `!ht'.
+
+[53]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 24.51453pt, for example:
+(fancyhdr)                \setlength{\headheight}{24.51453pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-12.51453pt}.
+
+[54] [55]
+
+LaTeX Warning: Citation `wang2003msssim' on page 56 undefined on input line 326.
+
+
+LaTeX Warning: Citation `zhang2018lpips' on page 56 undefined on input line 335.
+
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 24.51453pt, for example:
+(fancyhdr)                \setlength{\headheight}{24.51453pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-12.51453pt}.
+
+[56]
+
+LaTeX Warning: Citation `jiang2021ffl' on page 57 undefined on input line 355.
+
+
+Overfull \hbox (0.76958pt too wide) in paragraph at lines 392--398
+\T2A/cmr/m/up/10 В да-та-се-те SEN1-2 си-сте-ма-ти-че-ски при-сут-ству-ет оста-точ-ная раз-ре-ги-стра-ция пар SAR/оптика на уровне
+ []
+
+
+LaTeX Warning: Citation `park2020cut' on page 57 undefined on input line 401.
+
+[57]
+LaTeX Font Info:    Font shape `OML/cmr/m/up' in size <9> not available
+(Font)              Font shape `OML/cmm/m/it' tried instead on input line 457.
+LaTeX Font Info:    Font shape `OML/cmr/m/up' in size <6> not available
+(Font)              Font shape `OML/cmm/m/it' tried instead on input line 457.
+LaTeX Font Info:    Font shape `OMS/cmr/m/up' in size <9> not available
+(Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 457.
+LaTeX Font Info:    Font shape `OMS/cmr/m/up' in size <6> not available
+(Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 457.
+
+Underfull \hbox (badness 10000) in paragraph at lines 463--463
+[]|$\OMS/cmsy/m/n/9 ^^@$ \T2A/cmr/m/up/9 MS-SSIM, LPIPS, FFL,
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 466--466
+[]|$\OMS/cmsy/m/n/9 ^^@$ \T2A/cmr/m/up/9 об-рат-ное Хаар-
+ []
+
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 24.51453pt, for example:
+(fancyhdr)                \setlength{\headheight}{24.51453pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-12.51453pt}.
+
+[58]
+
+LaTeX Warning: `!h' float specifier changed to `!ht'.
+
+
+LaTeX Warning: `!h' float specifier changed to `!ht'.
+
+[59]
+
+LaTeX Warning: Citation `isola2017pix2pix' on page 60 undefined on input line 583.
+
+
+LaTeX Warning: Citation `zhu2017cyclegan' on page 60 undefined on input line 584.
+
+
+LaTeX Warning: Citation `huang2018munit' on page 60 undefined on input line 585.
+
+
+LaTeX Warning: Citation `fuentes2019cyclegan' on page 60 undefined on input line 586.
+
+
+LaTeX Warning: Citation `liu2022cfrwd' on page 60 undefined on input line 587.
+
+
+LaTeX Warning: Citation `seo2023acdm' on page 60 undefined on input line 588.
+
+
+LaTeX Warning: `!h' float specifier changed to `!ht'.
+
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 24.51453pt, for example:
+(fancyhdr)                \setlength{\headheight}{24.51453pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-12.51453pt}.
+
+[60]
+Overfull \hbox (10.49094pt too wide) in paragraph at lines 626--632
+\T2A/cmr/m/up/10 стемом, а вы-ход-ная го-ло-ва вос-ста-нав-ли-ва-ет изоб-ра-же-ние че-рез точ-ное об-рат-ное Хаар-преобразование.
+ []
+
+
+Overfull \hbox (2.43846pt too wide) in paragraph at lines 642--649
+\T2A/cmr/m/up/10 пер-цеп-тив-ная ре-гу-ля-ри-за-ция, по-ком-по-нент-ная по-те-ря в Хаар-базисе, об-рат-ное Хаар-преобразование
+ []
+
+[61]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 24.51453pt, for example:
+(fancyhdr)                \setlength{\headheight}{24.51453pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-12.51453pt}.
+
+[62]) (./parts/Chapter6.tex
+{\cyrillictext \CYRG \cyrl \cyra \cyrv \cyra } 7.
+[63
+
+]) (./main.bbl
+Underfull \hbox (badness 1005) in paragraph at lines 12--15
+[]\T2A/cmr/m/up/10 Image-to-image translation with conditional adversarial networks / Phillip Isola, Jun-Yan Zhu,
+ []
+
+[64
+
+]
+Underfull \hbox (badness 2772) in paragraph at lines 88--91
+[]\T2A/cmr/m/up/10 3D U-Net: learning dense volumetric segmentation from sparse annotation / []Ozg^^Dun []icek,
+ []
+
+) [65] (./parts/Appendix.tex
+Overfull \hbox (28.69966pt too wide) in paragraph at lines 5--5
+[][]\T2A/cmr/bx/n/14.4 Дополнительные ре-зуль-та-ты ра-бо-ты мо-де-ли, вдох-нов-лен-ной CFRWD-
+ []
+
+<images/cfrwd/output/val/val_figures_1-3.png, id=1409, 1372.12625pt x 1541.76pt>
+File: images/cfrwd/output/val/val_figures_1-3.png Graphic file (type png)
+<use images/cfrwd/output/val/val_figures_1-3.png>
+Package pdftex.def Info: images/cfrwd/output/val/val_figures_1-3.png  used on input line 9.
+(pdftex.def)             Requested size: 448.42822pt x 503.86559pt.
+<images/cfrwd/output/val/val_figures_4-7.png, id=1410, 1372.12625pt x 2056.68375pt>
+File: images/cfrwd/output/val/val_figures_4-7.png Graphic file (type png)
+<use images/cfrwd/output/val/val_figures_4-7.png>
+Package pdftex.def Info: images/cfrwd/output/val/val_figures_4-7.png  used on input line 16.
+(pdftex.def)             Requested size: 448.42822pt x 672.14882pt.
+)
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+ [66 <./images/cfrwd/output/val/val_figures_1-3.png>]
+Overfull \vbox (15.98984pt too high) has occurred while \output is active []
+
+ [67 <./images/cfrwd/output/val/val_figures_4-7.png>] (./main.aux)
+ ***********
+LaTeX2e <2025-11-01>
+L3 programming layer <2026-01-19>
+ ***********
+
+
+LaTeX Font Warning: Some font shapes were not available, defaults substituted.
+
+
+LaTeX Warning: There were undefined references.
+
+Package rerunfilecheck Info: File `main.out' has not changed.
+(rerunfilecheck)             Checksum: 8C538006B51CF420DC1B0EA2EE911E95;19855.
+ ) 
+Here is how much of TeX's memory you used:
+ 28520 strings out of 468477
+ 529664 string characters out of 5445368
+ 927806 words of memory out of 5000000
+ 56319 multiletter control sequences out of 15000+600000
+ 660172 words of font info for 123 fonts, out of 8000000 for 9000
+ 735 hyphenation exceptions out of 8191
+ 89i,13n,107p,2523b,666s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ </Users/timur/Library/texlive/2026basic/texmf-var/fonts/pk/ljfour/lhcyr/lh-t2a/lati0900.600pk> </Users/timur/Library/texlive/2026basic/texmf-var/fonts/pk/ljfour/lhcyr/lh-t2a/labx0900.600pk> </Users/timur/Library/texlive/2026basic/texmf-var/fonts/pk/ljfour/lh/lh-t2a/larm0500.600pk> </Users/timur/Library/texlive/2026basic/texmf-var/fonts/pk/ljfour/lhcyr/lh-t2a/latt1000.600pk> </Users/timur/Library/texlive/2026basic/texmf-var/fonts/pk/ljfour/jknappen/ec/tcrm1000.600pk> </Users/timur/Library/texlive/2026basic/texmf-var/fonts/pk/ljfour/lh/lh-t2a/larm0900.600pk> </Users/timur/Library/texlive/2026basic/texmf-var/fonts/pk/ljfour/lh/lh-t2a/larm0700.600pk> </Users/timur/Library/texlive/2026basic/texmf-var/fonts/pk/ljfour/lh/lh-t2a/lati1000.600pk> </Users/timur/Library/texlive/2026basic/texmf-var/fonts/pk/ljfour/lh/lh-t2a/labx1440.600pk> </Users/timur/Library/texlive/2026basic/texmf-var/fonts/pk/ljfour/lh/lh-t2a/labx2074.600pk> </Users/timur/Library/texlive/2026basic/texmf-var/fonts/pk/ljfour/lh/lh-t2a/lasl1000.600pk> </Users/timur/Library/texlive/2026basic/texmf-var/fonts/pk/ljfour/lh/lh-t2a/labx2488.600pk> </usr/local/texlive/2026basic/texmf-dist/fonts/pk/ljfour/lh/lh-t2a/lati1200.600pk> </Users/timur/Library/texlive/2026basic/texmf-var/fonts/pk/ljfour/lh/lh-t2a/larm1000.600pk> </Users/timur/Library/texlive/2026basic/texmf-var/fonts/pk/ljfour/lh/lh-t2a/labx1000.600pk> </usr/local/texlive/2026basic/texmf-dist/fonts/pk/ljfour/lh/lh-t2a/larm1728.600pk> </usr/local/texlive/2026basic/texmf-dist/fonts/pk/ljfour/lh/lh-t2a/larm1200.600pk> </usr/local/texlive/2026basic/texmf-dist/fonts/pk/ljfour/lh/lh-t2a/labx1200.600pk></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx10.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx7.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi5.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi7.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi9.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmr5.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmr6.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmr7.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmr9.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy7.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy9.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/symbols/msbm10.pfb>
+Output written on main.pdf (69 pages, 57085848 bytes).
+PDF statistics:
+ 2655 PDF objects out of 2984 (max. 8388607)
+ 1238 compressed objects within 13 object streams
+ 334 named destinations out of 1000 (max. 500000)
+ 606 words of extra memory for PDF output out of 10000 (max. 10000000)
+

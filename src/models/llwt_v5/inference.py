@@ -36,10 +36,10 @@ from torchmetrics.image import (
 from src.models.llwt_v5.gen import LLWv4Generator
 
 
-CHECKPOINT = "checkpoints/llwt_v45/llwt-v0.4.5-cnx-overhaul/last.ckpt"
+CHECKPOINT = "checkpoints/llwt_v45/llwt-v0.5.1-hfd/epoch=097-psnr=17.1615.ckpt"
 N_IMAGES = 10
 SPLIT = "val"  # "train" or "val"
-OUTPUT_DIR = f"./src/models/llwt_v45/output/{SPLIT}"
+OUTPUT_DIR = f"./src/models/llwt_v5/output/{SPLIT}"
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 USE_LIVE_WEIGHTS = False
 

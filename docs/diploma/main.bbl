@@ -1,0 +1,171 @@
+\begin{thebibliography}{10}
+\def\selectlanguageifdefined#1{
+\expandafter\ifx\csname date#1\endcsname\relax
+\else\language\csname l@#1\endcsname\fi}
+\ifx\undefined\url\def\url#1{{\small #1}}\else\fi
+\ifx\undefined\BibUrl\def\BibUrl#1{\url{#1}}\else\fi
+\ifx\undefined\BibAnnote\long\def\BibAnnote#1{}\else\fi
+\ifx\undefined\BibEmph\def\BibEmph#1{\emph{#1}}\else\fi
+
+\bibitem{isola2017image}
+\selectlanguageifdefined{english}
+Image-to-image translation with conditional adversarial networks~/ Phillip~Isola, Jun-Yan~Zhu, Tinghui~Zhou, Alexei~A~Efros~// Proceedings of the IEEE conference on computer vision and pattern recognition. ---
+\newblock 2017. ---
+\newblock Pp.~1125--1134.
+
+\bibitem{chu2017cyclegan}
+\selectlanguageifdefined{english}
+\BibEmph{Chu,~Casey}. Cyclegan, a master of steganography~/ Casey~Chu, Andrey~Zhmoginov, Mark~Sandler~// \BibEmph{arXiv preprint arXiv:1712.02950}. ---
+\newblock 2017.
+
+\bibitem{wei2023cfrwd}
+\selectlanguageifdefined{english}
+CFRWD-GAN for SAR-to-optical image translation~/ Juan~Wei, Huanxin~Zou, Li~Sun et~al.~// \BibEmph{Remote Sensing}. ---
+\newblock 2023. ---
+\newblock Vol.~15, no.~10. ---
+\newblock P.~2547.
+
+\bibitem{schmitt2018sen1}
+\selectlanguageifdefined{english}
+\BibEmph{Schmitt,~Michael}. The SEN1-2 dataset for deep learning in SAR-optical data fusion~/ Michael~Schmitt, Lloyd~Haydn~Hughes, Xiao~Xiang~Zhu~// \BibEmph{arXiv preprint arXiv:1807.01569}. ---
+\newblock 2018.
+
+\bibitem{wang2004image}
+\selectlanguageifdefined{english}
+Image quality assessment: from error visibility to structural similarity~/ Zhou~Wang, Alan~C~Bovik, Hamid~R~Sheikh, Eero~P~Simoncelli~// \BibEmph{IEEE transactions on image processing}. ---
+\newblock 2004. ---
+\newblock Vol.~13, no.~4. ---
+\newblock Pp.~600--612.
+
+\bibitem{cai2021frequency}
+\selectlanguageifdefined{english}
+Frequency domain image translation: More photo-realistic, better identity-preserving~/ Mu~Cai, Hong~Zhang, Huijuan~Huang et~al.~// Proceedings of the IEEE/CVF international conference on computer vision. ---
+\newblock 2021. ---
+\newblock Pp.~13930--13940.
+
+\bibitem{zhang2018unreasonable}
+\selectlanguageifdefined{english}
+The unreasonable effectiveness of deep features as a perceptual metric~/ Richard~Zhang, Phillip~Isola, Alexei~A~Efros et~al.~// Proceedings of the IEEE conference on computer vision and pattern recognition. ---
+\newblock 2018. ---
+\newblock Pp.~586--595.
+
+\bibitem{heusel2017gans}
+\selectlanguageifdefined{english}
+Gans trained by a two time-scale update rule converge to a local nash equilibrium~/ Martin~Heusel, Hubert~Ramsauer, Thomas~Unterthiner et~al.~// \BibEmph{Advances in neural information processing systems}. ---
+\newblock 2017. ---
+\newblock Vol.~30.
+
+\bibitem{kirillov2023segment}
+\selectlanguageifdefined{english}
+Segment anything~/ Alexander~Kirillov, Eric~Mintun, Nikhila~Ravi et~al.~// Proceedings of the IEEE/CVF international conference on computer vision. ---
+\newblock 2023. ---
+\newblock Pp.~4015--4026.
+
+\bibitem{mao2017least}
+\selectlanguageifdefined{english}
+Least squares generative adversarial networks~/ Xudong~Mao, Qing~Li, Haoran~Xie et~al.~// Proceedings of the IEEE international conference on computer vision. ---
+\newblock 2017. ---
+\newblock Pp.~2794--2802.
+
+\bibitem{johnson2016perceptual}
+\selectlanguageifdefined{english}
+\BibEmph{Johnson,~Justin}. Perceptual losses for real-time style transfer and super-resolution~/ Justin~Johnson, Alexandre~Alahi, Li~Fei-Fei~// European conference on computer vision~/ Springer. ---
+\newblock 2016. ---
+\newblock Pp.~694--711.
+
+\bibitem{oquab2023dinov2}
+\selectlanguageifdefined{english}
+Dinov2: Learning robust visual features without supervision~/ Maxime~Oquab, Timoth{\'e}e~Darcet, Th{\'e}o~Moutakanni et~al.~// \BibEmph{arXiv preprint arXiv:2304.07193}. ---
+\newblock 2023.
+
+\bibitem{huang2021qxs}
+\selectlanguageifdefined{english}
+The QXS-SAROPT dataset for deep learning in SAR-optical data fusion~/ Meiyu~Huang, Yao~Xu, Lixin~Qian et~al.~// \BibEmph{arXiv preprint arXiv:2103.08259}. ---
+\newblock 2021.
+
+\bibitem{cciccek20163d}
+\selectlanguageifdefined{english}
+3D U-Net: learning dense volumetric segmentation from sparse annotation~/ {\"O}zg{\"u}n~{\c{C}}i{\c{c}}ek, Ahmed~Abdulkadir, Soeren~S~Lienkamp et~al.~// International conference on medical image computing and computer-assisted intervention~/ Springer. ---
+\newblock 2016. ---
+\newblock Pp.~424--432.
+
+\bibitem{zhu2017unpaired}
+\selectlanguageifdefined{english}
+Unpaired image-to-image translation using cycle-consistent adversarial networks~/ Jun-Yan~Zhu, Taesung~Park, Phillip~Isola, Alexei~A~Efros~// Proceedings of the IEEE international conference on computer vision. ---
+\newblock 2017. ---
+\newblock Pp.~2223--2232.
+
+\bibitem{woo2018cbam}
+\selectlanguageifdefined{english}
+Cbam: Convolutional block attention module~/ Sanghyun~Woo, Jongchan~Park, Joon-Young~Lee, In~So~Kweon~// Proceedings of the European conference on computer vision (ECCV). ---
+\newblock 2018. ---
+\newblock Pp.~3--19.
+
+\bibitem{kendall2018multi}
+\selectlanguageifdefined{english}
+\BibEmph{Kendall,~Alex}. Multi-task learning using uncertainty to weigh losses for scene geometry and semantics~/ Alex~Kendall, Yarin~Gal, Roberto~Cipolla~// Proceedings of the IEEE conference on computer vision and pattern recognition. ---
+\newblock 2018. ---
+\newblock Pp.~7482--7491.
+
+\bibitem{Schmitt2019}
+\selectlanguageifdefined{english}
+SEN12MS -- a curated dataset of georeferenced multi-spectral Sentinel-1/2 imagery for deep learning and data fusion~/ Michael~Schmitt, Lloyd~Haydn~Hughes, Chunping~Qiu, Xiao~Xiang~Zhu~// ISPRS Annals of the Photogrammetry, Remote Sensing and Spatial Information Sciences. ---
+\newblock Vol.~IV-2/W7. ---
+\newblock 2019. ---
+\newblock Pp.~153--160.
+
+\bibitem{goodfellow2020generative}
+\selectlanguageifdefined{english}
+Generative adversarial networks~/ Ian~Goodfellow, Jean~Pouget-Abadie, Mehdi~Mirza et~al.~// \BibEmph{Communications of the ACM}. ---
+\newblock 2020. ---
+\newblock Vol.~63, no.~11. ---
+\newblock Pp.~139--144.
+
+\bibitem{wang2025construction}
+\selectlanguageifdefined{english}
+Construction of a neural network model for small-scale shaded relief maps constrained by topographic feature lines~/ Yue~Wang, Wenping~Jiang, Han~Jiang et~al.~// \BibEmph{Geocarto International}. ---
+\newblock 2025. ---
+\newblock Vol.~40, no.~1. ---
+\newblock P.~2459099.
+
+\bibitem{mirza2014conditional}
+\selectlanguageifdefined{english}
+\BibEmph{Mirza,~Mehdi}. Conditional generative adversarial nets~/ Mehdi~Mirza, Simon~Osindero~// \BibEmph{arXiv preprint arXiv:1411.1784}. ---
+\newblock 2014.
+
+\bibitem{woo2023convnext}
+\selectlanguageifdefined{english}
+ConvNeXt V2: Co-designing and scaling ConvNets with masked autoencoders~/ Sanghyun~Woo, Shoubhik~Debnath, Ronghang~Hu et~al.~// Proceedings of the IEEE/CVF conference on computer vision and pattern recognition. ---
+\newblock 2023. ---
+\newblock Pp.~16133--16142.
+
+\bibitem{ho2020denoising}
+\selectlanguageifdefined{english}
+\BibEmph{Ho,~Jonathan}. Denoising diffusion probabilistic models~/ Jonathan~Ho, Ajay~Jain, Pieter~Abbeel~// \BibEmph{Advances in neural information processing systems}. ---
+\newblock 2020. ---
+\newblock Vol.~33. ---
+\newblock Pp.~6840--6851.
+
+\bibitem{rombach2022high}
+\selectlanguageifdefined{english}
+High-resolution image synthesis with latent diffusion models~/ Robin~Rombach, Andreas~Blattmann, Dominik~Lorenz et~al.~// Proceedings of the IEEE/CVF conference on computer vision and pattern recognition. ---
+\newblock 2022. ---
+\newblock Pp.~10684--10695.
+
+\bibitem{song2020score}
+\selectlanguageifdefined{english}
+Score-based generative modeling through stochastic differential equations~/ Yang~Song, Jascha~Sohl-Dickstein, Diederik~P~Kingma et~al.~// \BibEmph{arXiv preprint arXiv:2011.13456}. ---
+\newblock 2020.
+
+\bibitem{ho2022classifier}
+\selectlanguageifdefined{english}
+\BibEmph{Ho,~Jonathan}. Classifier-free diffusion guidance~/ Jonathan~Ho, Tim~Salimans~// \BibEmph{arXiv preprint arXiv:2207.12598}. ---
+\newblock 2022.
+
+\bibitem{liu2022convnet}
+\selectlanguageifdefined{english}
+A ConvNet for the 2020s~/ Zhuang~Liu, Hanzi~Mao, Chao-Yuan~Wu et~al.~// Proceedings of the IEEE/CVF conference on computer vision and pattern recognition. ---
+\newblock 2022. ---
+\newblock Pp.~11976--11986.
+
+\end{thebibliography}

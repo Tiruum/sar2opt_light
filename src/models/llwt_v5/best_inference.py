@@ -56,11 +56,11 @@ from src.models.llwt_v5.inference import _build_datamodule
 from src.models.llwt_v5.gen import LLWv4Generator
 
 
-CHECKPOINT       = "checkpoints/llwt_v45/llwt-v0.4.5-cnx-overhaul/last.ckpt"
+CHECKPOINT       = "checkpoints/llwt_v45/llwt-v0.5.1-hfd/epoch=097-psnr=17.1615.ckpt"
 TOP_K            = 3
 SPLIT            = "val"          # "val" or "train"
 METRIC           = "ssim"         # "psnr" | "ssim" | "lpips" — score used to rank
-OUTPUT_DIR       = f"./src/models/llwt_v45/output/best_{SPLIT}"
+OUTPUT_DIR       = f"./src/models/llwt_v5/output/best_{SPLIT}"
 DEVICE           = "cuda" if torch.cuda.is_available() else "cpu"
 USE_LIVE_WEIGHTS = False          # False = EMA-or-live state_dict; True = raw current_model_state
 COMPUTE_FID      = True           # per-scene FID; uses InceptionV3 (~+100 MB VRAM)

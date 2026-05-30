@@ -1,0 +1,187 @@
+W0530 13:50:50.717000 50228 torch\utils\flop_counter.py:29] triton not found; flop counting will not work for triton kernels
+W0530 13:50:55.975000 51304 torch\utils\flop_counter.py:29] triton not found; flop counting will not work for triton kernels
+W0530 13:51:01.037000 45116 torch\utils\flop_counter.py:29] triton not found; flop counting will not work for triton kernels
+W0530 13:51:06.154000 54832 torch\utils\flop_counter.py:29] triton not found; flop counting will not work for triton kernels
+W0530 13:51:11.194000 12596 torch\utils\flop_counter.py:29] triton not found; flop counting will not work for triton kernels
+W0530 13:51:16.611000 49496 torch\utils\flop_counter.py:29] triton not found; flop counting will not work for triton kernels
+W0530 13:51:22.606000 41364 torch\utils\flop_counter.py:29] triton not found; flop counting will not work for triton kernels
+W0530 13:51:28.368000 51588 torch\utils\flop_counter.py:29] triton not found; flop counting will not work for triton kernels
+W0530 13:51:34.028000 44364 torch\utils\flop_counter.py:29] triton not found; flop counting will not work for triton kernels
+W0530 13:51:39.670000 14504 torch\utils\flop_counter.py:29] triton not found; flop counting will not work for triton kernels
+W0530 13:51:45.232000 49212 torch\utils\flop_counter.py:29] triton not found; flop counting will not work for triton kernels
+C:\Users\tiruu\Desktop\sar2opt_light\src\models\llwt_v5\proof_hfd_generalize.py:412: UserWarning: expandable_segments not supported on this platform (Triggered internally at C:\actions-runner\_work\pytorch\pytorch\pytorch\c10/cuda/CUDAAllocatorConfig.h:39.)
+  val_sar = torch.cat(vs, 0)[:N_VAL_PAIRS].to(device)
+C:\Users\tiruu\AppData\Roaming\Python\Python314\site-packages\torchmetrics\utilities\prints.py:62: FutureWarning: Importing `PeakSignalNoiseRatio` from `torchmetrics` was deprecated and will be removed in 2.0. Import `PeakSignalNoiseRatio` from `torchmetrics.image` instead.
+  _future_warning(
+C:\Users\tiruu\AppData\Roaming\Python\Python314\site-packages\torchmetrics\utilities\prints.py:62: FutureWarning: Importing `StructuralSimilarityIndexMeasure` from `torchmetrics` was deprecated and will be removed in 2.0. Import `StructuralSimilarityIndexMeasure` from `torchmetrics.image` instead.
+  _future_warning(
+[hfd-gen] device=cuda | target STEPS=2200 lr_g=0.0001 hfd_weight=1.0 sigma=2.0 | RAW MISALIGNED multi-pair generalization (sen12_full)
+[SEN12FullDataModule] scenes=['100', '45', '5', '52', '84'] | train=9052@256->no-crop bs=8 | val=2263@256 bs=8 (total=11315)
+[hfd-gen] HELD-OUT val pairs=32 (NEVER trained on); train pool=9052 distinct RAW misaligned pairs (bs=8)
+
+[hfd-gen] ===== ARM BASE ===== fresh warm G+D reload (HF-D OFF)
+Loading weights:   0%|          | 0/196 [00:00<?, ?it/s]Loading weights: 100%|##########| 196/196 [00:00<00:00, 10000.04it/s]
+[transformers] [1mConvNextV2Backbone LOAD REPORT[0m from: facebook/convnextv2-tiny-22k-224
+Key                               | Status     | 
+----------------------------------+------------+-
+convnextv2.layernorm.bias         | UNEXPECTED | 
+convnextv2.layernorm.weight       | UNEXPECTED | 
+classifier.bias                   | UNEXPECTED | 
+classifier.weight                 | UNEXPECTED | 
+hidden_states_norms.stage4.weight | MISSING    | 
+hidden_states_norms.stage1.weight | MISSING    | 
+hidden_states_norms.stage3.bias   | MISSING    | 
+hidden_states_norms.stage1.bias   | MISSING    | 
+hidden_states_norms.stage2.weight | MISSING    | 
+hidden_states_norms.stage3.weight | MISSING    | 
+hidden_states_norms.stage2.bias   | MISSING    | 
+hidden_states_norms.stage4.bias   | MISSING    | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING:	those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.
+W0530 13:51:58.861000 28424 torch\utils\flop_counter.py:29] triton not found; flop counting will not work for triton kernels
+W0530 13:52:04.552000 55576 torch\utils\flop_counter.py:29] triton not found; flop counting will not work for triton kernels
+W0530 13:52:10.733000 53064 torch\utils\flop_counter.py:29] triton not found; flop counting will not work for triton kernels
+W0530 13:52:16.832000 42828 torch\utils\flop_counter.py:29] triton not found; flop counting will not work for triton kernels
+W0530 13:52:23.354000 53380 torch\utils\flop_counter.py:29] triton not found; flop counting will not work for triton kernels
+W0530 13:52:29.533000 55084 torch\utils\flop_counter.py:29] triton not found; flop counting will not work for triton kernels
+W0530 13:52:35.391000 54796 torch\utils\flop_counter.py:29] triton not found; flop counting will not work for triton kernels
+W0530 13:52:41.316000 33896 torch\utils\flop_counter.py:29] triton not found; flop counting will not work for triton kernels
+W0530 13:52:46.367000 56080 torch\utils\flop_counter.py:29] triton not found; flop counting will not work for triton kernels
+W0530 13:52:51.408000 18892 torch\utils\flop_counter.py:29] triton not found; flop counting will not work for triton kernels
+C:\Users\tiruu\Desktop\sar2opt_light\src\models\llwt_v5\proof_hfd_generalize.py:361: UserWarning: Converting a tensor with requires_grad=True to a scalar may lead to unexpected behavior.
+Consider using tensor.detach() first. (Triggered internally at C:\actions-runner\_work\pytorch\pytorch\pytorch\torch\csrc\autograd\generated\python_variable_methods.cpp:837.)
+  f'g={float(g_loss):.3f} d={float(d_loss):.3f}{hfd_str}')
+W0530 13:55:41.503000 22524 torch\utils\flop_counter.py:29] triton not found; flop counting will not work for triton kernels
+W0530 13:55:47.746000 7476 torch\utils\flop_counter.py:29] triton not found; flop counting will not work for triton kernels
+W0530 13:55:54.019000 52980 torch\utils\flop_counter.py:29] triton not found; flop counting will not work for triton kernels
+W0530 13:56:00.384000 38940 torch\utils\flop_counter.py:29] triton not found; flop counting will not work for triton kernels
+W0530 13:56:06.872000 53976 torch\utils\flop_counter.py:29] triton not found; flop counting will not work for triton kernels
+W0530 13:56:13.289000 51588 torch\utils\flop_counter.py:29] triton not found; flop counting will not work for triton kernels
+W0530 13:56:19.791000 30092 torch\utils\flop_counter.py:29] triton not found; flop counting will not work for triton kernels
+W0530 13:56:26.005000 43344 torch\utils\flop_counter.py:29] triton not found; flop counting will not work for triton kernels
+W0530 13:56:31.697000 44892 torch\utils\flop_counter.py:29] triton not found; flop counting will not work for triton kernels
+W0530 13:56:37.954000 37168 torch\utils\flop_counter.py:29] triton not found; flop counting will not work for triton kernels
+[hfd-gen] BASE: warm G keys=245 (miss 0, unexp 0); D keys=18 (miss 0, unexp 0)
+[hfd-gen] BASE HELD-OUT step    0/2200: mid=0.6417 high=0.5378 detpow=0.5517 lpips=0.3078 psnr=17.207 ssim=0.3060
+[hfd-gen] BASE HELD-OUT step  550/2200: mid=0.6927 high=0.6680 detpow=0.6451 lpips=0.3068 psnr=17.018 ssim=0.2947  g=4.083 d=0.086
+[hfd-gen] BASE HELD-OUT step 1100/2200: mid=0.6629 high=0.6540 detpow=0.6348 lpips=0.3081 psnr=17.037 ssim=0.2946  g=2.755 d=0.102
+[hfd-gen] BASE HELD-OUT step 1650/2200: mid=0.6565 high=0.6447 detpow=0.6271 lpips=0.3061 psnr=17.111 ssim=0.2953  g=3.410 d=0.081
+[hfd-gen] BASE HELD-OUT step 2200/2200: mid=0.6521 high=0.6426 detpow=0.6257 lpips=0.3066 psnr=17.084 ssim=0.2975  g=3.480 d=0.080
+[hfd-gen] BASE: 2200 steps in 390s (0.177s/step)
+
+[hfd-gen] ===== ARM HFD ===== fresh warm G+D reload (HF-D ON)
+Loading weights:   0%|          | 0/196 [00:00<?, ?it/s]Loading weights: 100%|##########| 196/196 [00:00<00:00, 9431.89it/s]
+[transformers] [1mConvNextV2Backbone LOAD REPORT[0m from: facebook/convnextv2-tiny-22k-224
+Key                               | Status     | 
+----------------------------------+------------+-
+convnextv2.layernorm.bias         | UNEXPECTED | 
+convnextv2.layernorm.weight       | UNEXPECTED | 
+classifier.bias                   | UNEXPECTED | 
+classifier.weight                 | UNEXPECTED | 
+hidden_states_norms.stage4.weight | MISSING    | 
+hidden_states_norms.stage1.weight | MISSING    | 
+hidden_states_norms.stage3.bias   | MISSING    | 
+hidden_states_norms.stage1.bias   | MISSING    | 
+hidden_states_norms.stage2.weight | MISSING    | 
+hidden_states_norms.stage3.weight | MISSING    | 
+hidden_states_norms.stage2.bias   | MISSING    | 
+hidden_states_norms.stage4.bias   | MISSING    | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING:	those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.
+W0530 13:59:32.071000 52304 torch\utils\flop_counter.py:29] triton not found; flop counting will not work for triton kernels
+W0530 13:59:38.747000 55232 torch\utils\flop_counter.py:29] triton not found; flop counting will not work for triton kernels
+W0530 13:59:45.037000 51212 torch\utils\flop_counter.py:29] triton not found; flop counting will not work for triton kernels
+W0530 13:59:51.076000 43060 torch\utils\flop_counter.py:29] triton not found; flop counting will not work for triton kernels
+W0530 13:59:57.074000 46160 torch\utils\flop_counter.py:29] triton not found; flop counting will not work for triton kernels
+W0530 14:00:03.153000 48228 torch\utils\flop_counter.py:29] triton not found; flop counting will not work for triton kernels
+W0530 14:00:09.237000 30676 torch\utils\flop_counter.py:29] triton not found; flop counting will not work for triton kernels
+W0530 14:00:15.362000 42692 torch\utils\flop_counter.py:29] triton not found; flop counting will not work for triton kernels
+W0530 14:00:20.828000 51812 torch\utils\flop_counter.py:29] triton not found; flop counting will not work for triton kernels
+W0530 14:00:26.831000 13052 torch\utils\flop_counter.py:29] triton not found; flop counting will not work for triton kernels
+W0530 14:04:04.053000 54820 torch\utils\flop_counter.py:29] triton not found; flop counting will not work for triton kernels
+W0530 14:04:09.893000 55192 torch\utils\flop_counter.py:29] triton not found; flop counting will not work for triton kernels
+W0530 14:04:15.906000 53016 torch\utils\flop_counter.py:29] triton not found; flop counting will not work for triton kernels
+W0530 14:04:22.343000 48300 torch\utils\flop_counter.py:29] triton not found; flop counting will not work for triton kernels
+W0530 14:04:28.966000 44548 torch\utils\flop_counter.py:29] triton not found; flop counting will not work for triton kernels
+W0530 14:04:35.105000 46952 torch\utils\flop_counter.py:29] triton not found; flop counting will not work for triton kernels
+W0530 14:04:41.250000 48260 torch\utils\flop_counter.py:29] triton not found; flop counting will not work for triton kernels
+W0530 14:04:47.435000 49664 torch\utils\flop_counter.py:29] triton not found; flop counting will not work for triton kernels
+W0530 14:04:53.450000 55176 torch\utils\flop_counter.py:29] triton not found; flop counting will not work for triton kernels
+W0530 14:04:59.756000 47596 torch\utils\flop_counter.py:29] triton not found; flop counting will not work for triton kernels
+[hfd-gen] HFD: warm G keys=245 (miss 0, unexp 0); D keys=18 (miss 0, unexp 0)
+[hfd-gen] HFD HELD-OUT step    0/2200: mid=0.6417 high=0.5378 detpow=0.5517 lpips=0.3078 psnr=17.207 ssim=0.3060
+[hfd-gen] HFD HELD-OUT step  550/2200: mid=0.7348 high=0.7109 detpow=0.7116 lpips=0.3052 psnr=16.934 ssim=0.2889  g=3.634 d=0.079 hfd_d=0.233
+[hfd-gen] HFD HELD-OUT step 1100/2200: mid=0.7070 high=0.6737 detpow=0.6750 lpips=0.3081 psnr=16.947 ssim=0.2925  g=3.324 d=0.095 hfd_d=0.238
+[hfd-gen] HFD HELD-OUT step 1650/2200: mid=0.7209 high=0.7086 detpow=0.7046 lpips=0.3051 psnr=16.957 ssim=0.2878  g=3.089 d=0.135 hfd_d=0.244
+[hfd-gen] HFD HELD-OUT step 2200/2200: mid=0.6952 high=0.6963 detpow=0.6873 lpips=0.3070 psnr=16.978 ssim=0.2935  g=3.526 d=0.120 hfd_d=0.247
+[hfd-gen] HFD: 2200 steps in 502s (0.228s/step)
+[hfd-gen] HFD: HF-D stable (last d_loss=0.2474, bounded throughout — spectral norm held)
+
+========================================================================================
+[hfd-gen] MID-FREQ POWER RATIO (HELD-OUT; GT=1.0; closer to 1.0 = sharper)
+========================================================================================
+    step |       BASE |        HFD   (PRIMARY blur metric)
+       0 |     0.6417 |     0.6417
+     550 |     0.6927 |     0.7348
+    1100 |     0.6629 |     0.7070
+    1650 |     0.6565 |     0.7209
+    2200 |     0.6521 |     0.6952
+
+========================================================================================
+[hfd-gen] DETAIL-BAND POWER RATIO (HELD-OUT; GT=1.0; closer to 1.0 = matched detail)
+========================================================================================
+    step |       BASE |        HFD   (detail energy match)
+       0 |     0.5517 |     0.5517
+     550 |     0.6451 |     0.7116
+    1100 |     0.6348 |     0.6750
+    1650 |     0.6271 |     0.7046
+    2200 |     0.6257 |     0.6873
+
+========================================================================================
+[hfd-gen] HIGH-BAND POWER RATIO (HELD-OUT; GT=1.0; >>1 = incoherent noise)
+========================================================================================
+    step |       BASE |        HFD   (coherence guard)
+       0 |     0.5378 |     0.5378
+     550 |     0.6680 |     0.7109
+    1100 |     0.6540 |     0.6737
+    1650 |     0.6447 |     0.7086
+    2200 |     0.6426 |     0.6963
+
+========================================================================================
+[hfd-gen] LPIPS (HELD-OUT; lower = better perceptual)
+========================================================================================
+    step |       BASE |        HFD   (perceptual / sharpness-aware)
+       0 |     0.3078 |     0.3078
+     550 |     0.3068 |     0.3052
+    1100 |     0.3081 |     0.3081
+    1650 |     0.3061 |     0.3051
+    2200 |     0.3066 |     0.3070
+
+========================================================================================
+[hfd-gen] PSNR (HELD-OUT; NOT a sharpness judge — GT misaligned)
+========================================================================================
+    step |       BASE |        HFD   (pixel; rewards blur under misalign)
+       0 |    17.2069 |    17.2069
+     550 |    17.0179 |    16.9338
+    1100 |    17.0371 |    16.9471
+    1650 |    17.1107 |    16.9565
+    2200 |    17.0837 |    16.9778
+
+========================================================================================
+[hfd-gen] SSIM (HELD-OUT)
+========================================================================================
+    step |       BASE |        HFD   (structural)
+       0 |     0.3060 |     0.3060
+     550 |     0.2947 |     0.2889
+    1100 |     0.2946 |     0.2925
+    1650 |     0.2953 |     0.2878
+    2200 |     0.2975 |     0.2935
+
+========================================================================================
+[hfd-gen] VERDICT
+========================================================================================
+[hfd-gen] HELD-OUT after N=2200 steps: midfreq BASE=0.6521 HFD=0.6952 (GT=1.0); highband BASE=0.6426 HFD=0.6963; LPIPS BASE=0.3066 HFD=0.3070 -> HFD SHARPER&COHERENT

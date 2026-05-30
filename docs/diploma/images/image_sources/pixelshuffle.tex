@@ -1,0 +1,123 @@
+\documentclass[border=14pt, tikz]{standalone}
+\usepackage{tikz}
+\usepackage{amsmath}
+\usepackage[T2A]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[main=russian,english]{babel}
+\usetikzlibrary{arrows.meta}
+
+% Sub-pixel channel colours
+\colorlet{CZ} {red!38}
+\colorlet{CO} {cyan!48}
+\colorlet{CT} {lime!55}
+\colorlet{CTH}{orange!48}
+
+% ── Pre-computed layout constants ─────────────────────────────────────────────
+% cs=0.42  gap=0.10  stepY = 2*cs+gap = 0.94
+% ch3 yOffset=0.00  ch2=0.94  ch1=1.88  ch0=2.82
+% inH = 2.82+2*0.42 = 3.66    midY = 1.83
+% lx  = 2*0.42+0.05 = 0.89
+% ox  = 0.84+1.75+1.5+1.5 = 5.09  (extra gap added)
+% oy  = (3.66-4*0.42)/2 = 0.99
+
+\def\cs{0.42}
+
+\begin{document}
+\begin{tikzpicture}[font=\sffamily]
+
+% ── INPUT: 4 channel grids (each 2×2), stacked bottom→top ────────────────────
+
+% ch3 (orange)  y=0.00
+\foreach \c in {0,1} \foreach \r in {0,1}
+  {\filldraw[CTH, draw=black!25, line width=0.3pt]
+     (\c*0.42, \r*0.42) rectangle +(0.42,0.42);}
+
+% ch2 (lime)    y=0.94
+\foreach \c in {0,1} \foreach \r in {0,1}
+  {\filldraw[CT, draw=black!25, line width=0.3pt]
+     (\c*0.42, 0.94+\r*0.42) rectangle +(0.42,0.42);}
+
+% ch1 (cyan)    y=1.88
+\foreach \c in {0,1} \foreach \r in {0,1}
+  {\filldraw[CO, draw=black!25, line width=0.3pt]
+     (\c*0.42, 1.88+\r*0.42) rectangle +(0.42,0.42);}
+
+% ch0 (red)     y=2.82
+\foreach \c in {0,1} \foreach \r in {0,1}
+  {\filldraw[CZ, draw=black!25, line width=0.3pt]
+     (\c*0.42, 2.82+\r*0.42) rectangle +(0.42,0.42);}
+
+% Channel labels
+\node[right, font=\tiny\sffamily] at (0.89, 0.21) {$c_3$};
+\node[right, font=\tiny\sffamily] at (0.89, 1.15) {$c_2$};
+\node[right, font=\tiny\sffamily] at (0.89, 2.09) {$c_1$};
+\node[right, font=\tiny\sffamily] at (0.89, 3.03) {$c_0$};
+
+% Dimension labels
+\node[above, font=\scriptsize\sffamily] at (0.42, 3.66)
+  {\textbf{Вход:} $(C{\cdot}r^2,\ H,\ W)$};
+\node[below, font=\scriptsize\sffamily] at (0.42, 0)
+  {$(4,\ 2,\ 2)$};
+
+% ── ARROW ────────────────────────────────────────────────────────────────────
+\draw[-Stealth, thick] (1.10, 1.83) -- (4.60, 1.83)
+  node[midway, above, font=\scriptsize\sffamily] {PixelShuffle$(r{=}2)$};
+
+% ── OUTPUT: 4×4 grid, vertically centred with input (oy=0.99) ────────────────
+% Color pattern  (row 0 = bottom):
+%   even row, even col → CZ     even row, odd col  → CO
+%   odd  row, even col → CT     odd  row, odd  col → CTH
+
+% Row 0  (y = 0.99)
+\filldraw[CZ,  draw=black!25, line width=0.3pt] (5.09, 0.99) rectangle +(0.42,0.42);
+\filldraw[CO,  draw=black!25, line width=0.3pt] (5.51, 0.99) rectangle +(0.42,0.42);
+\filldraw[CZ,  draw=black!25, line width=0.3pt] (5.93, 0.99) rectangle +(0.42,0.42);
+\filldraw[CO,  draw=black!25, line width=0.3pt] (6.35, 0.99) rectangle +(0.42,0.42);
+% Row 1  (y = 1.41)
+\filldraw[CT,  draw=black!25, line width=0.3pt] (5.09, 1.41) rectangle +(0.42,0.42);
+\filldraw[CTH, draw=black!25, line width=0.3pt] (5.51, 1.41) rectangle +(0.42,0.42);
+\filldraw[CT,  draw=black!25, line width=0.3pt] (5.93, 1.41) rectangle +(0.42,0.42);
+\filldraw[CTH, draw=black!25, line width=0.3pt] (6.35, 1.41) rectangle +(0.42,0.42);
+% Row 2  (y = 1.83)
+\filldraw[CZ,  draw=black!25, line width=0.3pt] (5.09, 1.83) rectangle +(0.42,0.42);
+\filldraw[CO,  draw=black!25, line width=0.3pt] (5.51, 1.83) rectangle +(0.42,0.42);
+\filldraw[CZ,  draw=black!25, line width=0.3pt] (5.93, 1.83) rectangle +(0.42,0.42);
+\filldraw[CO,  draw=black!25, line width=0.3pt] (6.35, 1.83) rectangle +(0.42,0.42);
+% Row 3  (y = 2.25)
+\filldraw[CT,  draw=black!25, line width=0.3pt] (5.09, 2.25) rectangle +(0.42,0.42);
+\filldraw[CTH, draw=black!25, line width=0.3pt] (5.51, 2.25) rectangle +(0.42,0.42);
+\filldraw[CT,  draw=black!25, line width=0.3pt] (5.93, 2.25) rectangle +(0.42,0.42);
+\filldraw[CTH, draw=black!25, line width=0.3pt] (6.35, 2.25) rectangle +(0.42,0.42);
+
+% Dimension labels
+\node[above, font=\scriptsize\sffamily] at (5.88, 3.30)
+  {\textbf{Выход:} $(C,\ rH,\ rW)$};
+\node[below, font=\scriptsize\sffamily] at (5.88, 0.99)
+  {$(1,\ 4,\ 4)$};
+
+% Highlight one r×r sub-block (top-left 2×2 of output)
+\draw[blue!65, dashed, semithick, rounded corners=1pt]
+  (5.06, 1.80) rectangle (5.94, 2.70);
+\node[above, font=\tiny\sffamily, blue!65] at (5.50, 2.70)
+  {один $r{\times}r$ блок};
+
+% ── LEGEND ───────────────────────────────────────────────────────────────────
+\filldraw[CZ,  draw=black!30] (7.07, 2.67) rectangle +(0.28,0.28);
+\node[right, font=\tiny\sffamily] at (7.37, 2.81) {$c_0$};
+\filldraw[CO,  draw=black!30] (7.07, 2.22) rectangle +(0.28,0.28);
+\node[right, font=\tiny\sffamily] at (7.37, 2.36) {$c_1$};
+\filldraw[CT,  draw=black!30] (7.07, 1.77) rectangle +(0.28,0.28);
+\node[right, font=\tiny\sffamily] at (7.37, 1.91) {$c_2$};
+\filldraw[CTH, draw=black!30] (7.07, 1.32) rectangle +(0.28,0.28);
+\node[right, font=\tiny\sffamily] at (7.37, 1.46) {$c_3$};
+
+% ── BOTTOM: description ───────────────────────────────────────────────────────
+\node[below=0.8cm, align=center, font=\small\sffamily, text width=9cm]
+  at (4.30, 0) {
+    Каждые $r^2$ соседних каналов образуют один $r{\times}r$
+    под-пиксельный блок в пространстве выхода.
+    Разрешение $\times r$, каналов $\div r^2$.
+  };
+
+\end{tikzpicture}
+\end{document}

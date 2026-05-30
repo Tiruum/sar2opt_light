@@ -1,0 +1,275 @@
+
+\documentclass[border=8pt, multi, tikz]{standalone}
+\usepackage{import}
+\subimport{../layers/}{init}
+\usetikzlibrary{positioning}
+\usetikzlibrary{3d}
+\usetikzlibrary{calc}
+\usepackage[T2A]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[main=russian,english]{babel}
+
+\def\ConvColor{rgb:yellow,5;red,2.5;white,5}
+\def\ConvReluColor{rgb:yellow,5;red,5;white,5}
+\def\PoolColor{rgb:red,1;black,0.3}
+\def\UnpoolColor{rgb:blue,2;green,1;black,0.3}
+\def\FcColor{rgb:blue,5;red,2.5;white,5}
+\def\FcReluColor{rgb:blue,5;red,5;white,4}
+\def\SoftmaxColor{rgb:magenta,5;black,7}
+\def\SumColor{rgb:blue,5;green,15}
+
+\newcommand{\copymidarrow}{\tikz \draw[-Stealth,line width=0.8mm,draw={rgb:blue,4;red,1;green,1;black,3}] (-0.3,0) -- ++(0.3,0);}
+
+\begin{document}
+\begin{tikzpicture}
+\tikzstyle{connection}=[ultra thick,every node/.style={sloped,allow upside down},draw=\edgecolor,opacity=0.7]
+\tikzstyle{copyconnection}=[ultra thick,every node/.style={sloped,allow upside down},draw={rgb:blue,4;red,1;green,1;black,3},opacity=0.7]
+
+%% Входное РЛС-изображение
+\node[canvas is zy plane at x=0] (temp) at (-3,0,0)
+    {\includegraphics[width=8cm,height=8cm]{../images/sar_example.jpg}};
+
+%% Входной тензор РЛС
+\pic[shift={(0,0,0)}] at (0,0,0)
+    {Box={
+        name=sar_input,
+        caption=РЛС,
+        xlabel={{1, }},
+        zlabel=256,
+        fill=\ConvColor,
+        height=40,
+        width=1,
+        depth=40
+        }
+    };
+
+%% Адаптер РЛС
+\pic[shift={(1.5,0,0)}] at (sar_input-east)
+    {RightBandedBox={
+        name=ccr_sar,
+        caption={РЛС + Ли + Собель},
+        xlabel={{ 1, 1, 1 }},
+        zlabel=256,
+        fill=\ConvColor,
+        bandfill=\ConvReluColor,
+        height=40,
+        width={ 2 , 2 , 2 },
+        depth=40
+        }
+    };
+
+\draw [connection] (sar_input-east) -- node {\midarrow} (ccr_sar-west);
+
+%% Хаар-стем
+\pic[shift={(1.5,0,0)}] at (ccr_sar-east)
+    {Box={
+        name=haar_stem,
+        caption={Haar-stem\\DWT},
+        xlabel={{4, }},
+        zlabel=128,
+        fill=\ConvColor,
+        height=32,
+        width=2,
+        depth=32
+        }
+    };
+
+\draw [connection] (ccr_sar-east) -- node {\midarrow} (haar_stem-west);
+
+%% ConvNeXt V2 Этап 1
+\pic[shift={(1.5,0,0)}] at (haar_stem-east)
+    {RightBandedBox={
+        name=enc_s1,
+        caption={ConvNeXt\\Этап 1},
+        xlabel={{ 96, 96 }},
+        zlabel=64,
+        fill=\ConvColor,
+        bandfill=\ConvReluColor,
+        height=25,
+        width={ 3 , 3 },
+        depth=25
+        }
+    };
+
+\draw [connection] (haar_stem-east) -- node {\midarrow} (enc_s1-west);
+
+%% ConvNeXt V2 Этап 2
+\pic[shift={(1.5,0,0)}] at (enc_s1-east)
+    {RightBandedBox={
+        name=enc_s2,
+        caption={ConvNeXt\\Этап 2},
+        xlabel={{ 192, 192 }},
+        zlabel=32,
+        fill=\ConvColor,
+        bandfill=\ConvReluColor,
+        height=16,
+        width={ 4 , 4 },
+        depth=16
+        }
+    };
+
+\draw [connection] (enc_s1-east) -- node {\midarrow} (enc_s2-west);
+
+%% ConvNeXt V2 Этап 3
+\pic[shift={(1.5,0,0)}] at (enc_s2-east)
+    {RightBandedBox={
+        name=enc_s3,
+        caption={ConvNeXt\\Этап 3},
+        xlabel={{ 384, 384 }},
+        zlabel=16,
+        fill=\ConvColor,
+        bandfill=\ConvReluColor,
+        height=10,
+        width={ 5 , 5 },
+        depth=10
+        }
+    };
+
+\draw [connection] (enc_s2-east) -- node {\midarrow} (enc_s3-west);
+
+%% ConvNeXt V2 Этап 4 / Узкое место
+\pic[shift={(2,0,0)}] at (enc_s3-east)
+    {RightBandedBox={
+        name=enc_s4,
+        caption={ConvNeXt\\Этап 4\\$8{\times}8$},
+        xlabel={{ 768, 768 }},
+        zlabel=8,
+        fill=\ConvColor,
+        bandfill=\ConvReluColor,
+        height=6,
+        width={ 6 , 6 },
+        depth=6
+        }
+    };
+
+\draw [connection] (enc_s3-east) -- node {\midarrow} (enc_s4-west);
+
+%% PixelShuffle Этап 4  (256 кан., 16x16)
+\pic[shift={(2,0,0)}] at (enc_s4-east)
+    {Box={
+        name=dec_s4,
+        caption={PixelShuffle\\Этап 4},
+        xlabel={{256, }},
+        zlabel=16,
+        fill=\UnpoolColor,
+        opacity=0.8,
+        height=10,
+        width=3.5,
+        depth=10
+        }
+    };
+
+\draw [connection] (enc_s4-east) -- node {\midarrow} (dec_s4-west);
+
+%% PixelShuffle Этап 3  (128 кан., 32x32)
+\pic[shift={(2,0,0)}] at (dec_s4-east)
+    {Box={
+        name=dec_s3,
+        caption={PixelShuffle\\Этап 3},
+        xlabel={{128, }},
+        zlabel=32,
+        fill=\UnpoolColor,
+        opacity=0.8,
+        height=16,
+        width=3,
+        depth=16
+        }
+    };
+
+\draw [connection] (dec_s4-east) -- node {\midarrow} (dec_s3-west);
+
+%% PixelShuffle Этап 2  (64 кан., 64x64)
+\pic[shift={(2,0,0)}] at (dec_s3-east)
+    {Box={
+        name=dec_s2,
+        caption={PixelShuffle\\Этап 2},
+        xlabel={{64, }},
+        zlabel=64,
+        fill=\UnpoolColor,
+        opacity=0.8,
+        height=25,
+        width=2.5,
+        depth=25
+        }
+    };
+
+\draw [connection] (dec_s3-east) -- node {\midarrow} (dec_s2-west);
+
+%% PixelShuffle Этап 1  (32 кан., 128x128)
+\pic[shift={(2,0,0)}] at (dec_s2-east)
+    {Box={
+        name=dec_s1,
+        caption={PixelShuffle\\Этап 1},
+        xlabel={{32, }},
+        zlabel=128,
+        fill=\UnpoolColor,
+        opacity=0.8,
+        height=32,
+        width=2,
+        depth=32
+        }
+    };
+
+\draw [connection] (dec_s2-east) -- node {\midarrow} (dec_s1-west);
+
+%% Субполосная голова  (B, 12, 128, 128) = 3 x [LL LH HL HH]
+\pic[shift={(1.5,0,0)}] at (dec_s1-east)
+    {Box={
+        name=subband,
+        caption={Субполосы\\LL LH HL HH},
+        xlabel={{12, }},
+        zlabel=128,
+        fill=\SoftmaxColor,
+        opacity=0.8,
+        height=32,
+        width=2,
+        depth=32
+        }
+    };
+
+\draw [connection] (dec_s1-east) -- node {\midarrow} (subband-west);
+
+%% Обратный Хаар (фиксированный, без весов)
+\pic[shift={(1.5,0,0)}] at (subband-east)
+    {Box={
+        name=inv_haar,
+        caption={IHaar\\фикс., tanh},
+        xlabel={{3, }},
+        zlabel=256,
+        fill=\ConvColor,
+        height=40,
+        width=2,
+        depth=40
+        }
+    };
+
+\draw [connection] (subband-east) -- node {\midarrow} (inv_haar-west);
+
+%% Выходное оптическое изображение
+\node[canvas is zy plane at x=0] (out_img) at ($(inv_haar-east)+(3,0,0)$)
+    {\includegraphics[width=8cm,height=8cm]{../images/opt_example.jpg}};
+
+%% Пропускные связи  (кодировщик -> декодер, синие дуги)
+\path (enc_s3-southeast) -- (enc_s3-northeast) coordinate[pos=1.25] (enc_s3-top);
+\path (dec_s4-south)     -- (dec_s4-north)     coordinate[pos=1.25] (dec_s4-top);
+\draw [copyconnection] (enc_s3-northeast)
+    -- node {\copymidarrow} (enc_s3-top)
+    -- node {\copymidarrow} (dec_s4-top)
+    -- node {\copymidarrow} (dec_s4-north);
+
+\path (enc_s2-southeast) -- (enc_s2-northeast) coordinate[pos=1.25] (enc_s2-top);
+\path (dec_s3-south)     -- (dec_s3-north)     coordinate[pos=1.25] (dec_s3-top);
+\draw [copyconnection] (enc_s2-northeast)
+    -- node {\copymidarrow} (enc_s2-top)
+    -- node {\copymidarrow} (dec_s3-top)
+    -- node {\copymidarrow} (dec_s3-north);
+
+\path (enc_s1-southeast) -- (enc_s1-northeast) coordinate[pos=1.25] (enc_s1-top);
+\path (dec_s2-south)     -- (dec_s2-north)     coordinate[pos=1.25] (dec_s2-top);
+\draw [copyconnection] (enc_s1-northeast)
+    -- node {\copymidarrow} (enc_s1-top)
+    -- node {\copymidarrow} (dec_s2-top)
+    -- node {\copymidarrow} (dec_s2-north);
+
+\end{tikzpicture}
+\end{document}

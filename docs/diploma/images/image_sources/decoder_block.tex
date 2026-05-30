@@ -1,0 +1,113 @@
+
+\documentclass[border=8pt, multi, tikz]{standalone}
+\usepackage{import}
+\subimport{../layers/}{init}
+\usetikzlibrary{positioning}
+\usetikzlibrary{3d}
+\usetikzlibrary{calc}
+\usepackage[T2A]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[main=russian,english]{babel}
+
+\def\ConvColor{rgb:yellow,5;red,2.5;white,5}
+\def\ConvReluColor{rgb:yellow,5;red,5;white,5}
+\def\PSColor{rgb:blue,2;green,1;black,0.3}
+
+\newcommand{\copymidarrow}{%
+  \tikz \draw[-Stealth,line width=0.8mm,
+    draw={rgb:blue,4;red,1;green,1;black,3}] (-0.3,0) -- ++(0.3,0);}
+
+\begin{document}
+\begin{tikzpicture}
+\tikzstyle{connection}=[ultra thick,
+  every node/.style={sloped,allow upside down},
+  draw=\edgecolor, opacity=0.7]
+\tikzstyle{copyconnection}=[ultra thick,
+  every node/.style={sloped,allow upside down},
+  draw={rgb:blue,4;red,1;green,1;black,3}, opacity=0.7]
+\tikzstyle{shortcut}=[ultra thick,
+  every node/.style={sloped,allow upside down},
+  draw={rgb:red,4;black,2}, dashed, opacity=0.7]
+
+%% ── Вход x (C_in каналов, H×H) ──────────────────────────────────────────
+\pic[shift={(0,0,0)}] at (0,0,0)
+  {Box={
+    name=xin,
+    caption={Вход},
+    xlabel={{"$C_{in}$", }},
+    zlabel=H,
+    fill=\ConvColor,
+    height=20, width=2, depth=20
+  }};
+
+%% ── Conv 1×1 : C_in → 4·C_in ────────────────────────────────────────────
+\pic[shift={(1.5,0,0)}] at (xin-east)
+  {Box={
+    name=upconv,
+    caption={Conv $1{\times}1$},
+    xlabel={{"4C", }},
+    zlabel=H,
+    fill=\ConvColor,
+    height=20, width=6, depth=20
+  }};
+\draw[connection] (xin-east) -- node {\midarrow} (upconv-west);
+
+%% ── PixelShuffle r=2 : 4C → C, H → 2H ──────────────────────────────────
+\pic[shift={(1.5,0,0)}] at (upconv-east)
+  {Box={
+    name=ps,
+    caption={Pixel\\Shuffle $r{=}2$},
+    xlabel={{"C", }},
+    zlabel=2H,
+    fill=\PSColor,
+    opacity=0.8,
+    height=32, width=2.5, depth=32
+  }};
+\draw[connection] (upconv-east) -- node {\midarrow} (ps-west);
+
+%% ── 2× (ReflectPad + Conv 3×3 + GroupNorm + GELU) ───────────────────────
+\pic[shift={(2,0,0)}] at (ps-east)
+  {RightBandedBox={
+    name=refine,
+    caption={$2{\times}$(Conv\\+GN+GELU)},
+    xlabel={{"$C_{out}$", "$C_{out}$"}},
+    zlabel=2H,
+    fill=\ConvColor,
+    bandfill=\ConvReluColor,
+    height=32, width={3, 3}, depth=32
+  }};
+\draw[connection] (ps-east) -- node {\midarrow} (refine-west);
+
+%% ── Выход x' ─────────────────────────────────────────────────────────────
+\pic[shift={(1.5,0,0)}] at (refine-east)
+  {Box={
+    name=xout,
+    caption={Выход},
+    xlabel={{"$C_{out}$", }},
+    zlabel=2H,
+    fill=\ConvColor,
+    height=32, width=2.5, depth=32
+  }};
+\draw[connection] (refine-east) -- node {\midarrow} (xout-west);
+
+%% ── Skip-связь энкодера (синяя дуга) ─────────────────────────────────────
+\path (ps-southeast)  -- (ps-northeast)  coordinate[pos=1.3] (ps-top);
+\path (refine-south)  -- (refine-north)  coordinate[pos=1.3] (refine-top);
+\draw[copyconnection]
+  (ps-northeast)
+    -- node {\copymidarrow} (ps-top)
+    -- node {\copymidarrow} (refine-top)
+    -- node {\copymidarrow} (refine-north);
+\node[above, font=\small\sffamily, text={rgb:blue,4;red,1;green,1;black,3}]
+  at ($(ps-top)!0.5!(refine-top)$) {skip энкодера};
+
+%% ── Shortcut (красная дуга, огибает refine) ──────────────────────────────
+\path (ps-southeast)  -- (ps-northeast)  coordinate[pos=1.7] (sc-start);
+\path (xout-south)    -- (xout-north)    coordinate[pos=1.7] (sc-end);
+\draw[shortcut]
+  (ps-northeast) -- (sc-start) -- (sc-end) -- (xout-north);
+\node[above, font=\small\sffamily, red!70]
+  at ($(sc-start)!0.5!(sc-end)$) {shortcut (Conv $1{\times}1$)};
+
+\end{tikzpicture}
+\end{document}

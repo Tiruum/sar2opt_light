@@ -1,0 +1,115 @@
+\babel@toc {russian}{}\relax 
+\contentsline {chapter}{\numberline {1}Введение}{4}{chapter.1}%
+\contentsline {section}{\numberline {1.1}Актуальность темы}{4}{section.1.1}%
+\contentsline {section}{\numberline {1.2}Степень разработанности темы}{5}{section.1.2}%
+\contentsline {section}{\numberline {1.3}Цели и задачи работы}{5}{section.1.3}%
+\contentsline {section}{\numberline {1.4}Объект и предмет исследования}{6}{section.1.4}%
+\contentsline {section}{\numberline {1.5}Научная новизна работы}{6}{section.1.5}%
+\contentsline {section}{\numberline {1.6}Теоретическая и практическая значимость работы}{6}{section.1.6}%
+\contentsline {section}{\numberline {1.7}Методология и методы исследования}{6}{section.1.7}%
+\contentsline {section}{\numberline {1.8}Степень достоверности и апробация результатов}{7}{section.1.8}%
+\contentsline {chapter}{\numberline {2}Теоретические основы формирования изображений в радиолокационном и оптическом диапазонах}{8}{chapter.2}%
+\contentsline {section}{\numberline {2.1}Физические принципы радиолокационной съёмки с синтезированной апертурой (РСА/SAR)}{8}{section.2.1}%
+\contentsline {subsection}{\numberline {2.1.1}Специфические особенности РЛИ:}{9}{subsection.2.1.1}%
+\contentsline {section}{\numberline {2.2}Особенности мультиспектральных оптических данных ДЗЗ}{9}{section.2.2}%
+\contentsline {subsection}{\numberline {2.2.1}Уравнение переноса излучения (упрощенная модель)}{10}{subsection.2.2.1}%
+\contentsline {section}{\numberline {2.3}Сравнительный анализ доменов SAR и Optical}{10}{section.2.3}%
+\contentsline {paragraph}{Водные поверхности}{10}{section*.3}%
+\contentsline {paragraph}{Городская застройка}{10}{section*.5}%
+\contentsline {paragraph}{Растительность}{10}{section*.7}%
+\contentsline {paragraph}{Горные и лишенные растительности участки}{11}{section*.9}%
+\contentsline {section}{\numberline {2.4}Характеристики данных как входных сигналов для нейросетевых моделей}{13}{section.2.4}%
+\contentsline {chapter}{\numberline {3}Материалы и методы исследования}{15}{chapter.3}%
+\contentsline {section}{\numberline {3.1}Формальная постановка задачи}{15}{section.3.1}%
+\contentsline {section}{\numberline {3.2}Метрики и функции потерь}{15}{section.3.2}%
+\contentsline {subsection}{\numberline {3.2.1}Метрики оценки качества}{15}{subsection.3.2.1}%
+\contentsline {subsubsection}{Численные метрики}{16}{section*.11}%
+\contentsline {paragraph}{Среднеквадратичная ошибка (RMSE)}{16}{section*.12}%
+\contentsline {paragraph}{Пиковое отношение сигнал/шум (PSNR)}{16}{section*.13}%
+\contentsline {paragraph}{Индекс структурного сходства (SSIM)}{16}{section*.14}%
+\contentsline {paragraph}{Частотная ошибка (Frequency Domain Error, FDE)}{16}{section*.15}%
+\contentsline {subsubsection}{Метрики на основе предобученных моделей}{16}{section*.16}%
+\contentsline {paragraph}{Перцептивное сходство (LPIPS)}{16}{section*.17}%
+\contentsline {paragraph}{Расстояние Фреше для признаков Inception (FID)}{17}{section*.18}%
+\contentsline {paragraph}{Семантическая метрика SAMScore}{17}{section*.19}%
+\contentsline {subsection}{\numberline {3.2.2}Функции потерь}{17}{subsection.3.2.2}%
+\contentsline {subsubsection}{Численные потери}{17}{section*.20}%
+\contentsline {paragraph}{Пиксельные потери}{17}{section*.21}%
+\contentsline {paragraph}{Состязательная потеря (Adversarial Loss)}{18}{section*.22}%
+\contentsline {paragraph}{Потеря сопоставления признаков (Feature Matching Loss)}{18}{section*.23}%
+\contentsline {paragraph}{Частотная потеря (Frequency Loss)}{18}{section*.24}%
+\contentsline {subsubsection}{Потери на основе предобученных моделей}{18}{section*.25}%
+\contentsline {paragraph}{Перцептивная потеря на основе VGG (Perceptual Loss)}{18}{section*.26}%
+\contentsline {paragraph}{Перцептивная потеря на основе DINOv2}{19}{section*.27}%
+\contentsline {paragraph}{Семантическая потеря на основе SAM (SAM Loss)}{19}{section*.28}%
+\contentsline {subsubsection}{Полная целевая функция генератора}{19}{section*.29}%
+\contentsline {subsection}{\numberline {3.2.3}Дифференцируемость компонент}{19}{subsection.3.2.3}%
+\contentsline {subsection}{\numberline {3.2.4}Сводная таблица}{20}{subsection.3.2.4}%
+\contentsline {section}{\numberline {3.3}Используемые наборы данных}{22}{section.3.3}%
+\contentsline {subsection}{\numberline {3.3.1}Датасет SEN1-2}{22}{subsection.3.3.1}%
+\contentsline {paragraph}{Физическая природа и формат радиолокационных данных.}{22}{section*.31}%
+\contentsline {paragraph}{Оптические данные и атмосферная коррекция.}{22}{section*.32}%
+\contentsline {paragraph}{Структура и лицензирование.}{22}{section*.33}%
+\contentsline {paragraph}{Выбор подмножества для экспериментов.}{23}{section*.34}%
+\contentsline {paragraph}{Предобработка данных и аугментации.}{23}{section*.35}%
+\contentsline {subparagraph}{Базовые аугментации.}{23}{section*.36}%
+\contentsline {subparagraph}{Опциональные стохастические аугментации.}{23}{section*.37}%
+\contentsline {subparagraph}{Обработка граничных артефактов.}{24}{section*.38}%
+\contentsline {subparagraph}{Стратегия применения.}{24}{section*.39}%
+\contentsline {subsection}{\numberline {3.3.2}Датасет QXS-SAROPT}{24}{subsection.3.3.2}%
+\contentsline {paragraph}{Физическая природа и формат радиолокационных данных.}{25}{section*.40}%
+\contentsline {paragraph}{Оптические данные и процедура регистрации.}{25}{section*.41}%
+\contentsline {paragraph}{Структура и лицензирование.}{25}{section*.43}%
+\contentsline {paragraph}{Выбор подмножества и стратегия аугментации.}{26}{section*.44}%
+\contentsline {paragraph}{Нормализация.}{26}{section*.45}%
+\contentsline {subsection}{\numberline {3.3.3}Сводная характеристика датасетов}{26}{subsection.3.3.3}%
+\contentsline {section}{\numberline {3.4}Выводы по третьей главе}{28}{section.3.4}%
+\contentsline {chapter}{\numberline {4}Общие подходы к решению задачи трансфера SAR $\rightarrow $ Optical и их развитие}{29}{chapter.4}%
+\contentsline {section}{\numberline {4.1}Парные методы на основе условных GAN (семейство Pix2Pix)}{29}{section.4.1}%
+\contentsline {subsection}{\numberline {4.1.1}Базовая архитектура и принцип обучения}{30}{subsection.4.1.1}%
+\contentsline {subsection}{\numberline {4.1.2}Применение к SAR-изображениям и типовые ограничения}{31}{subsection.4.1.2}%
+\contentsline {section}{\numberline {4.2}Непарные методы: CycleGAN}{32}{section.4.2}%
+\contentsline {subsection}{\numberline {4.2.1}Принцип циклической согласованности}{32}{subsection.4.2.1}%
+\contentsline {subsection}{\numberline {4.2.2}Проблемы цвета, галлюцинаций и структурного коллапса}{33}{subsection.4.2.2}%
+\contentsline {section}{\numberline {4.3}Архитектурные инновации в GAN для SAR-изображений}{33}{section.4.3}%
+\contentsline {subsection}{\numberline {4.3.1}Многостадийные и кросс-модальные структуры (CFR, HRNet-подобные схемы)}{34}{subsection.4.3.1}%
+\contentsline {subsubsection}{Частотные и вейвлет-ориентированные подходы}{35}{section*.55}%
+\contentsline {subsubsection}{Вспомогательные условия и физические априорные данные}{36}{section*.57}%
+\contentsline {section}{\numberline {4.4}Трансформеры и гибридные CNN--Transformer архитектуры}{37}{section.4.4}%
+\contentsline {subsubsection}{Ограничения свёрточных сетей в кросс-модальном переводе}{37}{section*.58}%
+\contentsline {subsubsection}{Интеграция Vision Transformer и Swin-Transformer в генераторы}{37}{section*.59}%
+\contentsline {subsubsection}{Контекстные и кросс-attention модули для SAR--Optical}{38}{section*.60}%
+\contentsline {subsubsection}{Преимущества, вычислительные компромиссы и открытые вопросы}{38}{section*.61}%
+\contentsline {section}{\numberline {4.5}Сравнительная оценка моделей трансляции SAR--Optical на датасетах SEN-12 и QXS-SAROPT}{39}{section.4.5}%
+\contentsline {chapter}{\numberline {5}Разработка собственных моделей, адаптация архитектур существующих моделей, улучшения и оптимизация}{41}{chapter.5}%
+\contentsline {section}{\numberline {5.1}Аппаратные ограничения и вычислительные компромиссы}{41}{section.5.1}%
+\contentsline {section}{\numberline {5.2}Адаптация существующих моделей}{41}{section.5.2}%
+\contentsline {subsubsection}{Модификация архитектуры Pix2Pix}{41}{section*.64}%
+\contentsline {paragraph}{Нормализации}{42}{section*.65}%
+\contentsline {paragraph}{Проблема «шахматной доски»}{42}{section*.66}%
+\contentsline {paragraph}{Выравнивание признаков}{42}{section*.67}%
+\contentsline {paragraph}{Пространственное и частотное внимание}{42}{section*.68}%
+\contentsline {paragraph}{Инициализация и вычислительные оптимизации}{42}{section*.69}%
+\contentsline {subsubsection}{Архитектурные модификации в реализации модели, вдохновленной CFRWD}{43}{section*.71}%
+\contentsline {paragraph}{Пространственно-адаптивное слияние ветвей}{43}{section*.72}%
+\contentsline {paragraph}{Независимые потоки в частотной ветви}{45}{section*.73}%
+\contentsline {paragraph}{Пространственно-канальное внимание в частотной ветви}{45}{section*.74}%
+\contentsline {paragraph}{Стабилизация дискриминатора и стратегии оптимизации}{45}{section*.75}%
+\contentsline {paragraph}{Инициализация и вычислительные оптимизации}{45}{section*.76}%
+\contentsline {paragraph}{Визуализация результатов}{46}{section*.77}%
+\contentsline {subsection}{\numberline {5.2.1}Методологический итог}{47}{subsection.5.2.1}%
+\contentsline {section}{\numberline {5.3}Разработка собственных моделей}{49}{section.5.3}%
+\contentsline {subsection}{\numberline {5.3.1}Легковесная иерархическая архитектура с контекстным вниманием}{49}{subsection.5.3.1}%
+\contentsline {paragraph}{Результаты обучения}{50}{section*.82}%
+\contentsline {subparagraph}{Изображения}{50}{figure.caption.84}%
+\contentsline {paragraph}{Анализ количественных показателей}{50}{section*.85}%
+\contentsline {chapter}{\numberline {6}Результаты и анализ}{52}{chapter.6}%
+\contentsline {section}{\numberline {6.1}LLW-Former: вейвлет-обусловленная архитектура с многокомпонентной функцией потерь}{52}{section.6.1}%
+\contentsline {section}{LLW-Former: вейвлет-обусловленная архитектура с многокомпонентной функцией потерь}{52}{section.6.1}%
+\contentsline {subsection}{5.3.2.2 Финальная архитектура (v0.4.5)}{53}{section*.87}%
+\contentsline {subsection}{5.3.2.3 Функция потерь}{56}{section*.97}%
+\contentsline {subsection}{5.3.2.4 Эксперименты и обратный ablation}{58}{section*.105}%
+\contentsline {subsection}{5.3.2.5 Сравнение с существующими методами}{59}{section*.114}%
+\contentsline {subsection}{5.3.2.6 Выводы по подразделу}{61}{section*.116}%
+\contentsline {chapter}{\numberline {7}Заключение}{63}{chapter.7}%
+\contentsline {section}{Приложение}{66}{section*.118}%

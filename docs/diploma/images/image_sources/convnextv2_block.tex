@@ -1,0 +1,106 @@
+\documentclass[border=10pt, tikz]{standalone}
+\usepackage{tikz}
+\usepackage{amssymb}
+\usepackage[T2A]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[main=russian,english]{babel}
+\usetikzlibrary{positioning, arrows.meta, fit, backgrounds, calc}
+
+% --- цветовая палитра в стиле PlotNeuralNet ---
+\definecolor{CConv}{rgb}{1.00, 0.80, 0.40}   % тёплый жёлтый  – свёртка / линейный
+\definecolor{CNorm}{rgb}{0.70, 0.90, 1.00}   % голубой        – нормализация
+\definecolor{CAct} {rgb}{0.70, 1.00, 0.70}   % светло-зелёный – активация
+\definecolor{CGRN} {rgb}{1.00, 0.60, 0.60}   % коралловый     – GRN (новый)
+\definecolor{CTens}{rgb}{0.92, 0.92, 0.92}   % серый          – тензор
+\definecolor{CAdd} {rgb}{0.70, 1.00, 0.88}   % мятный         – сложение
+
+\tikzset{
+  opbox/.style={
+    draw=black!50, rounded corners=3pt, fill=#1,
+    minimum width=4.4cm, minimum height=0.75cm,
+    align=center, font=\small\sffamily
+  },
+  tenbox/.style={
+    draw=black!40, fill=CTens,
+    minimum width=4.4cm, minimum height=0.50cm,
+    align=center, font=\footnotesize\ttfamily
+  },
+  addcirc/.style={
+    draw=black!50, circle, fill=CAdd,
+    minimum size=0.68cm, inner sep=0pt,
+    font=\normalsize\sffamily
+  },
+  fwd/.style  ={-Stealth, semithick, black!70},
+  skip/.style ={-Stealth, semithick, blue!65, dashed},
+  annline/.style={gray!55, dashed, -Stealth, thin},
+}
+
+\begin{document}
+\begin{tikzpicture}[node distance=3.5mm]
+
+% ── Описание этапа (вверху) ───────────────────────────────────────────────
+\node[
+  draw=gray!45, rounded corners=4pt, fill=gray!8,
+  align=center, font=\scriptsize\sffamily, text width=4.4cm
+] (stageann) {
+  \textbf{Этап $k$}\\[2pt]
+  Субдискретизация: свёртка $2{\times}2$, шаг 2 + LN\\
+  каналы $C_{k-1} \to C_k$\\[2pt]
+  Блок повторяется $N_k$ раз\\
+  {\footnotesize Tiny: $N$ = 3,\,3,\,9,\,3 \quad
+   $C$ = 96,\,192,\,384,\,768}
+};
+
+% ── Входной тензор ────────────────────────────────────────────────────────
+\node[tenbox, below=6mm of stageann]                (xin)  {$x\ (H \times W \times C)$};
+\draw[annline] (stageann.south) -- (xin.north);
+
+% ── Операции блока ────────────────────────────────────────────────────────
+\node[opbox=CConv!65, below=of xin]    (dwc)   {Глуб. свёртка $7{\times}7$,\ групп $= C$};
+\node[opbox=CNorm!75, below=of dwc]    (ln)    {Норм. слоя (LayerNorm)};
+\node[opbox=CConv!65, below=of ln]     (exp)   {Линейный\quad $C \to 4C$};
+\node[opbox=CAct!80,  below=of exp]    (gelu)  {GELU};
+\node[opbox=CGRN!80,  below=of gelu]   (grn)   {GRN\quad{\footnotesize$\bigstar$\,новый}};
+\node[opbox=CConv!65, below=of grn]    (proj)  {Линейный\quad $4C \to C$};
+
+% ── Сложение и выходной тензор ────────────────────────────────────────────
+\node[addcirc, below=5.5mm of proj]    (add)   {$+$};
+\node[tenbox,  below=5.5mm of add]     (xout)  {$x'\ (H \times W \times C)$};
+
+% ── Прямые связи ──────────────────────────────────────────────────────────
+\foreach \s/\t in {xin/dwc, dwc/ln, ln/exp, exp/gelu, gelu/grn, grn/proj}{
+  \draw[fwd] (\s) -- (\t);
+}
+\draw[fwd] (proj) -- (add);
+\draw[fwd] (add)  -- (xout);
+
+% ── Остаточная связь (правая дуга) ────────────────────────────────────────
+\draw[skip] (xin.east) -- ++(1.65,0) |- (add.east);
+
+% ── Пунктирная граница блока ──────────────────────────────────────────────
+\begin{scope}[on background layer]
+  \node[
+    draw=gray!50, dashed, rounded corners=6pt, inner sep=9pt,
+    fit=(dwc)(ln)(exp)(gelu)(grn)(proj)(add),
+    label={[font=\small\sffamily, gray!65, inner sep=4pt]above:Блок ConvNeXt\,V2}
+  ] (blk) {};
+\end{scope}
+
+% ── Пояснение GRN (справа) ────────────────────────────────────────────────
+\node[
+  draw=CGRN!70, rounded corners=4pt, fill=CGRN!18,
+  align=left, font=\scriptsize\sffamily, text width=5.2cm,
+  right=2.4cm of grn
+] (grnann) {
+  \textbf{Глобальная нормализация отклика (GRN)}\\[3pt]
+  $g_c = \|X_c\|_2$\quad(прост. $\ell_2$-норма по каналу)\\[2pt]
+  $\tilde{g}_c = g_c \;/\; \mathrm{mean}_c(g)$\\[2pt]
+  $\mathrm{out} = X \odot \tilde{g} + \beta + X$\quad($\beta$ — обучаемый)\\[4pt]
+  Усиливает \textit{межканальную конкуренцию};\\
+  предотвращает коллапс признаков при MAE-предобучении.\\[3pt]
+  Заменяет тождественное отображение на этой позиции в ConvNeXt\,V1.
+};
+\draw[annline] (grn.east) -- (grnann.west);
+
+\end{tikzpicture}
+\end{document}
