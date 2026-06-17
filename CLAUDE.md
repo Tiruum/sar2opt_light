@@ -4,7 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Active development scope
 
-Only `src/models/cfrwd` is under active development. `src/models/pix2pix` is a legacy artifact kept for reproducibility — do not add features there.
+`src/models/llwt_v5` is the single canonical model module (LLW-Former). The full
+experimental lineage (cfrwd, huggingface_gan, llwt, llwt_v3/v4/v45, llwt_v45_base,
+sar2opt_v1, sarformer_wb, pix2pix) was removed during consolidation and lives in git
+tag `archive/full-lineage-v1` — restore from there to reproduce the diploma ablation
+table. `src/models/llwt_v5/ARCHITECTURE.md` is the authoritative architecture reference (RU).
+
+Capacity (tiny/base) and the HF-D novelty are pure config switches — see Configuration below.
 
 ## Commands
 
@@ -13,111 +19,67 @@ Only `src/models/cfrwd` is under active development. `src/models/pix2pix` is a l
 python -m venv .venv && .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 
-# Train CFRWD (must be run from repo root)
-python -m src.models.cfrwd.train
+# Train (must be run from repo root; config.yaml = base backbone + HF-D)
+python -m src.models.llwt_v5.train
+
+# One-step smoke (tiny/fast, uses config_smoke.yaml)
+python -m src.models.llwt_v5.smoke_train_step
 
 # Monitor training
-tensorboard --logdir output/cfrwd/tb_logs
+tensorboard --logdir output/llwt_v45/tb_logs
 
-# Clean/aggregate CSV logs
-python src/utils/clean_csv_logs.py
+# Quick-look inference (loads the base checkpoint via load_generator)
+python -m src.models.llwt_v5.inference
 
-# Quick generator architecture test (no data needed)
-python src/models/cfrwd/gen.py
+# Export the generator for Hugging Face (ckpt -> safetensors + config.json)
+python -m src.models.llwt_v5.export_hf --ckpt <path/to.ckpt> --out output/hf_export
 
-# Quick discriminator test
-python src/models/cfrwd/discriminator.py
+# Generator architecture smoke (no data; mock encoder)
+python -m src.models.llwt_v5.gen
 ```
 
 ## Configuration
 
-**`src/models/cfrwd/config.yaml` must exist before running anything.** This path is hardcoded in `train.py`, `main.py`, `factory.py`, `logger.py`, and `clean_csv_logs.py`. There is no CLI argument override.
+**`src/models/llwt_v5/config.yaml` must exist before running anything.** It is hardcoded in `train.py`/`main.py`/`factory.py`; there is no CLI override.
 
-`factory.py` loads the config via `@lru_cache`, so it is read once per process. Changing it mid-run has no effect.
-
-Key config fields to know:
-- `system.tb_version` — version string used as directory name for all outputs (TensorBoard, CSV, checkpoints, images). Change this for each new experiment.
-- `system.resume_ckpt` — set to a checkpoint path to resume training; `null` to start fresh.
-- `system.compile` — enables `torch.compile()` (first epoch slower).
-- `system.image_freq` — save visualization grid every N epochs; `0` disables.
-- `system.debug` — enables verbose `logger.debug()` output from model internals.
-- `scheduler.linear_decay_epochs` — how many final epochs to linearly decay LR to `scheduler.eta_min`.
-- `ema.use_ema` — enable EMA weight averaging via `EMAWeightAveraging` callback.
-
-Reference the pix2pix `config.yaml` at `src/models/pix2pix/config.yaml` for the expected schema structure.
+Capacity and the HF-D novelty are pure config switches:
+- `model.gen.backbone` — `facebook/convnextv2-base-22k-224` (default, ~88M, set `data.batch_size: 6`) or `...-tiny-22k-224` (~29M, `batch_size: 8`). `gen.py` derives stage channels from the backbone, so no code change is needed to switch capacity.
+- `loss.hfd_weight` + `model.dis.highfreq.enabled` — the high-frequency discriminator (HF-D, the thesis novelty). Set `hfd_weight: 0` to disable it (reproduces the plain baseline / ablation arm).
+- `system.tb_version` — directory name for all outputs; change per experiment.
+- `system.weights_ckpt` — warm-start G/D (strict=False); `system.resume_ckpt` — full resume, or `null` to start fresh.
 
 ## Architecture
 
-### Generator: `CFRWDGenerator` (`src/models/cfrwd/gen.py`)
+Full detail with `file:line` maps is in `src/models/llwt_v5/ARCHITECTURE.md`. Summary:
 
-Two parallel branches fused by a learnable scalar `fusion_weight` (initialized to 1.0):
+### Generator: `LLWv4Generator` (`src/models/llwt_v5/gen.py`)
 
-```
-output = tanh(cfr_out_logits + fusion_weight * hfcf_out_logits)
-```
+Single branch (no fusion weight): `SARAdapter` (raw + log-domain Lee despeckle + Sobel gradient → 3ch) → 2-level Haar stem (replaces the ConvNeXt patch-embed) → **ConvNeXt V2 backbone** (tiny or base, channels auto-derived from the HF `AutoBackbone`) → PixelShuffle U-Net decoder with skip-concats → 1-level **Inverse-Haar head** (zero-init, predicts subbands) → `tanh`. `HaarDown`/Haar weights use `register_buffer` (fixed, not trained). `forward(x, return_internals=True)` returns `(ŷ, subbands, raw_feat)` for visualization.
 
-**CFRBranch** — spatial reasoning:
-- Encoder: 4× `EncoderBlock` (Conv + InstanceNorm + LeakyReLU) → 64ch feature map
-- `CFRBlock`: HRNet-style multi-scale cross-fusion over 3 stages
-  - Channels distributed by resolution: c1=16 (full), c2=32 (½), c3=64 (¼), c4=128 (⅛)
-  - Final fusion upsamples all branches to full resolution before concat
-- Decoder: `DecoderBlock` (64→32) + `FinalDecoderBlock` (32→3, 7×7 conv, no activation)
+### Discriminator: `LLWFormerDiscriminator` (`src/models/llwt_v5/dis.py`)
 
-**HFCFBranch** — high-frequency wavelet branch:
-- `DWTBlock`: two-level Haar DWT; discards LL, uses LH/HL/HH detail subbands at both levels → g2 (64×64), g3 (128×128)
-- Two processing streams: top (`WDResBlock` bottlenecks on g2+g3 fused) and bottom (`RedBlock` on g3)
-- Streams merged, decoded via bilinear upsampling back to 256×256
-- `FinalDecoderBlock` (32→3, 7×7 conv, no activation)
+Holds several heads; the winning config runs exactly two:
+- **`MainDis`** — two-scale conditional PatchGAN (pix2pixHD-style, coarse + fine), **no spectral norm**. Input `cat([InstanceNorm(SAR), optical])`. Returns `((coarse, fine), feats)`; feats feed Feature Matching.
+- **`HighFreqDis` (HF-D, the novelty)** — spectral-norm PatchGAN judging the high-frequency residual `h(x) = x − gaussian_blur(x, σ=2)`. Conditional, LSGAN, **train-only** (not in the main `forward`; called in `training_step`). Gated by `model.dis.highfreq.enabled` AND `loss.hfd_weight > 0`; additive and ablation-clean (λ=0 ≡ baseline).
 
-`HaarDown` uses `register_buffer` — its weights are fixed (not trained). Do not call `_initialize_weights` on it.
+`SubbandDis`/`FourierDis`/`DeformationAligner` exist but are disabled (logit explosion / no gain).
 
-`forward(x, return_branches=True)` returns `(fused_out, cfr_tanh, hfcf_tanh)` for visualization.
+### Training loop & losses (`main.py`, `losses.py`)
 
-### Discriminator: `CFRWDPatchDis` (`src/models/cfrwd/discriminator.py`)
+Manual optimization (`automatic_optimization = False`); `configure_optimizers → [opt_d, opt_g]`. D steps on detached fakes, then G steps on a fresh forward. EMA (decay 0.999, from epoch 20; final eval uses EMA), bf16/channels-last, 200 epochs, linear-decay LR tail. G loss is additive (criterion built only when weight > 0): LSGAN(1) + FM(10) + **HF-D(1)** + MS-SSIM(1) + per-band Haar L1(2) + LPIPS-AlexNet(2) + FFL(10) + PatchNCE(0.1). **No pixel L1** — L1 lives only in the wavelet basis.
 
-Two-scale conditional PatchGAN. Both branches (`CFRWDPatchDisBranch`) are identical 5-layer spectral-norm PatchGAN. Input is concatenated `[SAR, optical]` pair — `in_channels` in config must equal `sar_channels + 3`.
+### Data (`src/data/sen12_full`, `src/data/sen12_full_align`)
 
-Returns `(outputs, features)` where `outputs = (large_logits, small_logits)` and `features` is the list of intermediate LeakyReLU activations from both branches combined (used by `FeatureMatchingLoss`).
-
-### Training loop: `SAR2OPTGANLightningModule` (`src/models/cfrwd/main.py`)
-
-Manual optimization (`automatic_optimization = False`). Optimizer order from `configure_optimizers`: `[optD, optG]`, unpacked as `opt_d, opt_g = self.optimizers()`.
-
-D update uses `torch.no_grad()` on the generator forward to avoid building the G computation graph. G update runs a fresh forward pass with gradients.
-
-`on_train_epoch_end` steps both LR schedulers and optionally saves a visualization grid + sends Telegram notification.
-
-`setup(stage)` grabs one batch from the train dataloader to hold as `fixed_sar`/`fixed_opt` for consistent epoch-end visualizations.
-
-### Losses (`src/models/cfrwd/losses.py`)
-
-- `GANLoss`: LSGAN (MSELoss) by default. Supports label smoothing via `real_label_smooth`/`fake_label_smooth` args.
-- `FeatureMatchingLoss`: mean L1 across all discriminator intermediate feature layers.
-- `L1Loss`: standard pixel-wise L1.
-
-Loss weights are in config under `loss.gan_weight`, `loss.fm_weight`, `loss.l1_weight`.
-
-### Data: `SEN12` dataset (`src/data/sen12/dataset.py`)
-
-Pairs SAR (`s1/`) and optical (`s2/`) images by filename substitution (`_s1_` → `_s2_`). Supports `sar_channels=1` (grayscale) or `sar_channels=3` (color). Uses albumentations transforms; `common_transform` must use `additional_targets={'optical': 'image'}` for synchronized geometric augmentations.
-
-`SEN12Datamodule` performs a single filesystem scan and passes `classes`/`items` directly to train/val dataset constructors to avoid redundant scans. Sets `drop_last=True` on the train loader (required for stable BatchNorm if used). Automatically disables `persistent_workers` when `num_workers=0`.
-
-Expected data layout:
-```
-data/sen12/<class>/s1/<file>
-data/sen12/<class>/s2/<file>
-```
+`data.dataset` selects the datamodule: `sen12_full` (raw) or `sen12_full_align` (gradient-domain ECC-aligned mirror; SAR byte-identical, optical warped). `transforms.py` holds the albumentations pipelines (synchronized geometric aug via `additional_targets={'optical': 'image'}`).
 
 ## Artifacts
 
-All outputs are keyed by `cfg.system.tb_version`:
-- Checkpoints: `checkpoints/cfrwd/<tb_version>/` — top-3 by `val/psnr` + `last.ckpt`
-- TensorBoard: `output/cfrwd/tb_logs/<tb_version>/`
-- CSV logs: `output/cfrwd/csv_logs/<tb_version>/`
-- Epoch images: `cfg.system.images_dir/<tb_version>/epoch_N.png`
-- Profiler: `cfg.system.profiler_dir/<tb_version>.txt`
-- Model summary: `cfg.system.summary_dir/<tb_version>.txt` (if `model.log_summary: true`)
+All outputs are keyed by `cfg.system.tb_version`. The path prefix is `llwt_v45` (legacy,
+from the warm-start lineage — see `system.*_dir` in config):
+- Checkpoints: `checkpoints/llwt_v45/<tb_version>/` — top-k by `val/psnr` + `last.ckpt`
+- TensorBoard: `output/llwt_v45/tb_logs/<tb_version>/`
+- Epoch images: `output/llwt_v45/images/<tb_version>/`
+- Profiler / summary: `output/llwt_v45/profiler/`, `output/llwt_v45/summary/`
 
 ## Experiment tracking
 
@@ -129,6 +91,7 @@ Log every experiment in `changelog.md` with the run ID, changes, and results. Th
 - `src/utils/notification.py`: Telegram notifications via `.env` keys `TELEGRAM_BOT_TOKEN` / `TELEGRAM_RECIEVER_USER_ID`. Bot instance is a singleton. Silent if keys are absent.
 - `src/utils/callbacks.py`: `EMAWeightAveraging` wraps Lightning's `WeightAveraging` with step- and epoch-based update gating.
 - `src/utils/cleanup_memory.py`: `full_cleanup()` should be called in the `finally` block to release CUDA memory and stop dataloader workers.
+- `src/utils/nsst_torch.py` + `NSST.py`: shearlet-experiment scaffolding kept for possible future work. Their lazy import of `SpeckleAwareModule`/`CBAM` from the archived `cfrwd` is dangling — restore those from tag `archive/full-lineage-v1` before use.
 
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
