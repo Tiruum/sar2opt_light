@@ -21,7 +21,7 @@
 | **WaveNeXt Base** | **18.54** | **0.432** | **58.5** | **0.241** |
 | WaveNeXt Tiny | 17.28 | 0.369 | 73.0 | 0.311 |
 
-Веса (Base) + ONNX + model card: **[umpaoflumpia/LLW-Former](https://huggingface.co/umpaoflumpia/LLW-Former)** на Hugging Face.
+Веса (Base) + ONNX + model card: **[umpaoflumpia/WaveNeXt](https://huggingface.co/umpaoflumpia/WaveNeXt)** на Hugging Face.
 
 ## Структура репозитория
 
