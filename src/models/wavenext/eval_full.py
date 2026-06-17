@@ -1,4 +1,4 @@
-"""Canonical full-val evaluation of the final LLW-Former under ONE protocol.
+"""Canonical full-val evaluation of the final WaveNeXt under ONE protocol.
 
 Recomputes PSNR / SSIM / LPIPS / FID for the production checkpoint on the FULL
 validation split, with a single, explicit convention so the number is directly
@@ -14,7 +14,7 @@ All metrics accumulate over every batch and reduce once at the end.
 
 Run from repo root::
 
-    python -m src.models.llwt_v5.eval_full
+    python -m src.models.wavenext.eval_full
 """
 import os
 import time
@@ -30,8 +30,8 @@ from torchmetrics.image import (
 )
 from torchmetrics.image.lpip import LearnedPerceptualImagePatchSimilarity
 
-from src.models.llwt_v5 import factory
-from src.models.llwt_v5.inference import _build_datamodule
+from src.models.wavenext import factory
+from src.models.wavenext.inference import _build_datamodule
 
 
 CHECKPOINT = "checkpoints/llwt_v45/llwt-v0.5.1-hfd/epoch=097-psnr=17.1615.ckpt"
@@ -41,7 +41,7 @@ DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 
 def main():
-    cfg = OmegaConf.load('./src/models/llwt_v5/config.yaml')
+    cfg = OmegaConf.load('./src/models/wavenext/config.yaml')
     if DATASET is not None:
         cfg.data.dataset = DATASET
     cfg.data.num_workers = 0  # Windows-safe; full pass is GPU-bound anyway

@@ -1,4 +1,4 @@
-"""LLW-Former v0.4.0 generator: Haar-Stem ConvNeXt V2 + Inverse-Haar output head.
+"""WaveNeXt v0.4.0 generator: Haar-Stem ConvNeXt V2 + Inverse-Haar output head.
 
 Architecture (Stage 1 of the v0.4.x roadmap — Inverse-Haar output only;
 per-band loss weighting and Fourier-D discriminator land in v0.4.1 / v0.4.2):
@@ -67,7 +67,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from src.models.llwt_v5.blocks import (
+from src.models.wavenext.blocks import (
     ConvUpsampleBlock,
     HaarDown,
     SARAdapter,
@@ -185,7 +185,7 @@ class InverseHaarUp(nn.Module):
 # ---------------------------------------------------------------------------
 
 
-class LLWv4Generator(nn.Module):
+class WaveNeXtGenerator(nn.Module):
     """Single-branch Haar-Stem ConvNeXt V2-Tiny generator with IHaar output head.
 
     Identical encoder to v0.3.x (HaarStemProjection + pretrained ConvNeXt V2
@@ -266,7 +266,7 @@ class LLWv4Generator(nn.Module):
             self.encoder.embeddings.patch_embeddings = haar_stem
         except AttributeError:
             raise RuntimeError(
-                "LLWv4Generator: could not locate ``embeddings.patch_embeddings`` on "
+                "WaveNeXtGenerator: could not locate ``embeddings.patch_embeddings`` on "
                 f"the loaded encoder (got type {type(self.encoder).__name__}).  "
                 "Only HF ConvNeXt V2 / Swin V2 backbones are supported."
             )
@@ -328,7 +328,7 @@ class LLWv4Generator(nn.Module):
             s0, s1, s2, s3 = feats[0], feats[1], feats[2], feats[3]
         else:
             raise RuntimeError(
-                f"LLWv4Generator: expected 4 feature maps from encoder, got {len(feats)}. "
+                f"WaveNeXtGenerator: expected 4 feature maps from encoder, got {len(feats)}. "
                 "Check cfg.model.gen.out_indices."
             )
         x = self.up4(s3, s2)
@@ -410,7 +410,7 @@ def _smoke_generator_shape() -> None:
     dummy nn.Module that mimics the HF AutoBackbone API (feature_maps list +
     embeddings.patch_embeddings attribute).
     """
-    print("[gen shape] running LLWv4Generator forward shape check with mock encoder")
+    print("[gen shape] running WaveNeXtGenerator forward shape check with mock encoder")
 
     class _MockEncoder(nn.Module):
         def __init__(self):
@@ -441,7 +441,7 @@ def _smoke_generator_shape() -> None:
             'use_sar_physics': False,
         }},
     })
-    gen = LLWv4Generator(cfg=cfg, encoder=_MockEncoder())
+    gen = WaveNeXtGenerator(cfg=cfg, encoder=_MockEncoder())
     sar = torch.randn(2, 1, 256, 256)
     out = gen(sar)
     assert out.shape == (2, 3, 256, 256), f"expected (2,3,256,256), got {tuple(out.shape)}"

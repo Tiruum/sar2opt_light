@@ -1,10 +1,10 @@
-"""Factory for LLW-Former v0.4.5 (self-contained).
+"""Factory for WaveNeXt v0.4.5 (self-contained).
 
-Vendored copy of the llwt/llwt_v4 factory so llwt_v5 owns its model, loss,
+Vendored copy of the llwt/llwt_v4 factory so wavenext owns its model, loss,
 optimiser, and scheduler builders independently — editing them here never
 touches other models.
 
-  * ``build_models`` -> ``(LLWv4Generator, LLWFormerDiscriminator)`` from the
+  * ``build_models`` -> ``(WaveNeXtGenerator, WaveNeXtDiscriminator)`` from the
     local ``gen``/``dis`` modules.
   * ``build_criterions`` instantiates a loss only when its cfg weight > 0.
     The dead spkdec/pr paths (no learnable lifting in v0.4.x) are dropped.
@@ -28,9 +28,9 @@ except Exception:
     bnb_optim = None
     _HAS_BNB = False
 
-from src.models.llwt_v5.dis import LLWFormerDiscriminator
-from src.models.llwt_v5.gen import LLWv4Generator
-from src.models.llwt_v5.losses import (
+from src.models.wavenext.dis import WaveNeXtDiscriminator
+from src.models.wavenext.gen import WaveNeXtGenerator
+from src.models.wavenext.losses import (
     AdaptiveLoss, FeatureMatchingLoss, FFLLoss, FoundationPerceptualLoss,
     GANLoss, LABChromaL1Loss, LPIPSLoss, MSSSIMLoss, MultiLayerPatchNCE,
     PerBandWaveletL1Loss, PlainL1Loss, WaveletDetailL1Loss,
@@ -50,8 +50,8 @@ __all__ = [
 
 def build_models(cfg):
     """Returns ``(netG, netD)`` — v0.4.5 generator + LLW discriminator."""
-    netG = LLWv4Generator(cfg=cfg)
-    netD = LLWFormerDiscriminator(cfg=cfg)
+    netG = WaveNeXtGenerator(cfg=cfg)
+    netD = WaveNeXtDiscriminator(cfg=cfg)
     return netG, netD
 
 
@@ -60,8 +60,8 @@ def build_aligner(cfg):
     align_cfg = getattr(cfg, 'align', None)
     if align_cfg is None or not bool(getattr(align_cfg, 'enabled', False)):
         return None, {}
-    from src.models.llwt_v5.align import DeformationAligner
-    from src.models.llwt_v5.losses import (
+    from src.models.wavenext.align import DeformationAligner
+    from src.models.wavenext.losses import (
         DeformationRegLoss, PSCAnchorLoss, BackscatterStructureLoss,
     )
     aligner = DeformationAligner(

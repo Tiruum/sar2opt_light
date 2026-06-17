@@ -1,4 +1,4 @@
-"""Discriminator visualization for LLW-Former v0.5.1-hfd.
+"""Discriminator visualization for WaveNeXt v0.5.1-hfd.
 
 Loads the trained generator AND discriminator (Main-D + HF-D) from one
 checkpoint, runs them on a batch, and writes a slide-ready 8-panel per-sample
@@ -21,7 +21,7 @@ structure is legible.
 
 Run from repo root::
 
-    python -m src.models.llwt_v5.viz_discriminator
+    python -m src.models.wavenext.viz_discriminator
 """
 import os
 
@@ -32,10 +32,10 @@ import numpy as np
 import torch
 from omegaconf import OmegaConf
 
-from src.models.llwt_v5 import factory
-from src.models.llwt_v5.gen import LLWv4Generator
+from src.models.wavenext import factory
+from src.models.wavenext.gen import WaveNeXtGenerator
 # importing _build_datamodule also installs the offline-HF env shims
-from src.models.llwt_v5.inference import _build_datamodule
+from src.models.wavenext.inference import _build_datamodule
 
 
 CHECKPOINT = "checkpoints/llwt_v45/llwt-v0.5.1-hfd/epoch=097-psnr=17.1615.ckpt"
@@ -44,7 +44,7 @@ SPLIT = "val"  # "train" or "val"
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 HP_AMP = 5.0  # display gain for the high-pass residual panel
 SAVE_INDIVIDUAL = True  # also dump each panel as its own PNG under sample_NNN/
-OUTPUT_DIR = f"./src/models/llwt_v5/output/pres_{SPLIT}"
+OUTPUT_DIR = f"./src/models/wavenext/output/pres_{SPLIT}"
 
 
 def _load_weights(netG, netD, ckpt):
@@ -122,7 +122,7 @@ def _save_heat(path, score_map, vmin, vmax, title):
 
 
 def main():
-    cfg = OmegaConf.load('./src/models/llwt_v5/config.yaml')
+    cfg = OmegaConf.load('./src/models/wavenext/config.yaml')
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
     dm = _build_datamodule(cfg)

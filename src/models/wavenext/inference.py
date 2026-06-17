@@ -1,4 +1,4 @@
-"""Standalone quick-look inference for LLW-Former v0.4.5.
+"""Standalone quick-look inference for WaveNeXt v0.4.5.
 
 Loads ``CHECKPOINT['state_dict']`` (defaults to the production ``last.ckpt``),
 strips the ``netG.`` prefix, applies the generator to ONE batch of SAR samples
@@ -7,7 +7,7 @@ PSNR/SSIM.  For full-split top-K-per-scene scoring use ``best_inference.py``.
 
 Run from repo root::
 
-    python -m src.models.llwt_v5.inference
+    python -m src.models.wavenext.inference
 """
 import os
 
@@ -33,14 +33,14 @@ from torchmetrics.image import (
     PeakSignalNoiseRatio, StructuralSimilarityIndexMeasure,
 )
 
-from src.models.llwt_v5.gen import LLWv4Generator
+from src.models.wavenext.gen import WaveNeXtGenerator
 
 
 # Base default (matches config.yaml backbone). Tiny ckpt: checkpoints/llwt_v45/llwt-v0.5.1-hfd/epoch=097-psnr=17.1615.ckpt
 CHECKPOINT = "checkpoints/llwt_v45_base/llwt-v0.4.6-base/epoch=199-psnr=18.5361.ckpt"
 N_IMAGES = 10
 SPLIT = "val"  # "train" or "val"
-OUTPUT_DIR = f"./src/models/llwt_v5/output/{SPLIT}"
+OUTPUT_DIR = f"./src/models/wavenext/output/{SPLIT}"
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 USE_LIVE_WEIGHTS = False
 
@@ -79,7 +79,7 @@ def _build_datamodule(cfg):
 
 
 def load_generator(ckpt_path, cfg, device="cuda", use_live_weights=False):
-    """Build ``LLWv4Generator(cfg)`` and load its ``netG.``-prefixed weights from a
+    """Build ``WaveNeXtGenerator(cfg)`` and load its ``netG.``-prefixed weights from a
     Lightning ``.ckpt``. Decoupled from the LightningModule / data / training config —
     needs only the generator block of ``cfg``. EMA-swapped weights live under
     ``state_dict``; pass ``use_live_weights=True`` for the non-EMA snapshot.
@@ -95,7 +95,7 @@ def load_generator(ckpt_path, cfg, device="cuda", use_live_weights=False):
     state_dict = {
         k[len('netG.'):]: v for k, v in src_dict.items() if k.startswith('netG.')
     }
-    g = LLWv4Generator(cfg)
+    g = WaveNeXtGenerator(cfg)
     missing, unexpected = g.load_state_dict(state_dict, strict=False)
     src_label = 'live (current_model_state)' if use_live_weights else 'EMA-or-live (state_dict)'
     print(f"[load_generator] {len(state_dict)} netG tensors ({src_label}) | "
@@ -104,7 +104,7 @@ def load_generator(ckpt_path, cfg, device="cuda", use_live_weights=False):
 
 
 def main():
-    cfg = OmegaConf.load('./src/models/llwt_v5/config.yaml')
+    cfg = OmegaConf.load('./src/models/wavenext/config.yaml')
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
     dm = _build_datamodule(cfg)

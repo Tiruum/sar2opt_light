@@ -1,4 +1,4 @@
-"""llwt_v5 Self-Aligning Wavelet GAN — deformation aligner + scattering-center detector.
+"""wavenext Self-Aligning Wavelet GAN — deformation aligner + scattering-center detector.
 
 DeformationAligner predicts a dense deformation field phi from the LL (low-frequency)
 Haar band of (fake, opt) and warps the GT optical into the generator's geometry.  phi is

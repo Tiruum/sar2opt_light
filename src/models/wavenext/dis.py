@@ -1,7 +1,7 @@
-"""Discriminators for LLW-Former v0.5.x (adversarial residual refiner).
+"""Discriminators for WaveNeXt v0.5.x (adversarial residual refiner).
 
 Self-contained copy of ``src/models/llwt/dis.py`` (verbatim, torch-only).
-Copied into llwt_v5 per the copy-then-import rule: the A3 adversarial-refiner
+Copied into wavenext per the copy-then-import rule: the A3 adversarial-refiner
 stage may tune D (spectral-norm gating, head capacity, LR) independently of
 the v4 generator-stage discriminator, so v5 owns its own copy rather than
 importing the shared one.
@@ -19,12 +19,13 @@ Two heads, both LSGAN-trained, both contributing to the feature-matching loss:
   space so the adversarial signal is forced to align frequency statistics
   (a known gap in the L1-anchored pix2pix lineage).
 
-The wrapper ``LLWFormerDiscriminator`` calls both heads and concatenates their
+The wrapper ``WaveNeXtDiscriminator`` calls both heads and concatenates their
 features for FM.  Returns ``((logits_main_pair, logits_subband), features)``.
 
-The Haar used by the subband head is **fixed** (not learnable) — separate
-from the generator's *learnable* lifting wavelet — so the discriminator
-cannot collude with the generator by co-adapting their wavelets.
+The Haar used by the subband head is **fixed** (not learnable), matching the
+generator's fixed Haar stem/head — there is no learnable lifting wavelet
+anywhere in the model, so the discriminator and generator cannot collude by
+co-adapting their wavelets.
 """
 from __future__ import annotations
 
@@ -36,7 +37,7 @@ import torch.nn.functional as F
 from torch.nn.utils import spectral_norm
 
 
-__all__ = ["LLWFormerDiscriminator", "MainDis", "SubbandDis", "FourierDis", "HighFreqDis", "FixedHaarDWT"]
+__all__ = ["WaveNeXtDiscriminator", "MainDis", "SubbandDis", "FourierDis", "HighFreqDis", "FixedHaarDWT"]
 
 
 def _sn(ci: int, co: int, k: int, s: int, p: int) -> nn.Conv2d:
@@ -321,11 +322,11 @@ class HighFreqDis(nn.Module):
     def highpass(img: torch.Tensor, sigma: float = 2.0) -> torch.Tensor:
         """``img - gaussian_blur(img, sigma)`` — residual high-pass.
 
-        ``gaussian_blur`` is reused verbatim from ``src.models.llwt_v5.align``
+        ``gaussian_blur`` is reused verbatim from ``src.models.wavenext.align``
         (separable, channel-wise).  Run in fp32 so the blur kernel conv is
         numerically tight under bf16 autocast.
         """
-        from src.models.llwt_v5.align import gaussian_blur
+        from src.models.wavenext.align import gaussian_blur
         x = img.float()
         return x - gaussian_blur(x, sigma=sigma)
 
@@ -344,7 +345,7 @@ class HighFreqDis(nn.Module):
 # ---------------------------------------------------------------------------
 
 
-class LLWFormerDiscriminator(nn.Module):
+class WaveNeXtDiscriminator(nn.Module):
     """Wraps ``MainDis``, ``SubbandDis``, and ``FourierDis`` with per-head enable flags.
 
     Forward returns a 6-tuple:
@@ -421,7 +422,7 @@ def _g(obj, key, default):
 
 
 # ---------------------------------------------------------------------------
-# Standalone smokes (run with: python -m src.models.llwt_v5.dis)
+# Standalone smokes (run with: python -m src.models.wavenext.dis)
 # ---------------------------------------------------------------------------
 
 
@@ -455,7 +456,7 @@ def _smoke_fourier_dis() -> None:
 def _smoke_wrapper() -> None:
     """Tier 1 wrapper smoke - verify 6-tuple return with fourier on/off."""
     from omegaconf import OmegaConf
-    print("[wrapper smoke] running LLWFormerDiscriminator with fourier off + on")
+    print("[wrapper smoke] running WaveNeXtDiscriminator with fourier off + on")
 
     # OFF path (default)
     cfg_off = OmegaConf.create({
@@ -465,7 +466,7 @@ def _smoke_wrapper() -> None:
             'fourier': {'enabled': False, 'ndf': 32, 'use_sn': True},
         }},
     })
-    d_off = LLWFormerDiscriminator(cfg=cfg_off)
+    d_off = WaveNeXtDiscriminator(cfg=cfg_off)
     sar = torch.randn(2, 1, 64, 64)
     opt = torch.randn(2, 3, 64, 64)
     main_pair, sub_l, fourier_l, feats_m, feats_s, feats_f = d_off(sar, opt)
@@ -483,7 +484,7 @@ def _smoke_wrapper() -> None:
             'fourier': {'enabled': True, 'ndf': 32, 'use_sn': True},
         }},
     })
-    d_on = LLWFormerDiscriminator(cfg=cfg_on)
+    d_on = WaveNeXtDiscriminator(cfg=cfg_on)
     main_pair, sub_l, fourier_l, feats_m, feats_s, feats_f = d_on(sar, opt)
     assert fourier_l is not None, "fourier enabled should produce logits"
     assert len(feats_f) == 3, f"fourier feats should be 3, got {len(feats_f)}"

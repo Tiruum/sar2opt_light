@@ -1,4 +1,4 @@
-"""Overall LLW-Former scheme: data flow + outputs + loss wiring.
+"""Overall WaveNeXt scheme: data flow + outputs + loss wiring.
 
 Emits a single static HTML page (inline SVG diagram + tables) showing:
   * the whole model data flow: SAR / GT optical -> Generator -> (fake, subbands)
@@ -13,15 +13,15 @@ forward needed — pure config read.
 
 Run from repo root::
 
-    python -m src.models.llwt_v5.viz_scheme
+    python -m src.models.wavenext.viz_scheme
 
-Then open ``src/models/llwt_v5/output/scheme.html``.
+Then open ``src/models/wavenext/output/scheme.html``.
 """
 import os
 
 from omegaconf import OmegaConf
 
-OUTPUT = "./src/models/llwt_v5/output/scheme.html"
+OUTPUT = "./src/models/wavenext/output/scheme.html"
 
 C = {  # palette (matches viz_blocks stages)
     'in': '#6b7280', 'gen': '#2563eb', 'out': '#16a34a',
@@ -155,7 +155,7 @@ def _loss_rows(L):
 
 
 def main():
-    cfg = OmegaConf.load('./src/models/llwt_v5/config.yaml')
+    cfg = OmegaConf.load('./src/models/wavenext/config.yaml')
     L = cfg.loss
     rows = _loss_rows(L)
 
@@ -181,7 +181,7 @@ def main():
     </table>"""
 
     html = f"""<!DOCTYPE html><html lang="ru"><head><meta charset="utf-8">
-<title>LLW-Former — общая схема модели и лоссов</title>
+<title>WaveNeXt — общая схема модели и лоссов</title>
 <style>
   body {{ font-family:-apple-system,Segoe UI,Roboto,sans-serif; margin:24px; color:#111; background:#fafafa; }}
   h1 {{ font-size:22px; }} h2 {{ font-size:16px; margin-top:26px; color:#374151; }}
@@ -201,7 +201,7 @@ def main():
   .leg span {{ padding:2px 9px; border-radius:5px; color:#fff; margin-right:6px; font-size:12px; }}
   .note {{ font-size:12px; color:#4b5563; max-width:1000px; }}
 </style></head><body>
-<h1>LLW-Former — общая схема: потоки данных, выходы и лоссы</h1>
+<h1>WaveNeXt — общая схема: потоки данных, выходы и лоссы</h1>
 <p class="leg">
   <span style="background:{C['in']}">вход</span>
   <span style="background:{C['gen']}">генератор</span>

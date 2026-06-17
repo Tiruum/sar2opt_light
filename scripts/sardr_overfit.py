@@ -32,12 +32,12 @@ sys.path.append(str(ROOT))
 
 
 from src.data.sen12_full.datamodule import SEN12FullDataModule
-from src.models.llwt_v5 import factory
-from src.models.llwt_v5.diffusion import ddim_sample
-from src.models.llwt_v5.main import _load_g_from_ckpt
+from src.models.wavenext import factory
+from src.models.wavenext.diffusion import ddim_sample
+from src.models.wavenext.main import _load_g_from_ckpt
 
 
-CONFIG_PATH = 'src/models/llwt_v5/config.yaml'
+CONFIG_PATH = 'src/models/wavenext/config.yaml'
 ITERATIONS  = 800
 BATCH_SIZE  = 4
 CHECK_EVERY = 100

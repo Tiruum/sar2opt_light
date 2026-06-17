@@ -4,11 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Active development scope
 
-`src/models/llwt_v5` is the single canonical model module (LLW-Former). The full
+`src/models/wavenext` is the single canonical model module (WaveNeXt). The full
 experimental lineage (cfrwd, huggingface_gan, llwt, llwt_v3/v4/v45, llwt_v45_base,
 sar2opt_v1, sarformer_wb, pix2pix) was removed during consolidation and lives in git
 tag `archive/full-lineage-v1` — restore from there to reproduce the diploma ablation
-table. `src/models/llwt_v5/ARCHITECTURE.md` is the authoritative architecture reference (RU).
+table. `src/models/wavenext/ARCHITECTURE.md` is the authoritative architecture reference (RU).
 
 Capacity (tiny/base) and the HF-D novelty are pure config switches — see Configuration below.
 
@@ -20,27 +20,27 @@ python -m venv .venv && .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 
 # Train (must be run from repo root; config.yaml = base backbone + HF-D)
-python -m src.models.llwt_v5.train
+python -m src.models.wavenext.train
 
 # One-step smoke (tiny/fast, uses config_smoke.yaml)
-python -m src.models.llwt_v5.smoke_train_step
+python -m src.models.wavenext.smoke_train_step
 
 # Monitor training
 tensorboard --logdir output/llwt_v45/tb_logs
 
 # Quick-look inference (loads the base checkpoint via load_generator)
-python -m src.models.llwt_v5.inference
+python -m src.models.wavenext.inference
 
 # Export the generator for Hugging Face (ckpt -> safetensors + config.json)
-python -m src.models.llwt_v5.export_hf --ckpt <path/to.ckpt> --out output/hf_export
+python -m src.models.wavenext.export_hf --ckpt <path/to.ckpt> --out output/hf_export
 
 # Generator architecture smoke (no data; mock encoder)
-python -m src.models.llwt_v5.gen
+python -m src.models.wavenext.gen
 ```
 
 ## Configuration
 
-**`src/models/llwt_v5/config.yaml` must exist before running anything.** It is hardcoded in `train.py`/`main.py`/`factory.py`; there is no CLI override.
+**`src/models/wavenext/config.yaml` must exist before running anything.** It is hardcoded in `train.py`/`main.py`/`factory.py`; there is no CLI override.
 
 Capacity and the HF-D novelty are pure config switches:
 - `model.gen.backbone` — `facebook/convnextv2-base-22k-224` (default, ~88M, set `data.batch_size: 6`) or `...-tiny-22k-224` (~29M, `batch_size: 8`). `gen.py` derives stage channels from the backbone, so no code change is needed to switch capacity.
@@ -50,13 +50,13 @@ Capacity and the HF-D novelty are pure config switches:
 
 ## Architecture
 
-Full detail with `file:line` maps is in `src/models/llwt_v5/ARCHITECTURE.md`. Summary:
+Full detail with `file:line` maps is in `src/models/wavenext/ARCHITECTURE.md`. Summary:
 
-### Generator: `LLWv4Generator` (`src/models/llwt_v5/gen.py`)
+### Generator: `WaveNeXtGenerator` (`src/models/wavenext/gen.py`)
 
 Single branch (no fusion weight): `SARAdapter` (raw + log-domain Lee despeckle + Sobel gradient → 3ch) → 2-level Haar stem (replaces the ConvNeXt patch-embed) → **ConvNeXt V2 backbone** (tiny or base, channels auto-derived from the HF `AutoBackbone`) → PixelShuffle U-Net decoder with skip-concats → 1-level **Inverse-Haar head** (zero-init, predicts subbands) → `tanh`. `HaarDown`/Haar weights use `register_buffer` (fixed, not trained). `forward(x, return_internals=True)` returns `(ŷ, subbands, raw_feat)` for visualization.
 
-### Discriminator: `LLWFormerDiscriminator` (`src/models/llwt_v5/dis.py`)
+### Discriminator: `WaveNeXtDiscriminator` (`src/models/wavenext/dis.py`)
 
 Holds several heads; the winning config runs exactly two:
 - **`MainDis`** — two-scale conditional PatchGAN (pix2pixHD-style, coarse + fine), **no spectral norm**. Input `cat([InstanceNorm(SAR), optical])`. Returns `((coarse, fine), feats)`; feats feed Feature Matching.

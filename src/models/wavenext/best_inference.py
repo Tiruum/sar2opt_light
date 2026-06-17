@@ -1,4 +1,4 @@
-"""LLW-Former v0.4.5 best-per-scene inference.
+"""WaveNeXt v0.4.5 best-per-scene inference.
 
 Iterates the full val (or train) split, scores every sample by the chosen
 ``METRIC`` (PSNR | SSIM | LPIPS), and writes the **top-K** SAR/Gen/GT
@@ -20,7 +20,7 @@ Output layout::
 
 Run from repo root::
 
-    python -m src.models.llwt_v5.best_inference
+    python -m src.models.wavenext.best_inference
 """
 from __future__ import annotations
 
@@ -52,15 +52,15 @@ from torchmetrics.image import (
 )
 from torchmetrics.image.fid import FrechetInceptionDistance
 
-from src.models.llwt_v5.inference import _build_datamodule
-from src.models.llwt_v5.gen import LLWv4Generator
+from src.models.wavenext.inference import _build_datamodule
+from src.models.wavenext.gen import WaveNeXtGenerator
 
 
 CHECKPOINT       = "checkpoints/llwt_v45/llwt-v0.5.1-hfd/epoch=097-psnr=17.1615.ckpt"
 TOP_K            = 3
 SPLIT            = "val"          # "val" or "train"
 METRIC           = "ssim"         # "psnr" | "ssim" | "lpips" — score used to rank
-OUTPUT_DIR       = f"./src/models/llwt_v5/output/best_{SPLIT}"
+OUTPUT_DIR       = f"./src/models/wavenext/output/best_{SPLIT}"
 DEVICE           = "cuda" if torch.cuda.is_available() else "cpu"
 USE_LIVE_WEIGHTS = False          # False = EMA-or-live state_dict; True = raw current_model_state
 COMPUTE_FID      = True           # per-scene FID; uses InceptionV3 (~+100 MB VRAM)
@@ -134,7 +134,7 @@ def _clip_cosine(clip_model, a_m1p1, b_m1p1, mean, std):
 
 
 def main():
-    cfg = OmegaConf.load('./src/models/llwt_v5/config.yaml')
+    cfg = OmegaConf.load('./src/models/wavenext/config.yaml')
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
     dm = _build_datamodule(cfg)
@@ -157,7 +157,7 @@ def main():
     src_label = 'live (current_model_state)' if USE_LIVE_WEIGHTS else 'EMA-or-live (state_dict)'
     print(f"[ckpt] {src_label} netG weights: {len(state_dict)} tensors from {CHECKPOINT}")
 
-    netG = LLWv4Generator(cfg).to(DEVICE).eval()
+    netG = WaveNeXtGenerator(cfg).to(DEVICE).eval()
     netG.load_state_dict(state_dict)
 
     psnr_metric  = PeakSignalNoiseRatio(data_range=1.0).to(DEVICE)

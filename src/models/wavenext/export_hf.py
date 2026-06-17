@@ -1,4 +1,4 @@
-"""Export the LLW-Former generator for Hugging Face (route-1: weights + config).
+"""Export the WaveNeXt generator for Hugging Face (route-1: weights + config).
 
 Loads a Lightning ``.ckpt`` via :func:`inference.load_generator`, then writes a
 clean generator ``state_dict`` (safetensors if available, else ``.pt``) plus a
@@ -7,7 +7,7 @@ leak into the export.
 
 Run from repo root::
 
-    python -m src.models.llwt_v5.export_hf \
+    python -m src.models.wavenext.export_hf \
         --ckpt checkpoints/llwt_v45_base/llwt-v0.4.6-base/epoch=199-psnr=18.5361.ckpt \
         --out  output/hf_export
 """
@@ -25,9 +25,9 @@ if os.environ.get('HF_HUB_OFFLINE') == '1':
 import torch
 from omegaconf import OmegaConf
 
-from src.models.llwt_v5.inference import load_generator
+from src.models.wavenext.inference import load_generator
 
-CONFIG = "./src/models/llwt_v5/config.yaml"
+CONFIG = "./src/models/wavenext/config.yaml"
 
 
 def main():
@@ -53,7 +53,7 @@ def main():
         weights_file = "generator.pt"
 
     gen_cfg = {
-        "architecture": "LLWv4Generator",
+        "architecture": "WaveNeXtGenerator",
         "backbone": str(cfg.model.gen.backbone),
         "sar_channels": int(cfg.data.sar_channels),
         "image_size": int(cfg.data.image_size),

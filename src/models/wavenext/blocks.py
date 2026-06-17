@@ -1,7 +1,7 @@
-"""Vendored building blocks for LLW-Former v0.4.5 (self-contained).
+"""Vendored building blocks for WaveNeXt v0.4.5 (self-contained).
 
 Copied verbatim from ``src/models/huggingface_gan/gen.py`` (SARAdapter,
-HaarDown, ConvUpsampleBlock) so llwt_v5 owns its dependencies and edits here
+HaarDown, ConvUpsampleBlock) so wavenext owns its dependencies and edits here
 never touch other models.  Drop-in compatible with v0.4.x checkpoint keys
 (``sar_adapter.proj.weight``, ``sar_adapter.sx/sy``, ``haar.haar_weights``,
 ``up*.up_conv/conv/shortcut``).
@@ -120,7 +120,7 @@ class ConvUpsampleBlock(nn.Module):
     2x -> optional concat with ``skip_ch`` -> 3x3 conv stack to ``out_ch``).
 
     Set ``skip_ch=0`` to disable the skip concat (used by the terminal up1
-    block in LLWv4Generator, which has no encoder skip at H/2).
+    block in WaveNeXtGenerator, which has no encoder skip at H/2).
     """
     def __init__(self, in_ch: int, skip_ch: int, out_ch: int):
         super().__init__()

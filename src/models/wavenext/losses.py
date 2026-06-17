@@ -236,9 +236,9 @@ class WaveletDetailL1Loss(nn.Module):
 class PerBandWaveletL1Loss(nn.Module):
     """Per-band L1 on predicted Haar subbands (pre-IHaar) vs HaarDown(target).
 
-    Designed for LLW-Former v0.4.x (``LLWv4Generator`` with ``InverseHaarUp``
+    Designed for WaveNeXt v0.4.x (``WaveNeXtGenerator`` with ``InverseHaarUp``
     output head).  Targets the ``(B, 3, 4, H/2, W/2)`` ``sub`` tensor returned
-    by ``LLWv4Generator.forward(sar, return_internals=True)`` — dim=2 order is
+    by ``WaveNeXtGenerator.forward(sar, return_internals=True)`` — dim=2 order is
     ``[LL, LH, HL, HH]``, matching the orthonormal Haar matrix used by
     :class:`~src.models.huggingface_gan.gen.HaarDown`.
 
@@ -382,7 +382,7 @@ class WaveletDetailSWDLoss(nn.Module):
 
     * ``sub_pred`` — predicted Haar subband tensor ``(B, C, 4, H/2, W/2)`` with
       dim=2 order ``[LL, LH, HL, HH]`` (the ``predicted_sub`` returned by
-      ``LLWv4Generator.forward(sar, return_internals=True)``).
+      ``WaveNeXtGenerator.forward(sar, return_internals=True)``).
     * ``opt`` — full-res optical target ``(B, C, H, W)``; detail subbands are
       derived inline by orthonormal Haar (same matrix / order as ``HaarDown``).
 
@@ -898,7 +898,7 @@ class BackscatterStructureLoss(nn.Module):
         return (gx + gy).mean(dim=1, keepdim=True)
 
     def forward(self, fake: torch.Tensor, sar: torch.Tensor) -> torch.Tensor:
-        from src.models.llwt_v5.align import gaussian_blur
+        from src.models.wavenext.align import gaussian_blur
         with torch.no_grad():
             b = gaussian_blur(sar, sigma=self.despeckle_sigma)
             bmin = b.amin(dim=(2, 3), keepdim=True)
@@ -994,14 +994,14 @@ if __name__ == '__main__':
 
 
 # ---------------------------------------------------------------------------
-# llwt_v5 vendored extensions: LPIPS (perceptual), Focal Frequency Loss,
+# wavenext vendored extensions: LPIPS (perceptual), Focal Frequency Loss,
 # and MultiLayerPatchNCE (alignment-robust contrastive). Single self-contained
 # loss suite for v0.4.5.
 # ---------------------------------------------------------------------------
 
 from typing import Sequence as _Sequence
 
-from src.models.llwt_v5.patchnce import PatchNCELoss, PatchSampleF
+from src.models.wavenext.patchnce import PatchNCELoss, PatchSampleF
 
 
 class LPIPSLoss(nn.Module):

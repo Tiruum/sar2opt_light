@@ -1,4 +1,4 @@
-"""LLW-Former v0.4.0 Lightning module.
+"""WaveNeXt v0.4.0 Lightning module.
 
 Clone of ``src/models/llwt_v3/main.py`` with two differences:
   * Imports ``factory`` from ``src.models.llwt_v4`` (Haar-Stem ConvNeXt V2 +
@@ -36,10 +36,10 @@ from torchmetrics.image import (
 from torchmetrics.image.fid import FrechetInceptionDistance
 from torchmetrics.image.kid import KernelInceptionDistance
 
-from src.models.llwt_v5 import factory
+from src.models.wavenext import factory
 
 
-__all__ = ["LLWv4LightningModule"]
+__all__ = ["WaveNeXtLightningModule"]
 
 
 def _stack_or_self(logits) -> torch.Tensor:
@@ -54,7 +54,7 @@ def _logit_mean(logits) -> torch.Tensor:
     return logits.mean()
 
 
-class LLWv4LightningModule(pl.LightningModule):
+class WaveNeXtLightningModule(pl.LightningModule):
     def __init__(self, cfg):
         super().__init__()
         self.cfg = cfg
@@ -76,9 +76,9 @@ class LLWv4LightningModule(pl.LightningModule):
 
         self.criterions = nn.ModuleDict(factory.build_criterions(cfg, netG=self.netG))
 
-        # --- llwt_v5 Self-Aligning Wavelet GAN -------------------------------
-        from src.models.llwt_v5.blocks import HaarDown
-        from src.models.llwt_v5 import factory as _f
+        # --- wavenext Self-Aligning Wavelet GAN -------------------------------
+        from src.models.wavenext.blocks import HaarDown
+        from src.models.wavenext import factory as _f
         self.aligner, align_crit = _f.build_aligner(cfg)
         self.use_align = self.aligner is not None
         if self.use_align:
@@ -141,7 +141,7 @@ class LLWv4LightningModule(pl.LightningModule):
         opt_d, opt_g = factory.build_optimizers(
             self.cfg, self.netG, self.netD, criterions=self.criterions,
         )
-        # llwt_v5: the deformation aligner trains jointly with G. The G optimizer
+        # wavenext: the deformation aligner trains jointly with G. The G optimizer
         # is constructed inside factory.build_optimizers (which only knows about
         # netG + criterions), so register the aligner's params as an extra group
         # on opt_g here. Uses the same lr as the G group (group 0).
@@ -312,9 +312,9 @@ class LLWv4LightningModule(pl.LightningModule):
             fake = self.netG(sar)
             predicted_sub = None
 
-        # llwt_v5: register GT optical into the generator's geometry (LL band).
+        # wavenext: register GT optical into the generator's geometry (LL band).
         if self.use_align:
-            from src.models.llwt_v5.align import psc_detect, DeformationAligner
+            from src.models.wavenext.align import psc_detect, DeformationAligner
             fake_ll = self._haar_ll(fake)[0]
             opt_ll = self._haar_ll(opt)[0]
             phi = self.aligner(fake_ll, opt_ll)
@@ -542,7 +542,7 @@ class LLWv4LightningModule(pl.LightningModule):
             self.kid.update(opt01, real=True)
         if getattr(self, 'use_align', False):
             import torchmetrics.functional as _tmf
-            from src.models.llwt_v5.align import DeformationAligner
+            from src.models.wavenext.align import DeformationAligner
             fake_ll = self._haar_ll(fake)[0]
             opt_ll = self._haar_ll(opt)[0]
             phi_v = self.aligner(fake_ll, opt_ll)

@@ -1,7 +1,7 @@
-"""Per-block visualization of the LLW-Former GENERATOR and DISCRIMINATOR.
+"""Per-block visualization of the WaveNeXt GENERATOR and DISCRIMINATOR.
 
-Registers forward hooks on every block of ``LLWv4Generator`` and of
-``LLWFormerDiscriminator`` (Main-D coarse + fine branches, HF-D), runs ONE
+Registers forward hooks on every block of ``WaveNeXtGenerator`` and of
+``WaveNeXtDiscriminator`` (Main-D coarse + fine branches, HF-D), runs ONE
 forward pass on a SAR sample, reduces each intermediate activation to an image,
 and emits a single HTML page laying every pipeline out left-to-right with
 arrows, Russian "после блока X" captions, per-block explanations, encoder→
@@ -22,9 +22,9 @@ ramp (blue = синтетика, red = реалистичнее).
 
 Run from repo root::
 
-    python -m src.models.llwt_v5.viz_blocks
+    python -m src.models.wavenext.viz_blocks
 
-Then open ``src/models/llwt_v5/output/blocks/index.html``.
+Then open ``src/models/wavenext/output/blocks/index.html``.
 """
 import math
 import os
@@ -36,9 +36,9 @@ import numpy as np
 import torch
 from omegaconf import OmegaConf
 
-from src.models.llwt_v5 import factory
+from src.models.wavenext import factory
 # importing _build_datamodule also installs the offline-HF env shims
-from src.models.llwt_v5.inference import _build_datamodule
+from src.models.wavenext.inference import _build_datamodule
 
 
 CHECKPOINT = "checkpoints/llwt_v45/llwt-v0.5.1-hfd/epoch=097-psnr=17.1615.ckpt"
@@ -47,7 +47,7 @@ SPLIT = "val"  # "train" or "val"
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 HP_AMP = 5.0
 N_CHANNELS = 4  # example channels per feature block (grid)
-OUTPUT_DIR = "./src/models/llwt_v5/output/blocks"
+OUTPUT_DIR = "./src/models/wavenext/output/blocks"
 
 STAGE_COLOR = {
     'вход':    '#6b7280',
@@ -312,7 +312,7 @@ def _emit_compare(sdir, sdir_rel, fid, head, color, real_map, fake_map):
 
 def main():
     os.makedirs(OUTPUT_DIR, exist_ok=True)
-    cfg = OmegaConf.load('./src/models/llwt_v5/config.yaml')
+    cfg = OmegaConf.load('./src/models/wavenext/config.yaml')
     cfg.data.num_workers = 0
 
     dm = _build_datamodule(cfg)
@@ -375,7 +375,7 @@ def main():
         for name, c in STAGE_COLOR.items()
     )
     html = f"""<!DOCTYPE html><html lang="ru"><head><meta charset="utf-8">
-<title>LLW-Former: визуализация по блокам (генератор + дискриминатор)</title>
+<title>WaveNeXt: визуализация по блокам (генератор + дискриминатор)</title>
 <style>
   body {{ font-family:-apple-system,Segoe UI,Roboto,sans-serif; margin:24px; color:#111; background:#fafafa; }}
   h1 {{ font-size:22px; }} h2 {{ font-size:17px; margin-top:30px; color:#111; border-top:2px solid #ddd; padding-top:12px; }}
@@ -394,7 +394,7 @@ def main():
   .cmpnote {{ font-size:12px; color:#374151; max-width:340px; padding:6px 10px; line-height:1.4;
               background:#fff7ed; border-left:3px solid #d97706; border-radius:6px; align-self:center; }}
 </style></head><body>
-<h1>LLW-Former — активации после каждого блока: генератор + дискриминатор</h1>
+<h1>WaveNeXt — активации после каждого блока: генератор + дискриминатор</h1>
 <div class="legend">{legend}</div>
 <p style="font-size:13px;color:#4b5563;max-width:1100px;">
   Признаковые карты — сетка первых {N_CHANNELS} каналов (примеры) в оттенках серого; sar3 / logits генератора /

@@ -1,8 +1,8 @@
-"""LLW-Former v0.4.0 training entry point.
+"""WaveNeXt v0.4.0 training entry point.
 
 Clone of ``src/models/llwt_v3/train.py`` with:
   * ``CONFIG_PATH`` pointing at the v4 config.
-  * Uses :class:`LLWv4LightningModule` (Haar-Stem ConvNeXt V2 + IHaar head).
+  * Uses :class:`WaveNeXtLightningModule` (Haar-Stem ConvNeXt V2 + IHaar head).
 
 Run from repo root::
 
@@ -46,22 +46,22 @@ torch.load = _patched_load
 
 # SEN12FullDataModule is imported conditionally inside main() — raw vs aligned
 # tree is selected by cfg.data.dataset (both modules expose the same class API).
-from src.models.llwt_v5 import factory
-from src.models.llwt_v5.main import LLWv4LightningModule
+from src.models.wavenext import factory
+from src.models.wavenext.main import WaveNeXtLightningModule
 from src.utils.cleanup_memory import full_cleanup
 
 
 os.environ['NO_ALBUMENTATIONS_UPDATE'] = '1'
 
-CONFIG_PATH = sys.argv[1] if len(sys.argv) > 1 else 'src/models/llwt_v5/config.yaml'
+CONFIG_PATH = sys.argv[1] if len(sys.argv) > 1 else 'src/models/wavenext/config.yaml'
 
 
-def _load_weights_ckpt(model: LLWv4LightningModule, ckpt_path: str,
+def _load_weights_ckpt(model: WaveNeXtLightningModule, ckpt_path: str,
                        use_live_weights: bool = False) -> None:
     """Load generator + discriminator weights from a Lightning checkpoint.
 
     ``strict=False`` so a v0.1.x / v0.2.x / v0.3.x ckpt with a different
-    generator (LLWFormerGenerator vs LLWv3Generator vs LLWv4Generator) won't
+    generator (WaveNeXtGenerator vs LLWv3Generator vs WaveNeXtGenerator) won't
     crash; mismatched keys are reported but ignored.  Mainly useful for
     resuming a v4 run from a partially trained ckpt — not for cross-model
     warm-starting (the IHaar head means v3 -> v4 swaps have ~no overlap on
@@ -131,7 +131,7 @@ def main():
     if dataset_name == 'qxs_saropt':
         dm_kwargs['sar_lognorm'] = bool(cfg.data.get('sar_lognorm', False))
     dm = _DM(**dm_kwargs)
-    model = LLWv4LightningModule(cfg)
+    model = WaveNeXtLightningModule(cfg)
 
     checkpoints = ModelCheckpoint(
         dirpath=f"{cfg.system.checkpoints_dir}/{cfg.system.tb_version}",
