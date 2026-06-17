@@ -1,6 +1,7 @@
 /checkpoints/
 /data/
 /output/
+src/models/*/output/
 **/__pycache__/
 **/*.pyc
 .env
