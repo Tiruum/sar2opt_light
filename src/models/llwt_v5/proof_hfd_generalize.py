@@ -212,7 +212,7 @@ def build_loader(base_cfg, bs):
 #   highpass(real) vs highpass(fake.detach()); G adds hfd_weight * gan(HF-D fake).
 # --------------------------------------------------------------------------- #
 def run_arm(name, base_cfg, device, dm, val_sar, val_opt, haar,
-            lpips_net, psnr_m, ssim_m, per_band_weights, use_hfd):
+            lpips_net, psnr_m, ssim_m, per_band_weights, use_hfd, return_model=False):
     print(f'\n{TAG} ===== ARM {name} ===== fresh warm G+D reload '
           f'(HF-D {"ON" if use_hfd else "OFF"})')
     torch.manual_seed(SEED)
@@ -378,9 +378,13 @@ def run_arm(name, base_cfg, device, dm, val_sar, val_opt, haar,
             print(f'{TAG} {name}: HF-D stable (last d_loss={last_hfd_dloss:.4f}, '
                   f'bounded throughout — spectral norm held)')
 
-    del netG, netD, opt_g, opt_d, per_band, fm, msssim, lpips_loss, ffl, gan
+    del netD, opt_g, opt_d, per_band, fm, msssim, lpips_loss, ffl, gan
     if hfd is not None:
         del hfd, opt_hfd
+    if return_model:
+        torch.cuda.empty_cache()
+        return traj, real_steps, hfd_unstable, netG
+    del netG
     torch.cuda.empty_cache()
     return traj, real_steps, hfd_unstable
 
