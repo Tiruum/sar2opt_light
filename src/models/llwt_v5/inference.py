@@ -36,7 +36,8 @@ from torchmetrics.image import (
 from src.models.llwt_v5.gen import LLWv4Generator
 
 
-CHECKPOINT = "checkpoints/llwt_v45/llwt-v0.5.1-hfd/epoch=097-psnr=17.1615.ckpt"
+# Base default (matches config.yaml backbone). Tiny ckpt: checkpoints/llwt_v45/llwt-v0.5.1-hfd/epoch=097-psnr=17.1615.ckpt
+CHECKPOINT = "checkpoints/llwt_v45_base/llwt-v0.4.6-base/epoch=199-psnr=18.5361.ckpt"
 N_IMAGES = 10
 SPLIT = "val"  # "train" or "val"
 OUTPUT_DIR = f"./src/models/llwt_v5/output/{SPLIT}"
@@ -77,6 +78,31 @@ def _build_datamodule(cfg):
     return _DM(**dm_kwargs)
 
 
+def load_generator(ckpt_path, cfg, device="cuda", use_live_weights=False):
+    """Build ``LLWv4Generator(cfg)`` and load its ``netG.``-prefixed weights from a
+    Lightning ``.ckpt``. Decoupled from the LightningModule / data / training config —
+    needs only the generator block of ``cfg``. EMA-swapped weights live under
+    ``state_dict``; pass ``use_live_weights=True`` for the non-EMA snapshot.
+
+    Returns the generator in eval mode on ``device``. Reused by ``export_hf.py``.
+    """
+    ckpt = torch.load(ckpt_path, map_location=device, weights_only=False)
+    src_dict = (
+        ckpt.get('current_model_state', ckpt['state_dict'])
+        if use_live_weights
+        else ckpt['state_dict']
+    )
+    state_dict = {
+        k[len('netG.'):]: v for k, v in src_dict.items() if k.startswith('netG.')
+    }
+    g = LLWv4Generator(cfg)
+    missing, unexpected = g.load_state_dict(state_dict, strict=False)
+    src_label = 'live (current_model_state)' if use_live_weights else 'EMA-or-live (state_dict)'
+    print(f"[load_generator] {len(state_dict)} netG tensors ({src_label}) | "
+          f"missing={len(missing)} unexpected={len(unexpected)}")
+    return g.to(device).eval()
+
+
 def main():
     cfg = OmegaConf.load('./src/models/llwt_v5/config.yaml')
     os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -89,20 +115,7 @@ def main():
     sar = sar.to(DEVICE)
     opt = opt.to(DEVICE)
 
-    ckpt = torch.load(CHECKPOINT, map_location=DEVICE, weights_only=False)
-    netG = LLWv4Generator(cfg)
-    src_dict = (
-        ckpt.get('current_model_state', ckpt['state_dict'])
-        if USE_LIVE_WEIGHTS
-        else ckpt['state_dict']
-    )
-    state_dict = {
-        k[len('netG.'):]: v for k, v in src_dict.items() if k.startswith('netG.')
-    }
-    src_label = 'live (current_model_state)' if USE_LIVE_WEIGHTS else 'EMA-or-live (state_dict)'
-    print(f"[ckpt] loaded {src_label} netG weights ({len(state_dict)} tensors)")
-    netG.load_state_dict(state_dict)
-    netG = netG.to(DEVICE).eval()
+    netG = load_generator(CHECKPOINT, cfg, DEVICE, use_live_weights=USE_LIVE_WEIGHTS)
 
     with torch.no_grad():
         generated = netG(sar)
