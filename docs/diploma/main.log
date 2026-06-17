@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026) (preloaded format=pdflatex 2026.5.11)  30 MAY 2026 21:21
+This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026) (preloaded format=pdflatex 2026.5.11)  2 JUN 2026 00:04
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -40,34 +40,9 @@ LaTeX Info: Redefining \halign on input line 121.
 Package: inputenc 2024/02/08 v1.3d Input encoding file
 \inpenc@prehook=\toks17
 \inpenc@posthook=\toks18
-) (/usr/local/texlive/2026basic/texmf-dist/tex/generic/babel/babel.sty
-Package: babel 2026/02/14 v26.3 The multilingual framework for LuaLaTeX, pdfLaTeX and XeLaTeX
-\babel@savecnt=\count284
-LaTeX Encoding Info:    Redeclaring text command \ij (encoding OT1) on input line 2078.
-LaTeX Encoding Info:    Redeclaring text command \IJ (encoding OT1) on input line 2080.
-LaTeX Encoding Info:    Redeclaring text command \ij (encoding T1) on input line 2082.
-LaTeX Encoding Info:    Redeclaring text command \IJ (encoding T1) on input line 2083.
-LaTeX Encoding Info:    Ignoring declaration for text command \ij (encoding ?) on input line 2084.
-LaTeX Encoding Info:    Ignoring declaration for text command \IJ (encoding ?) on input line 2086.
-LaTeX Encoding Info:    Ignoring declaration for text command \SS (encoding ?) on input line 2111.
-\U@D=\dimen149
-\l@unhyphenated=\language33
- (/usr/local/texlive/2026basic/texmf-dist/tex/generic/babel/txtbabel.def)
-\bbl@readstream=\read2
-\bbl@dirlevel=\count285
- (/usr/local/texlive/2026basic/texmf-dist/tex/generic/babel/locale/ru/babel-russian.tex)
-Package babel Info: Importing font and identification data for russian
-(babel)             from babel-ru.ini. Reported on input line 4330.
- (/usr/local/texlive/2026basic/texmf-dist/tex/generic/babel-russian/russianb.ldf
-File: russianb.ldf 2021/01/10 1.3m Russian support for the Babel system
-Language: russian 2020/09/09 1.3k Russian support for the Babel system
-
-
-Package babel Warning: No Cyrillic font encoding has been loaded so far.
-(babel)                A font encoding should be declared before babel.
-(babel)                Default `T2A' encoding will be loaded  on input line 78.
-
-(/usr/local/texlive/2026basic/texmf-dist/tex/latex/cyrillic/t2aenc.def
+) (/usr/local/texlive/2026basic/texmf-dist/tex/latex/base/fontenc.sty
+Package: fontenc 2025/07/18 v2.1d Standard LaTeX package
+ (/usr/local/texlive/2026basic/texmf-dist/tex/latex/cyrillic/t2aenc.def
 File: t2aenc.def 2023/11/07 v1.0k Cyrillic encoding definition file
 Now handling font encoding T2A ...
 ... processing UTF-8 mapping file for font encoding T2A
@@ -274,6 +249,30 @@ File: t2aenc.dfu 2022/06/07 v1.3c UTF-8 support
 )
 \symT2Aletters=\mathgroup4
 )
+LaTeX Font Info:    Trying to load font information for T2A+cmr on input line 116.
+ (/usr/local/texlive/2026basic/texmf-dist/tex/latex/cyrillic/t2acmr.fd
+File: t2acmr.fd 2001/08/11 v1.0a Computer Modern Cyrillic font definitions
+)<<t2a.cmap>>) (/usr/local/texlive/2026basic/texmf-dist/tex/generic/babel/babel.sty
+Package: babel 2026/02/14 v26.3 The multilingual framework for LuaLaTeX, pdfLaTeX and XeLaTeX
+\babel@savecnt=\count284
+LaTeX Encoding Info:    Redeclaring text command \ij (encoding OT1) on input line 2078.
+LaTeX Encoding Info:    Redeclaring text command \IJ (encoding OT1) on input line 2080.
+LaTeX Encoding Info:    Redeclaring text command \ij (encoding T1) on input line 2082.
+LaTeX Encoding Info:    Redeclaring text command \IJ (encoding T1) on input line 2083.
+LaTeX Encoding Info:    Ignoring declaration for text command \ij (encoding ?) on input line 2084.
+LaTeX Encoding Info:    Ignoring declaration for text command \IJ (encoding ?) on input line 2086.
+LaTeX Encoding Info:    Ignoring declaration for text command \SS (encoding ?) on input line 2111.
+\U@D=\dimen149
+\l@unhyphenated=\language33
+ (/usr/local/texlive/2026basic/texmf-dist/tex/generic/babel/txtbabel.def)
+\bbl@readstream=\read2
+\bbl@dirlevel=\count285
+ (/usr/local/texlive/2026basic/texmf-dist/tex/generic/babel/locale/ru/babel-russian.tex)
+Package babel Info: Importing font and identification data for russian
+(babel)             from babel-ru.ini. Reported on input line 4330.
+ (/usr/local/texlive/2026basic/texmf-dist/tex/generic/babel-russian/russianb.ldf
+File: russianb.ldf 2021/01/10 1.3m Russian support for the Babel system
+Language: russian 2020/09/09 1.3k Russian support for the Babel system
 Package babel Info: Making " an active character on input line 124.
 Package babel Info: Default for \cyrdash is provided on input line 163.
 )) (/usr/local/texlive/2026basic/texmf-dist/tex/latex/amsmath/amsmath.sty
@@ -884,10 +883,6 @@ LaTeX Warning: Unused global option(s):
     [14pt].
 
 (./main.aux
-LaTeX Font Info:    Trying to load font information for T2A+cmr on input line 10.
- (/usr/local/texlive/2026basic/texmf-dist/tex/latex/cyrillic/t2acmr.fd
-File: t2acmr.fd 2001/08/11 v1.0a Computer Modern Cyrillic font definitions
-)<<t2a.cmap>>
 Package babel Info: 'russian' activates 'russian' shorthands.
 (babel)             Reported on input line 10.
 )
@@ -994,7 +989,7 @@ Package hyperref Info: Link coloring OFF on input line 14.
 \openout4 = `main.out'.
 
  (./include/title.tex
-<images/MIPT_logo.jpg, id=228, 803.0pt x 401.5pt>
+<images/MIPT_logo.jpg, id=269, 803.0pt x 401.5pt>
 File: images/MIPT_logo.jpg Graphic file (type jpg)
 <use images/MIPT_logo.jpg>
 Package pdftex.def Info: images/MIPT_logo.jpg  used on input line 43.
@@ -1007,7 +1002,7 @@ Package pdftex.def Info: images/MIPT_logo.jpg  used on input line 43.
 pdfTeX warning (ext4): destination with the same identifier (name{page.1}) has been already used, duplicate ignored
 <to be read again> 
                    \relax 
-l.22 \end{abstract}
+l.29 \end{abstract}
                     [1]) (./main.toc<<ot1.cmap>>
 
 LaTeX Font Warning: Font shape `T2A/cmr/m/up' undefined
@@ -1070,7 +1065,7 @@ LaTeX Font Warning: Font shape `PU/cmr/m/up' undefined
 pdfTeX warning (ext4): destination with the same identifier (name{page.2}) has been already used, duplicate ignored
 <to be read again> 
                    \relax 
-l.72 ...ЃРѕРІР°РЅРЅРѕСЃС‚Рё}{32}{subsection.4.2.1}
+l.70 ...Рѕ РєРѕР»Р»Р°РїСЃР°}{31}{subsection.4.2.2}
                                                   % [2
 
 ])
@@ -1088,6 +1083,10 @@ Package babel Info: 'russian' activates 'russian' shorthands.
 [8
 
 ]
+Overfull \hbox (0.49338pt too wide) in paragraph at lines 46--47
+[]\T2A/cmr/m/n/10 Оптические дан-ные об-ла-да-ют сле-ду-ю-щи-ми ха-рак-те-ри-сти-ка-ми, про-ти-во-по-лож-ны-ми свой-ствам SAR-
+ []
+
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 24.51453pt, for example:
@@ -1106,6 +1105,11 @@ Underfull \hbox (badness 10000) in paragraph at lines 74--75
  []
 
 
+Underfull \hbox (badness 10000) in paragraph at lines 88--88
+[]|\T2A/cmr/m/n/10 Чувствительность к
+ []
+
+
 Underfull \hbox (badness 10000) in paragraph at lines 90--90
 []|\T2A/cmr/m/n/10 Семантическая ин-тер-
  []
@@ -1115,46 +1119,6 @@ Underfull \hbox (badness 10000) in paragraph at lines 90--91
 []|\T2A/cmr/m/n/10 Интуитивно по-нят-на, есте-
  []
 
-<./images/sen12/ROIs1158_spring_s1_0_p19.png, id=372, 256.96pt x 256.96pt>
-File: ./images/sen12/ROIs1158_spring_s1_0_p19.png Graphic file (type png)
-<use ./images/sen12/ROIs1158_spring_s1_0_p19.png>
-Package pdftex.def Info: ./images/sen12/ROIs1158_spring_s1_0_p19.png  used on input line 104.
-(pdftex.def)             Requested size: 188.8096pt x 188.8104pt.
-<./images/sen12/ROIs1158_spring_s2_0_p19.png, id=373, 256.96pt x 256.96pt>
-File: ./images/sen12/ROIs1158_spring_s2_0_p19.png Graphic file (type png)
-<use ./images/sen12/ROIs1158_spring_s2_0_p19.png>
-Package pdftex.def Info: ./images/sen12/ROIs1158_spring_s2_0_p19.png  used on input line 111.
-(pdftex.def)             Requested size: 188.8096pt x 188.8104pt.
-<./images/sen12/ROIs1158_spring_s1_18_p42.png, id=376, 256.96pt x 256.96pt>
-File: ./images/sen12/ROIs1158_spring_s1_18_p42.png Graphic file (type png)
-<use ./images/sen12/ROIs1158_spring_s1_18_p42.png>
-Package pdftex.def Info: ./images/sen12/ROIs1158_spring_s1_18_p42.png  used on input line 127.
-(pdftex.def)             Requested size: 188.8096pt x 188.8104pt.
-<./images/sen12/ROIs1158_spring_s2_18_p42.png, id=377, 256.96pt x 256.96pt>
-File: ./images/sen12/ROIs1158_spring_s2_18_p42.png Graphic file (type png)
-<use ./images/sen12/ROIs1158_spring_s2_18_p42.png>
-Package pdftex.def Info: ./images/sen12/ROIs1158_spring_s2_18_p42.png  used on input line 134.
-(pdftex.def)             Requested size: 188.8096pt x 188.8104pt.
-<./images/sen12/ROIs1158_spring_s1_0_p22.png, id=380, 256.96pt x 256.96pt>
-File: ./images/sen12/ROIs1158_spring_s1_0_p22.png Graphic file (type png)
-<use ./images/sen12/ROIs1158_spring_s1_0_p22.png>
-Package pdftex.def Info: ./images/sen12/ROIs1158_spring_s1_0_p22.png  used on input line 150.
-(pdftex.def)             Requested size: 188.8096pt x 188.8104pt.
-<./images/sen12/ROIs1158_spring_s2_0_p22.png, id=381, 256.96pt x 256.96pt>
-File: ./images/sen12/ROIs1158_spring_s2_0_p22.png Graphic file (type png)
-<use ./images/sen12/ROIs1158_spring_s2_0_p22.png>
-Package pdftex.def Info: ./images/sen12/ROIs1158_spring_s2_0_p22.png  used on input line 157.
-(pdftex.def)             Requested size: 188.8096pt x 188.8104pt.
-<./images/sen12/ROIs1158_spring_s1_9_p155.png, id=384, 256.96pt x 256.96pt>
-File: ./images/sen12/ROIs1158_spring_s1_9_p155.png Graphic file (type png)
-<use ./images/sen12/ROIs1158_spring_s1_9_p155.png>
-Package pdftex.def Info: ./images/sen12/ROIs1158_spring_s1_9_p155.png  used on input line 173.
-(pdftex.def)             Requested size: 188.8096pt x 188.8104pt.
-<./images/sen12/ROIs1158_spring_s2_9_p155.png, id=385, 256.96pt x 256.96pt>
-File: ./images/sen12/ROIs1158_spring_s2_9_p155.png Graphic file (type png)
-<use ./images/sen12/ROIs1158_spring_s2_9_p155.png>
-Package pdftex.def Info: ./images/sen12/ROIs1158_spring_s2_9_p155.png  used on input line 180.
-(pdftex.def)             Requested size: 188.8096pt x 188.8104pt.
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 12.51453pt, for example:
@@ -1163,6 +1127,47 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                \addtolength{\topmargin}{-0.51453pt}.
 
 [10]
+<./images/sen12/ROIs1158_spring_s1_0_p19.png, id=434, 256.96pt x 256.96pt>
+File: ./images/sen12/ROIs1158_spring_s1_0_p19.png Graphic file (type png)
+<use ./images/sen12/ROIs1158_spring_s1_0_p19.png>
+Package pdftex.def Info: ./images/sen12/ROIs1158_spring_s1_0_p19.png  used on input line 104.
+(pdftex.def)             Requested size: 188.8096pt x 188.8104pt.
+<./images/sen12/ROIs1158_spring_s2_0_p19.png, id=435, 256.96pt x 256.96pt>
+File: ./images/sen12/ROIs1158_spring_s2_0_p19.png Graphic file (type png)
+<use ./images/sen12/ROIs1158_spring_s2_0_p19.png>
+Package pdftex.def Info: ./images/sen12/ROIs1158_spring_s2_0_p19.png  used on input line 111.
+(pdftex.def)             Requested size: 188.8096pt x 188.8104pt.
+<./images/sen12/ROIs1158_spring_s1_18_p42.png, id=438, 256.96pt x 256.96pt>
+File: ./images/sen12/ROIs1158_spring_s1_18_p42.png Graphic file (type png)
+<use ./images/sen12/ROIs1158_spring_s1_18_p42.png>
+Package pdftex.def Info: ./images/sen12/ROIs1158_spring_s1_18_p42.png  used on input line 127.
+(pdftex.def)             Requested size: 188.8096pt x 188.8104pt.
+<./images/sen12/ROIs1158_spring_s2_18_p42.png, id=439, 256.96pt x 256.96pt>
+File: ./images/sen12/ROIs1158_spring_s2_18_p42.png Graphic file (type png)
+<use ./images/sen12/ROIs1158_spring_s2_18_p42.png>
+Package pdftex.def Info: ./images/sen12/ROIs1158_spring_s2_18_p42.png  used on input line 134.
+(pdftex.def)             Requested size: 188.8096pt x 188.8104pt.
+<./images/sen12/ROIs1158_spring_s1_0_p22.png, id=442, 256.96pt x 256.96pt>
+File: ./images/sen12/ROIs1158_spring_s1_0_p22.png Graphic file (type png)
+<use ./images/sen12/ROIs1158_spring_s1_0_p22.png>
+Package pdftex.def Info: ./images/sen12/ROIs1158_spring_s1_0_p22.png  used on input line 150.
+(pdftex.def)             Requested size: 188.8096pt x 188.8104pt.
+<./images/sen12/ROIs1158_spring_s2_0_p22.png, id=443, 256.96pt x 256.96pt>
+File: ./images/sen12/ROIs1158_spring_s2_0_p22.png Graphic file (type png)
+<use ./images/sen12/ROIs1158_spring_s2_0_p22.png>
+Package pdftex.def Info: ./images/sen12/ROIs1158_spring_s2_0_p22.png  used on input line 157.
+(pdftex.def)             Requested size: 188.8096pt x 188.8104pt.
+<./images/sen12/ROIs1158_spring_s1_9_p155.png, id=446, 256.96pt x 256.96pt>
+File: ./images/sen12/ROIs1158_spring_s1_9_p155.png Graphic file (type png)
+<use ./images/sen12/ROIs1158_spring_s1_9_p155.png>
+Package pdftex.def Info: ./images/sen12/ROIs1158_spring_s1_9_p155.png  used on input line 173.
+(pdftex.def)             Requested size: 188.8096pt x 188.8104pt.
+<./images/sen12/ROIs1158_spring_s2_9_p155.png, id=447, 256.96pt x 256.96pt>
+File: ./images/sen12/ROIs1158_spring_s2_9_p155.png Graphic file (type png)
+<use ./images/sen12/ROIs1158_spring_s2_9_p155.png>
+Package pdftex.def Info: ./images/sen12/ROIs1158_spring_s2_9_p155.png  used on input line 180.
+(pdftex.def)             Requested size: 188.8096pt x 188.8104pt.
+
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 24.51453pt, for example:
@@ -1202,124 +1207,125 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 [15
 
 ] [16]
-Overfull \hbox (2.58633pt too wide) in paragraph at lines 113--114
+Overfull \hbox (2.58633pt too wide) in paragraph at lines 114--115
  []\T2A/cmr/bx/n/10 Пиксельные по-те-ри[] $\OML/cmm/m/it/10 `[]$\T2A/cmr/m/n/10 -потеря (сред-няя аб-со-лют-ная ошиб-ка) и $\OML/cmm/m/it/10 `[]$\T2A/cmr/m/n/10 -потеря (сред-не-квад-ра-тич-ная ошиб-
  []
 
-[17] [18] [19]
-Underfull \hbox (badness 10000) in paragraph at lines 233--233
+[17]
+Overfull \hbox (10.5187pt too wide) in paragraph at lines 175--177
+ []\T2A/cmr/bx/n/10 Перцептивная по-те-ря на ос-но-ве DINOv2[] \T2A/cmr/m/n/10 Са-мо-кон-тро-ли-ру-е-мые мо-де-ли зре-ния, в част-но-сти DINOv2
+ []
+
+[18]
+Underfull \hbox (badness 10000) in paragraph at lines 219--219
 []|\T2A/cmr/m/n/10 Модельная
  []
 
 
-Overfull \hbox (14.60481pt too wide) in paragraph at lines 233--233
+Overfull \hbox (14.60481pt too wide) in paragraph at lines 219--219
 \T2A/cmr/m/n/10 (AlexNet/VGG)| 
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 234--234
+Underfull \hbox (badness 10000) in paragraph at lines 220--220
 []|\T2A/cmr/m/n/10 Модельная
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 234--234
+Underfull \hbox (badness 10000) in paragraph at lines 220--220
 \T2A/cmr/m/n/10 (Inception-
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 235--235
+Underfull \hbox (badness 10000) in paragraph at lines 221--221
 []|\T2A/cmr/m/n/10 Модельная
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 240--240
+Underfull \hbox (badness 10000) in paragraph at lines 226--226
 []|\T2A/cmr/m/n/10 Численная
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 241--241
+Underfull \hbox (badness 10000) in paragraph at lines 227--227
 []|\T2A/cmr/m/n/10 Модельная
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 242--242
+Underfull \hbox (badness 10000) in paragraph at lines 228--228
 []|\T2A/cmr/m/n/10 Модельная
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 243--244
+Underfull \hbox (badness 10000) in paragraph at lines 229--230
 []|\T2A/cmr/m/n/10 Частотная со-гла-со-ван-ность; ми-ни-ми-зи-ру-ет
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 243--244
+Underfull \hbox (badness 10000) in paragraph at lines 229--230
 \T2A/cmr/m/n/10 раз-ность Фурье-спектров. Предот-вра-ща-ет
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 244--244
+Underfull \hbox (badness 10000) in paragraph at lines 230--230
 []|\T2A/cmr/m/n/10 Модельная
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 244--244
+Underfull \hbox (badness 10000) in paragraph at lines 230--230
 \T2A/cmr/m/n/10 (SAM-
  []
 
 
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
- [20]
+ [19]
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
- [21]
-LaTeX Font Info:    Trying to load font information for T2A+cmtt on input line 263.
+ [20]
+LaTeX Font Info:    Trying to load font information for T2A+cmtt on input line 250.
  (/usr/local/texlive/2026basic/texmf-dist/tex/latex/cyrillic/t2acmtt.fd
 File: t2acmtt.fd 2001/08/11 v1.0a Computer Modern Cyrillic font definitions
-) [22] [23] [24]
-<./images/qxs_sar2opt/296_sar.png, id=560, 256.96pt x 256.96pt>
+) [21] [22] [23]
+<./images/qxs_sar2opt/296_sar.png, id=612, 256.96pt x 256.96pt>
 File: ./images/qxs_sar2opt/296_sar.png Graphic file (type png)
 <use ./images/qxs_sar2opt/296_sar.png>
-Package pdftex.def Info: ./images/qxs_sar2opt/296_sar.png  used on input line 363.
+Package pdftex.def Info: ./images/qxs_sar2opt/296_sar.png  used on input line 347.
 (pdftex.def)             Requested size: 188.8096pt x 188.8104pt.
-<./images/qxs_sar2opt/296_opt.png, id=561, 256.96pt x 256.96pt>
+<./images/qxs_sar2opt/296_opt.png, id=613, 256.96pt x 256.96pt>
 File: ./images/qxs_sar2opt/296_opt.png Graphic file (type png)
 <use ./images/qxs_sar2opt/296_opt.png>
-Package pdftex.def Info: ./images/qxs_sar2opt/296_opt.png  used on input line 370.
+Package pdftex.def Info: ./images/qxs_sar2opt/296_opt.png  used on input line 354.
 (pdftex.def)             Requested size: 188.8096pt x 188.8104pt.
- [25 <./images/qxs_sar2opt/296_sar.png (PNG copy)> <./images/qxs_sar2opt/296_opt.png (PNG copy)>]
-Underfull \hbox (badness 3108) in paragraph at lines 410--411
+ [24 <./images/qxs_sar2opt/296_sar.png (PNG copy)> <./images/qxs_sar2opt/296_opt.png (PNG copy)>]
+Underfull \hbox (badness 3108) in paragraph at lines 389--390
 []|\T2A/cmr/m/n/10 Прибрежные го-ро-да (Цин-дао,
  []
 
 
-Overfull \hbox (13.45087pt too wide) in paragraph at lines 401--417
+Overfull \hbox (13.45087pt too wide) in paragraph at lines 380--396
  [][] 
  []
 
-[26]
 File: ./images/sen12/ROIs1158_spring_s1_0_p19.png Graphic file (type png)
 <use ./images/sen12/ROIs1158_spring_s1_0_p19.png>
-Package pdftex.def Info: ./images/sen12/ROIs1158_spring_s1_0_p19.png  used on input line 435.
+Package pdftex.def Info: ./images/sen12/ROIs1158_spring_s1_0_p19.png  used on input line 414.
 (pdftex.def)             Requested size: 188.8096pt x 188.8104pt.
 File: ./images/sen12/ROIs1158_spring_s2_0_p19.png Graphic file (type png)
 <use ./images/sen12/ROIs1158_spring_s2_0_p19.png>
-Package pdftex.def Info: ./images/sen12/ROIs1158_spring_s2_0_p19.png  used on input line 442.
+Package pdftex.def Info: ./images/sen12/ROIs1158_spring_s2_0_p19.png  used on input line 421.
 (pdftex.def)             Requested size: 188.8096pt x 188.8104pt.
-<./images/qxs_sar2opt/1586_sar.png, id=582, 256.96pt x 256.96pt>
+<./images/qxs_sar2opt/1586_sar.png, id=624, 256.96pt x 256.96pt>
 File: ./images/qxs_sar2opt/1586_sar.png Graphic file (type png)
 <use ./images/qxs_sar2opt/1586_sar.png>
-Package pdftex.def Info: ./images/qxs_sar2opt/1586_sar.png  used on input line 449.
+Package pdftex.def Info: ./images/qxs_sar2opt/1586_sar.png  used on input line 428.
 (pdftex.def)             Requested size: 188.8096pt x 188.8104pt.
-<./images/qxs_sar2opt/1586_opt.png, id=583, 256.96pt x 256.96pt>
+<./images/qxs_sar2opt/1586_opt.png, id=625, 256.96pt x 256.96pt>
 File: ./images/qxs_sar2opt/1586_opt.png Graphic file (type png)
 <use ./images/qxs_sar2opt/1586_opt.png>
-Package pdftex.def Info: ./images/qxs_sar2opt/1586_opt.png  used on input line 456.
+Package pdftex.def Info: ./images/qxs_sar2opt/1586_opt.png  used on input line 435.
 (pdftex.def)             Requested size: 188.8096pt x 188.8104pt.
-
-Underfull \vbox (badness 10000) has occurred while \output is active []
-
- [27 <./images/qxs_sar2opt/1586_sar.png (PNG copy)> <./images/qxs_sar2opt/1586_opt.png (PNG copy)>]
+[25]
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 12.51453pt, for example:
@@ -1327,7 +1333,7 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-0.51453pt}.
 
-[28]) (./parts/Chapter3.tex
+[26 <./images/qxs_sar2opt/1586_sar.png (PNG copy)> <./images/qxs_sar2opt/1586_opt.png (PNG copy)>]) (./parts/Chapter3.tex
 {\cyrillictext \CYRG \cyrl \cyra \cyrv \cyra } 4.
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
@@ -1335,7 +1341,7 @@ Package hyperref Warning: Token not allowed in a PDF string (Unicode):
 
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `\rightarrow' on input line 1.
+(hyperref)                removing `\to' on input line 1.
 
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
@@ -1353,40 +1359,37 @@ LaTeX Font Info:    Font shape `OMS/cmr/m/up' in size <20.74> not available
 (Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 1.
 LaTeX Font Info:    Font shape `OMS/cmr/m/up' in size <17.28> not available
 (Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 1.
+LaTeX Font Info:    Font shape `OML/cmr/m/up' in size <10> not available
+(Font)              Font shape `OML/cmm/m/it' tried instead on input line 4.
+LaTeX Font Info:    Font shape `OMS/cmr/m/up' in size <10> not available
+(Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 4.
 
-Overfull \hbox (5.1995pt too wide) in paragraph at lines 4--4
+Overfull \hbox (5.1995pt too wide) in paragraph at lines 6--6
 []\T2A/cmr/bx/n/14.4 Парные ме-то-ды на ос-но-ве услов-ных GAN (се-мей-ство Pix2Pix) 
  []
 
-LaTeX Font Info:    Font shape `OML/cmr/m/up' in size <10> not available
-(Font)              Font shape `OML/cmm/m/it' tried instead on input line 7.
-LaTeX Font Info:    Font shape `OMS/cmr/m/up' in size <10> not available
-(Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 7.
-<images/pix2pix/pix2pix_example.png, id=593, 984.7992pt x 362.7954pt>
+<images/pix2pix/pix2pix_example.png, id=640, 984.7992pt x 362.7954pt>
 File: images/pix2pix/pix2pix_example.png Graphic file (type png)
 <use images/pix2pix/pix2pix_example.png>
-Package pdftex.def Info: images/pix2pix/pix2pix_example.png  used on input line 13.
+Package pdftex.def Info: images/pix2pix/pix2pix_example.png  used on input line 18.
 (pdftex.def)             Requested size: 472.03123pt x 173.89622pt.
-
-Underfull \vbox (badness 10000) has occurred while \output is active []
-
- [29
-
- <./images/pix2pix/pix2pix_example.png>]
-<images/pix2pix/Pix2Pix.pdf, id=603, 911.405pt x 422.57875pt>
+<images/pix2pix/Pix2Pix.pdf, id=643, 911.405pt x 422.57875pt>
 File: images/pix2pix/Pix2Pix.pdf Graphic file (type pdf)
 <use images/pix2pix/Pix2Pix.pdf>
-Package pdftex.def Info: images/pix2pix/Pix2Pix.pdf  used on input line 24.
+Package pdftex.def Info: images/pix2pix/Pix2Pix.pdf  used on input line 32.
 (pdftex.def)             Requested size: 472.03123pt x 218.86528pt.
-<images/pix2pix/u-net-architecture.pdf, id=607, 1080.35823pt x 403.79556pt>
+[27
+
+]
+<images/pix2pix/u-net-architecture.pdf, id=655, 1080.35823pt x 403.79556pt>
 File: images/pix2pix/u-net-architecture.pdf Graphic file (type pdf)
 <use images/pix2pix/u-net-architecture.pdf>
-Package pdftex.def Info: images/pix2pix/u-net-architecture.pdf  used on input line 35.
+Package pdftex.def Info: images/pix2pix/u-net-architecture.pdf  used on input line 43.
 (pdftex.def)             Requested size: 472.03123pt x 176.42598pt.
-<images/pix2pix/patchGAN.pdf, id=608, 350.72932pt x 234.64262pt>
+<images/pix2pix/patchGAN.pdf, id=657, 350.72932pt x 234.64262pt>
 File: images/pix2pix/patchGAN.pdf Graphic file (type pdf)
 <use images/pix2pix/patchGAN.pdf>
-Package pdftex.def Info: images/pix2pix/patchGAN.pdf  used on input line 42.
+Package pdftex.def Info: images/pix2pix/patchGAN.pdf  used on input line 54.
 (pdftex.def)             Requested size: 236.01561pt x 157.90074pt.
 
 
@@ -1396,7 +1399,7 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-0.51453pt}.
 
-[30 <./images/pix2pix/Pix2Pix.pdf>]
+[28 <./images/pix2pix/pix2pix_example.png> <./images/pix2pix/Pix2Pix.pdf>]
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 22.4317pt, for example:
@@ -1404,23 +1407,24 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-10.4317pt}.
 
-[31 <./images/pix2pix/u-net-architecture.pdf> <./images/pix2pix/patchGAN.pdf>]
-Overfull \hbox (1.42923pt too wide) in paragraph at lines 71--72
-\T2A/cmr/m/up/10 непар-ных (unpaired) ме-то-дов транс-фе-ра. Ба-зо-вой ар-хи-тек-ту-рой в этом на-прав-ле-нии ста-ла CycleGAN [[]]
- []
-
-<images/cyclegan/CycleGAN.pdf, id=754, 1283.79625pt x 467.7475pt>
+[29 <./images/pix2pix/u-net-architecture.pdf> <./images/pix2pix/patchGAN.pdf>]
+<images/cyclegan/CycleGAN.pdf, id=800, 1283.79625pt x 467.7475pt>
 File: images/cyclegan/CycleGAN.pdf Graphic file (type pdf)
 <use images/cyclegan/CycleGAN.pdf>
-Package pdftex.def Info: images/cyclegan/CycleGAN.pdf  used on input line 75.
+Package pdftex.def Info: images/cyclegan/CycleGAN.pdf  used on input line 94.
 (pdftex.def)             Requested size: 472.03123pt x 171.97899pt.
-[32 <./images/cyclegan/CycleGAN.pdf>]
-Overfull \hbox (16.5618pt too wide) in paragraph at lines 88--90
+ [30 <./images/cyclegan/CycleGAN.pdf>]
+Overfull \hbox (16.5618pt too wide) in paragraph at lines 107--109
 \T2A/cmr/m/up/10 Полная це-ле-вая функ-ция име-ет вид $\OMS/cmsy/m/n/10 L \PU/cmr/m/up/10 = \OMS/cmsy/m/n/10 L[]\PU/cmr/m/up/10 (\OML/cmm/m/it/10 G[]; D[]; A; B\PU/cmr/m/up/10 ) + \OMS/cmsy/m/n/10 L[]\PU/cmr/m/up/10 (\OML/cmm/m/it/10 G[]; D[]; B; A\PU/cmr/m/up/10 ) + \OML/cmm/m/it/10 ^^U\OMS/cmsy/m/n/10 L[]\PU/cmr/m/up/10 (\OML/cmm/m/it/10 G[]; G[]\PU/cmr/m/up/10 )$\T2A/cmr/m/up/10 ,
  []
 
+<./images/mars_pix2pix_cyclegan.pdf, id=911, 504.88625pt x 517.935pt>
+File: ./images/mars_pix2pix_cyclegan.pdf Graphic file (type pdf)
+<use ./images/mars_pix2pix_cyclegan.pdf>
+Package pdftex.def Info: ./images/mars_pix2pix_cyclegan.pdf  used on input line 123.
+(pdftex.def)             Requested size: 283.22162pt x 290.5395pt.
 
-Overfull \hbox (9.0178pt too wide) in paragraph at lines 108--108
+Overfull \hbox (9.0178pt too wide) in paragraph at lines 136--136
 []\T2A/cmr/bx/n/12 Многостадийные и кросс-модальные струк-ту-ры (CFR, HRNet-подобные
  []
 
@@ -1431,20 +1435,17 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-10.4317pt}.
 
-[33]
-<images/cfrwd/cfrwd_arch.png, id=874, 1153.30875pt x 512.91624pt>
+[31]
+<images/cfrwd/cfrwd_arch.png, id=925, 1153.30875pt x 512.91624pt>
 File: images/cfrwd/cfrwd_arch.png Graphic file (type png)
 <use images/cfrwd/cfrwd_arch.png>
-Package pdftex.def Info: images/cfrwd/cfrwd_arch.png  used on input line 118.
+Package pdftex.def Info: images/cfrwd/cfrwd_arch.png  used on input line 149.
 (pdftex.def)             Requested size: 472.03123pt x 209.92917pt.
-<images/cfrwd/CFR.pdf, id=877, 575.14874pt x 270.00874pt>
+<images/cfrwd/CFR.pdf, id=928, 575.14874pt x 270.00874pt>
 File: images/cfrwd/CFR.pdf Graphic file (type pdf)
 <use images/cfrwd/CFR.pdf>
-Package pdftex.def Info: images/cfrwd/CFR.pdf  used on input line 132.
+Package pdftex.def Info: images/cfrwd/CFR.pdf  used on input line 163.
 (pdftex.def)             Requested size: 472.03123pt x 221.60635pt.
-
-Underfull \vbox (badness 10000) has occurred while \output is active []
-
 
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
@@ -1453,66 +1454,41 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-0.51453pt}.
 
-[34 <./images/cfrwd/cfrwd_arch.png>]
-<images/cfrwd/WD.pdf, id=890, 497.86pt x 173.64874pt>
+[32 <./images/mars_pix2pix_cyclegan.pdf>]
+Overfull \hbox (33.62978pt too wide) in paragraph at lines 176--182
+\T2A/cmr/m/up/10 изображения на семь ком-по-нент: низ-ко-ча-стот-ную $\OML/cmm/m/it/10 LL[]$ \T2A/cmr/m/up/10 и вы-со-ко-ча-стот-ные $\OMS/cmsy/m/n/10 f\OML/cmm/m/it/10 LH[]; HL[]; HH[]\OMS/cmsy/m/n/10 g$\T2A/cmr/m/up/10 , $\OMS/cmsy/m/n/10 f\OML/cmm/m/it/10 LH[]; HL[]; HH[]\OMS/cmsy/m/n/10 g$\T2A/cmr/m/up/10 .
+ []
+
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 22.4317pt, for example:
+(fancyhdr)                \setlength{\headheight}{22.4317pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-10.4317pt}.
+
+[33 <./images/cfrwd/cfrwd_arch.png> <./images/cfrwd/CFR.pdf>]
+<images/cfrwd/WD.pdf, id=1166, 497.86pt x 173.64874pt>
 File: images/cfrwd/WD.pdf Graphic file (type pdf)
 <use images/cfrwd/WD.pdf>
-Package pdftex.def Info: images/cfrwd/WD.pdf  used on input line 155.
+Package pdftex.def Info: images/cfrwd/WD.pdf  used on input line 185.
 (pdftex.def)             Requested size: 472.03123pt x 164.64476pt.
 
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 12.51453pt, for example:
+(fancyhdr)                \setlength{\headheight}{12.51453pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-0.51453pt}.
+
+[34 <./images/cfrwd/WD.pdf>]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 22.4317pt, for example:
 (fancyhdr)                \setlength{\headheight}{22.4317pt}.
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-10.4317pt}.
 
-[35 <./images/cfrwd/CFR.pdf>]
-
-LaTeX Warning: Citation `guo2022sar2color' on page 36 undefined on input line 166.
-
-
-LaTeX Warning: Citation `george2022wavelet' on page 36 undefined on input line 166.
-
-
-LaTeX Warning: Citation `qin2024conditional' on page 36 undefined on input line 166.
-
-
-LaTeX Warning: Citation `wang2025generative' on page 36 undefined on input line 166.
-
-
-LaTeX Warning: Citation `wang2025generative' on page 36 undefined on input line 169.
-
-
-LaTeX Warning: Citation `cabrera2021sar' on page 36 undefined on input line 173.
-
-
-LaTeX Warning: Citation `fu2024advanced' on page 36 undefined on input line 173.
-
-
-LaTeX Warning: Citation `guo2024scene' on page 36 undefined on input line 173.
-
-
-LaTeX Warning: Citation `zhu2024fusing' on page 36 undefined on input line 174.
-
-
-LaTeX Warning: Citation `bralet2024dem' on page 36 undefined on input line 174.
-
-
-LaTeX Warning: Citation `zhang2024interpretable' on page 36 undefined on input line 174.
-
-
-LaTeX Warning: Citation `kwak2024assessing' on page 36 undefined on input line 175.
-
-
-LaTeX Warning: Citation `liu2022modality' on page 36 undefined on input line 175.
-
-
-LaTeX Warning: Citation `wang2025generative' on page 36 undefined on input line 175.
-
-
-LaTeX Warning: Citation `wang2025generative' on page 36 undefined on input line 176.
-
+[35]
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 12.51453pt, for example:
@@ -1520,98 +1496,15 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-0.51453pt}.
 
-[36 <./images/cfrwd/WD.pdf>]
-
-LaTeX Warning: Citation `wang2025generative' on page 37 undefined on input line 179.
-
-
-LaTeX Warning: Citation `zhang2025seg' on page 37 undefined on input line 179.
-
-
-LaTeX Warning: Citation `wang2025generative' on page 37 undefined on input line 191.
-
-
-LaTeX Warning: Citation `kong2022multi' on page 37 undefined on input line 191.
-
-
-LaTeX Warning: Citation `wang2025generative' on page 37 undefined on input line 192.
-
-
-LaTeX Warning: Citation `luo2024contextual' on page 37 undefined on input line 192.
-
-
-LaTeX Warning: Citation `wang2025generative' on page 37 undefined on input line 193.
-
-
-LaTeX Warning: Citation `wang2025generative' on page 37 undefined on input line 198.
-
-
-Package fancyhdr Warning: \headheight is too small (12.0pt): 
-(fancyhdr)                Make it at least 22.4317pt, for example:
-(fancyhdr)                \setlength{\headheight}{22.4317pt}.
-(fancyhdr)                You might also make \topmargin smaller:
-(fancyhdr)                \addtolength{\topmargin}{-10.4317pt}.
-
-[37]
-
-LaTeX Warning: Citation `kong2022multi' on page 38 undefined on input line 201.
-
-
-LaTeX Warning: Citation `wang2022hybrid' on page 38 undefined on input line 202.
-
-
-LaTeX Warning: Citation `zhao2025hvt' on page 38 undefined on input line 202.
-
-
-LaTeX Warning: Citation `wei2025sequential' on page 38 undefined on input line 203.
-
-
-LaTeX Warning: Citation `luo2024contextual' on page 38 undefined on input line 209.
-
-
-LaTeX Warning: Citation `wang2025generative' on page 38 undefined on input line 210.
-
-
-LaTeX Warning: Citation `zhao2025hvt' on page 38 undefined on input line 210.
-
-
-LaTeX Warning: Citation `kwak2024assessing' on page 38 undefined on input line 211.
-
-
-LaTeX Warning: Citation `liu2022modality' on page 38 undefined on input line 211.
-
-
-Overfull \hbox (11.69565pt too wide) in paragraph at lines 211--212
-[]\T2A/cmr/bx/n/10 Временное и меж-до-мен-ное вни-ма-ние. \T2A/cmr/m/up/10 В муль-ти-тем-по-раль-ных по-ста-нов-ках temporal co-attention
- []
-
-[38]
-
-LaTeX Warning: Citation `wang2025generative' on page 39 undefined on input line 225.
-
-
-LaTeX Warning: Citation `zhao2025hvt' on page 39 undefined on input line 226.
-
-
-LaTeX Warning: Citation `wang2025generative' on page 39 undefined on input line 226.
-
-
-LaTeX Warning: Citation `wang2025generative' on page 39 undefined on input line 230.
-
-
-Overfull \hbox (5.86725pt too wide) in paragraph at lines 230--231
-[]\T2A/cmr/bx/n/10 Открытые ис-сле-до-ва-тель-ские во-про-сы \T2A/cmr/m/up/10 вклю-ча-ют: раз-ра-бот-ку об-лег-чјн-ных attention-вариантов
- []
-
-
-Overfull \hbox (8.55939pt too wide) in paragraph at lines 238--251
+[36]
+Overfull \hbox (8.55939pt too wide) in paragraph at lines 280--293
  [][] 
  []
 
-<images/all_models_comparison.jpg, id=1160, 445.76135pt x 232.27579pt>
+<images/all_models_comparison.jpg, id=1315, 445.76135pt x 232.27579pt>
 File: images/all_models_comparison.jpg Graphic file (type jpg)
 <use images/all_models_comparison.jpg>
-Package pdftex.def Info: images/all_models_comparison.jpg  used on input line 255.
+Package pdftex.def Info: images/all_models_comparison.jpg  used on input line 297.
 (pdftex.def)             Requested size: 472.03123pt x 245.9666pt.
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
@@ -1620,7 +1513,7 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-10.4317pt}.
 
-[39]) (./parts/Chapter4.tex
+[37]) (./parts/Chapter4.tex
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 24.51453pt, for example:
@@ -1628,15 +1521,14 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-12.51453pt}.
 
-[40 <./images/all_models_comparison.jpg>]
+[38 <./images/all_models_comparison.jpg>]
 {\cyrillictext \CYRG \cyrl \cyra \cyrv \cyra } 5.
-[41
+
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+ [39
 
 ]
-Overfull \hbox (39.74657pt too wide) in paragraph at lines 32--35
- []\T2A/cmr/bx/n/10 Проблема ѕшах-мат-ной дос-киї[] \T2A/cmtt/m/n/10 ConvTranspose2d \T2A/cmr/m/up/10 был за-ме-нен на би-ли-ней-ную ин-тер-по-ля-цию (\T2A/cmtt/m/n/10 nn.Upsample\T2A/cmr/m/up/10 )
- []
-
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 12.51453pt, for example:
@@ -1644,11 +1536,11 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-0.51453pt}.
 
-[42]
-<images/pix2pix/output/pix2pix_labeled.png, id=1190, 1806.75pt x 2710.125pt>
+[40]
+<images/pix2pix/output/pix2pix_labeled.png, id=1344, 1806.75pt x 2710.125pt>
 File: images/pix2pix/output/pix2pix_labeled.png Graphic file (type png)
 <use images/pix2pix/output/pix2pix_labeled.png>
-Package pdftex.def Info: images/pix2pix/output/pix2pix_labeled.png  used on input line 64.
+Package pdftex.def Info: images/pix2pix/output/pix2pix_labeled.png  used on input line 69.
 (pdftex.def)             Requested size: 377.62642pt x 566.41376pt.
 
 
@@ -1658,10 +1550,7 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-12.51453pt}.
 
-[43]
-Underfull \vbox (badness 10000) has occurred while \output is active []
-
-
+[41]
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 12.51453pt, for example:
@@ -1669,49 +1558,57 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-0.51453pt}.
 
-[44 <./images/pix2pix/output/pix2pix_labeled.png (PNG copy)>]
-Overfull \hbox (11.4227pt too wide) in paragraph at lines 102--103
-[]\T2A/cmr/bx/n/10 Low-freq stream \T2A/cmr/m/up/10 ($\OML/cmm/m/it/10 LL[]$\T2A/cmr/m/up/10 ): струк-тур-ный кон-текст сце-ны, об-ра-ба-ты-ва-ет-ся че-рез \T2A/cmtt/m/n/10 WDResBlock \T2A/cmr/m/up/10 (bottleneck-
- []
-
-
-Overfull \hbox (12.02005pt too wide) in paragraph at lines 103--104
-[]\T2A/cmr/bx/n/10 Mid-freq stream \T2A/cmr/m/up/10 ($\PU/cmr/m/up/10 [\OML/cmm/m/it/10 LH[]; HL[]; HH[]\PU/cmr/m/up/10 ]$\T2A/cmr/m/up/10 ): де-та-ли сред-не-го мас-шта-ба, об-ра-ба-ты-ва-ют-ся че-рез 6 \T2A/cmtt/m/n/10 WDResBlock
- []
-
-
-Overfull \hbox (1.72113pt too wide) in paragraph at lines 109--111
- []\T2A/cmr/bx/n/10 Пространственно-канальное вни-ма-ние в ча-стот-ной вет-ви[] \T2A/cmr/m/up/10 Для по-вы-ше-ния се-лек-тив-но-сти филь-
- []
-
-
-Overfull \hbox (23.58656pt too wide) in paragraph at lines 118--120
- []\T2A/cmr/bx/n/10 Стабилизация дис-кри-ми-на-то-ра и стра-те-гии оп-ти-ми-за-ции[] \T2A/cmr/m/up/10 Для по-вы-ше-ния устой-чи-во-сти \T2A/cmr/m/it/10 adversarial\T2A/cmr/m/up/10 -
- []
-
-
-Package fancyhdr Warning: \headheight is too small (12.0pt): 
-(fancyhdr)                Make it at least 24.51453pt, for example:
-(fancyhdr)                \setlength{\headheight}{24.51453pt}.
-(fancyhdr)                You might also make \topmargin smaller:
-(fancyhdr)                \addtolength{\topmargin}{-12.51453pt}.
-
-[45]
-<images/cfrwd/output/val/Figure_2.png, id=1224, 1011.78pt x 505.89pt>
+[42 <./images/pix2pix/output/pix2pix_labeled.png (PNG copy)>]
+<images/cfrwd/output/val/Figure_2.png, id=1370, 1011.78pt x 505.89pt>
 File: images/cfrwd/output/val/Figure_2.png Graphic file (type png)
 <use images/cfrwd/output/val/Figure_2.png>
-Package pdftex.def Info: images/cfrwd/output/val/Figure_2.png  used on input line 140.
+Package pdftex.def Info: images/cfrwd/output/val/Figure_2.png  used on input line 144.
 (pdftex.def)             Requested size: 448.42822pt x 224.21332pt.
-<images/cfrwd/output/val/Figure_5.png, id=1225, 1011.78pt x 505.89pt>
+<images/cfrwd/output/val/Figure_5.png, id=1371, 1011.78pt x 505.89pt>
 File: images/cfrwd/output/val/Figure_5.png Graphic file (type png)
 <use images/cfrwd/output/val/Figure_5.png>
-Package pdftex.def Info: images/cfrwd/output/val/Figure_5.png  used on input line 147.
+Package pdftex.def Info: images/cfrwd/output/val/Figure_5.png  used on input line 151.
 (pdftex.def)             Requested size: 448.42822pt x 224.21332pt.
-<images/cfrwd/output/train/epoch_270.png, id=1229, 867.24pt x 867.24pt>
+<images/cfrwd/output/train/epoch_270.png, id=1375, 867.24pt x 867.24pt>
 File: images/cfrwd/output/train/epoch_270.png Graphic file (type png)
 <use images/cfrwd/output/train/epoch_270.png>
-Package pdftex.def Info: images/cfrwd/output/train/epoch_270.png  used on input line 156.
+Package pdftex.def Info: images/cfrwd/output/train/epoch_270.png  used on input line 161.
 (pdftex.def)             Requested size: 462.5886pt x 462.58598pt.
+
+Overfull \hbox (6.102pt too wide) in paragraph at lines 166--170
+[]\T2A/cmr/m/up/10 На ри-сун-ке []5.4[] хо-ро-шо вид-но функ-ци-о-наль-ное раз-де-ле-ние вет-вей и ра-бо-ту ме-ха-низ-ма AdaptiveFusion.
+ []
+
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 24.51453pt, for example:
+(fancyhdr)                \setlength{\headheight}{24.51453pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-12.51453pt}.
+
+[43]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 12.51453pt, for example:
+(fancyhdr)                \setlength{\headheight}{12.51453pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-0.51453pt}.
+
+[44 <./images/cfrwd/output/val/Figure_2.png> <./images/cfrwd/output/val/Figure_5.png>]
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 24.51453pt, for example:
+(fancyhdr)                \setlength{\headheight}{24.51453pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-12.51453pt}.
+
+[45 <./images/cfrwd/output/train/epoch_270.png>]
+Overfull \hbox (0.91547pt too wide) in paragraph at lines 208--213
+\T2A/cmr/m/up/10 ную эф-фек-тив-ность. Экс-трак-то-ром при-зна-ков слу-жит пре-до-бу-чен-ный на ImageNet кар-кас ConvNeXtV2.
+ []
 
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
@@ -1720,7 +1617,13 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-0.51453pt}.
 
-[46 <./images/cfrwd/output/val/Figure_2.png>]
+[46]
+<./images/convnextv2/output/val/huggingface_val_all.png, id=1414, 3537.215pt x 2441.12pt>
+File: ./images/convnextv2/output/val/huggingface_val_all.png Graphic file (type png)
+<use ./images/convnextv2/output/val/huggingface_val_all.png>
+Package pdftex.def Info: ./images/convnextv2/output/val/huggingface_val_all.png  used on input line 234.
+(pdftex.def)             Requested size: 472.03123pt x 325.73764pt.
+
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 24.51453pt, for example:
@@ -1728,12 +1631,7 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-12.51453pt}.
 
-[47 <./images/cfrwd/output/val/Figure_5.png>]
-Overfull \hbox (45.48619pt too wide) in paragraph at lines 183--187
-[]\T2A/cmr/m/up/10 Для по-дав-ле-ния спекл-шума и по-вы-ше-ния се-лек-тив-но-сти филь-тра-ции внед-ре-ны ме-ха-низ-мы пространственно-
- []
-
-
+[47]
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
 
@@ -1744,7 +1642,29 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-0.51453pt}.
 
-[48 <./images/cfrwd/output/train/epoch_270.png>]
+[48 <./images/convnextv2/output/val/huggingface_val_all.png>]
+LaTeX Font Info:    Font shape `OML/cmr/m/up' in size <8> not available
+(Font)              Font shape `OML/cmm/m/it' tried instead on input line 280.
+LaTeX Font Info:    Font shape `OML/cmr/m/up' in size <6> not available
+(Font)              Font shape `OML/cmm/m/it' tried instead on input line 280.
+LaTeX Font Info:    Font shape `OMS/cmr/m/up' in size <8> not available
+(Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 280.
+LaTeX Font Info:    Font shape `OMS/cmr/m/up' in size <6> not available
+(Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 280.
+
+Overfull \hbox (11.88402pt too wide) in paragraph at lines 304--313
+\T2A/cmr/m/up/10 Здесь $\OT1/cmr/bx/n/10 x[] \OMS/cmsy/m/n/10 2 \U/msb/m/n/10 R[]$ \T2A/cmr/m/up/10 --- од-но-ка-наль-ный SAR-вход, $\OT1/cmr/bx/n/10 x[] \OMS/cmsy/m/n/10 2 \U/msb/m/n/10 R[]$ \T2A/cmr/m/up/10 --- рас-ши-рен-ное физически-осмысленное
+ []
+
+<./images/llwt/llwt_v45.pdf, id=1435, 1201.61116pt x 394.60724pt>
+File: ./images/llwt/llwt_v45.pdf Graphic file (type pdf)
+<use ./images/llwt/llwt_v45.pdf>
+Package pdftex.def Info: ./images/llwt/llwt_v45.pdf  used on input line 316.
+(pdftex.def)             Requested size: 472.03123pt x 155.01614pt.
+
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 24.51453pt, for example:
@@ -1753,14 +1673,99 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                \addtolength{\topmargin}{-12.51453pt}.
 
 [49]
-<./images/convnextv2/output/val/huggingface_val_all.png, id=1261, 3537.215pt x 2441.12pt>
-File: ./images/convnextv2/output/val/huggingface_val_all.png Graphic file (type png)
-<use ./images/convnextv2/output/val/huggingface_val_all.png>
-Package pdftex.def Info: ./images/convnextv2/output/val/huggingface_val_all.png  used on input line 221.
-(pdftex.def)             Requested size: 472.03123pt x 325.73764pt.
 
-Overfull \hbox (15.93091pt too wide) in paragraph at lines 226--227
- []\T2A/cmr/bx/n/10 Изображения[] \T2A/cmr/m/up/10 На изоб-ра-же-нии  []5.6[] пред-став-ле-ны ре-зуль-та-ты обу-че-ния мо-де-ли на ба-зе ConvNeXtV2.
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 12.51453pt, for example:
+(fancyhdr)                \setlength{\headheight}{12.51453pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-0.51453pt}.
+
+[50 <./images/llwt/llwt_v45.pdf>]
+<./images/llwt/haar_pick_psnr.pdf, id=1546, 1166.3575pt x 989.6975pt>
+File: ./images/llwt/haar_pick_psnr.pdf Graphic file (type pdf)
+<use ./images/llwt/haar_pick_psnr.pdf>
+Package pdftex.def Info: ./images/llwt/haar_pick_psnr.pdf  used on input line 367.
+(pdftex.def)             Requested size: 188.8096pt x 160.21233pt.
+<./images/llwt/haar_pick_ssim.pdf, id=1547, 1166.3575pt x 989.6975pt>
+File: ./images/llwt/haar_pick_ssim.pdf Graphic file (type pdf)
+<use ./images/llwt/haar_pick_ssim.pdf>
+Package pdftex.def Info: ./images/llwt/haar_pick_ssim.pdf  used on input line 374.
+(pdftex.def)             Requested size: 188.8096pt x 160.21233pt.
+
+Overfull \hbox (21.94034pt too wide) in paragraph at lines 390--402
+\T2A/cmr/m/up/10 на ри-сун-ке []5.8[]. В раз-ра-бо-тан-ной мо-де-ли ис-поль-зу-ют-ся две кон-фи-гу-ра-ции бэк-бо-на: \T2A/cmtt/m/n/10 convnextv2-tiny-22k-224
+ []
+
+<./images/convnextv2/convnextv2_block.pdf, id=1554, 379.69353pt x 373.54356pt>
+File: ./images/convnextv2/convnextv2_block.pdf Graphic file (type pdf)
+<use ./images/convnextv2/convnextv2_block.pdf>
+Package pdftex.def Info: ./images/convnextv2/convnextv2_block.pdf  used on input line 405.
+(pdftex.def)             Requested size: 198.25224pt x 195.04173pt.
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 24.51453pt, for example:
+(fancyhdr)                \setlength{\headheight}{24.51453pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-12.51453pt}.
+
+[51 <./images/llwt/haar_pick_psnr.pdf> <./images/llwt/haar_pick_ssim.pdf>]
+<./images/llwt/pixelshuffle.pdf, id=1579, 309.2102pt x 208.0573pt>
+File: ./images/llwt/pixelshuffle.pdf Graphic file (type pdf)
+<use ./images/llwt/pixelshuffle.pdf>
+Package pdftex.def Info: ./images/llwt/pixelshuffle.pdf  used on input line 449.
+(pdftex.def)             Requested size: 217.13753pt x 146.10579pt.
+<./images/llwt/decoder_block.pdf, id=1580, 378.86343pt x 435.27922pt>
+File: ./images/llwt/decoder_block.pdf Graphic file (type pdf)
+<use ./images/llwt/decoder_block.pdf>
+Package pdftex.def Info: ./images/llwt/decoder_block.pdf  used on input line 457.
+(pdftex.def)             Requested size: 217.13753pt x 249.46666pt.
+
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 12.51453pt, for example:
+(fancyhdr)                \setlength{\headheight}{12.51453pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-0.51453pt}.
+
+[52 <./images/convnextv2/convnextv2_block.pdf>]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 24.51453pt, for example:
+(fancyhdr)                \setlength{\headheight}{24.51453pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-12.51453pt}.
+
+[53 <./images/llwt/pixelshuffle.pdf> <./images/llwt/decoder_block.pdf>]
+<./images/llwt/discriminator.pdf, id=2068, 379.03506pt x 499.47102pt>
+File: ./images/llwt/discriminator.pdf Graphic file (type pdf)
+<use ./images/llwt/discriminator.pdf>
+Package pdftex.def Info: ./images/llwt/discriminator.pdf  used on input line 513.
+(pdftex.def)             Requested size: 292.65706pt x 385.64561pt.
+
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 12.51453pt, for example:
+(fancyhdr)                \setlength{\headheight}{12.51453pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-0.51453pt}.
+
+[54 <./images/llwt/discriminator.pdf>]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 24.51453pt, for example:
+(fancyhdr)                \setlength{\headheight}{24.51453pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-12.51453pt}.
+
+[55]
+Overfull \hbox (8.82579pt too wide) in paragraph at lines 617--623
+\T2A/cmr/m/up/10 гла-со-ван с со-дер-жа-ни-ем, а не с точ-ным по-ло-же-ни-ем пик-се-ля, вне-сем кон-траст-ный объ-ек-тив PatchNCE [[]].
  []
 
 
@@ -1770,183 +1775,165 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-0.51453pt}.
 
-[50]
-
-Package fancyhdr Warning: \headheight is too small (12.0pt): 
-(fancyhdr)                Make it at least 24.51453pt, for example:
-(fancyhdr)                \setlength{\headheight}{24.51453pt}.
-(fancyhdr)                You might also make \topmargin smaller:
-(fancyhdr)                \addtolength{\topmargin}{-12.51453pt}.
-
-[51 <./images/convnextv2/output/val/huggingface_val_all.png>]) (./parts/Chapter5.tex
-{\cyrillictext \CYRG \cyrl \cyra \cyrv \cyra } 6.
-
-Overfull \hbox (18.58858pt too wide) in paragraph at lines 24--30
-[]\T2A/cmr/bx/n/10 Версия v0 (пред-ше-ствен-ник). \T2A/cmr/m/up/10 Ба-зой слу-жит услов-ный GAN на ос-но-ве пре-до-бу-чен-но-го ConvNeXt V2
- []
-
-[52
-
-]
-Overfull \hbox (11.88402pt too wide) in paragraph at lines 107--115
-\T2A/cmr/m/up/10 Здесь $\OT1/cmr/bx/n/10 x[] \OMS/cmsy/m/n/10 2 \U/msb/m/n/10 R[]$ \T2A/cmr/m/up/10 --- од-но-ка-наль-ный SAR-вход, $\OT1/cmr/bx/n/10 x[] \OMS/cmsy/m/n/10 2 \U/msb/m/n/10 R[]$ \T2A/cmr/m/up/10 --- рас-ши-рен-ное физически-осмысленное
- []
-
-
-LaTeX Warning: `!h' float specifier changed to `!ht'.
-
-[53]
-
-Package fancyhdr Warning: \headheight is too small (12.0pt): 
-(fancyhdr)                Make it at least 24.51453pt, for example:
-(fancyhdr)                \setlength{\headheight}{24.51453pt}.
-(fancyhdr)                You might also make \topmargin smaller:
-(fancyhdr)                \addtolength{\topmargin}{-12.51453pt}.
-
-[54] [55]
-
-LaTeX Warning: Citation `wang2003msssim' on page 56 undefined on input line 326.
-
-
-LaTeX Warning: Citation `zhang2018lpips' on page 56 undefined on input line 335.
-
-
-Package fancyhdr Warning: \headheight is too small (12.0pt): 
-(fancyhdr)                Make it at least 24.51453pt, for example:
-(fancyhdr)                \setlength{\headheight}{24.51453pt}.
-(fancyhdr)                You might also make \topmargin smaller:
-(fancyhdr)                \addtolength{\topmargin}{-12.51453pt}.
-
 [56]
 
-LaTeX Warning: Citation `jiang2021ffl' on page 57 undefined on input line 355.
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 24.51453pt, for example:
+(fancyhdr)                \setlength{\headheight}{24.51453pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-12.51453pt}.
 
+[57]) (./parts/Chapter5.tex
+{\cyrillictext \CYRG \cyrl \cyra \cyrv \cyra } 6.
+[58
 
-Overfull \hbox (0.76958pt too wide) in paragraph at lines 392--398
-\T2A/cmr/m/up/10 В да-та-се-те SEN1-2 си-сте-ма-ти-че-ски при-сут-ству-ет оста-точ-ная раз-ре-ги-стра-ция пар SAR/оптика на уровне
- []
-
-
-LaTeX Warning: Citation `park2020cut' on page 57 undefined on input line 401.
-
-[57]
+]
 LaTeX Font Info:    Font shape `OML/cmr/m/up' in size <9> not available
-(Font)              Font shape `OML/cmm/m/it' tried instead on input line 457.
-LaTeX Font Info:    Font shape `OML/cmr/m/up' in size <6> not available
-(Font)              Font shape `OML/cmm/m/it' tried instead on input line 457.
+(Font)              Font shape `OML/cmm/m/it' tried instead on input line 60.
 LaTeX Font Info:    Font shape `OMS/cmr/m/up' in size <9> not available
-(Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 457.
-LaTeX Font Info:    Font shape `OMS/cmr/m/up' in size <6> not available
-(Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 457.
+(Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 60.
 
-Underfull \hbox (badness 10000) in paragraph at lines 463--463
-[]|$\OMS/cmsy/m/n/9 ^^@$ \T2A/cmr/m/up/9 MS-SSIM, LPIPS, FFL,
+Underfull \hbox (badness 10000) in paragraph at lines 67--67
+[]|$\OMS/cmsy/m/n/9 ^^@$ \T2A/cmr/m/up/9 пер-цеп-тив-ные по-те-ри (MS-
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 466--466
-[]|$\OMS/cmsy/m/n/9 ^^@$ \T2A/cmr/m/up/9 об-рат-ное Хаар-
+Underfull \hbox (badness 2401) in paragraph at lines 68--68
+[]|$\OMS/cmsy/m/n/9 ^^@$ \T2A/cmr/m/up/9 по-ком-по-нент-ная Хаар-потеря (толь-ко
  []
 
+
+Underfull \hbox (badness 4647) in paragraph at lines 69--69
+[]|$\OMS/cmsy/m/n/9 ^^@$ \T2A/cmr/m/up/9 об-рат-ное Хаар-преобр. (RGB-голова,
+ []
+
+
+Overfull \hbox (11.73952pt too wide) in paragraph at lines 86--90
+[]\T2A/cmr/m/up/10 Дальнейшее уда-ле-ние пер-цеп-тив-ных ком-по-нен-тов функ-ции по-терь (MS-SSIM, LPIPS, FFL, PatchNCE)
+ []
+
+<./images/llwt/output/llwt_comparison.pdf, id=2219, 4376.35pt x 2444.13126pt>
+File: ./images/llwt/output/llwt_comparison.pdf Graphic file (type pdf)
+<use ./images/llwt/output/llwt_comparison.pdf>
+Package pdftex.def Info: ./images/llwt/output/llwt_comparison.pdf  used on input line 100.
+(pdftex.def)             Requested size: 472.03123pt x 263.59676pt.
+<./images/llwt/output/llwt_ablation.pdf, id=2220, 3282.2625pt x 2445.135pt>
+File: ./images/llwt/output/llwt_ablation.pdf Graphic file (type pdf)
+<use ./images/llwt/output/llwt_ablation.pdf>
+Package pdftex.def Info: ./images/llwt/output/llwt_ablation.pdf  used on input line 112.
+(pdftex.def)             Requested size: 472.03123pt x 351.60669pt.
+[59] [60 <./images/llwt/output/llwt_comparison.pdf>] [61 <./images/llwt/output/llwt_ablation.pdf>]
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
-(fancyhdr)                Make it at least 24.51453pt, for example:
-(fancyhdr)                \setlength{\headheight}{24.51453pt}.
+(fancyhdr)                Make it at least 12.51453pt, for example:
+(fancyhdr)                \setlength{\headheight}{12.51453pt}.
 (fancyhdr)                You might also make \topmargin smaller:
-(fancyhdr)                \addtolength{\topmargin}{-12.51453pt}.
+(fancyhdr)                \addtolength{\topmargin}{-0.51453pt}.
 
-[58]
-
-LaTeX Warning: `!h' float specifier changed to `!ht'.
-
-
-LaTeX Warning: `!h' float specifier changed to `!ht'.
-
-[59]
-
-LaTeX Warning: Citation `isola2017pix2pix' on page 60 undefined on input line 583.
-
-
-LaTeX Warning: Citation `zhu2017cyclegan' on page 60 undefined on input line 584.
-
-
-LaTeX Warning: Citation `huang2018munit' on page 60 undefined on input line 585.
-
-
-LaTeX Warning: Citation `fuentes2019cyclegan' on page 60 undefined on input line 586.
-
-
-LaTeX Warning: Citation `liu2022cfrwd' on page 60 undefined on input line 587.
-
-
-LaTeX Warning: Citation `seo2023acdm' on page 60 undefined on input line 588.
-
-
-LaTeX Warning: `!h' float specifier changed to `!ht'.
-
-
-Package fancyhdr Warning: \headheight is too small (12.0pt): 
-(fancyhdr)                Make it at least 24.51453pt, for example:
-(fancyhdr)                \setlength{\headheight}{24.51453pt}.
-(fancyhdr)                You might also make \topmargin smaller:
-(fancyhdr)                \addtolength{\topmargin}{-12.51453pt}.
-
-[60]
-Overfull \hbox (10.49094pt too wide) in paragraph at lines 626--632
-\T2A/cmr/m/up/10 стемом, а вы-ход-ная го-ло-ва вос-ста-нав-ли-ва-ет изоб-ра-же-ние че-рез точ-ное об-рат-ное Хаар-преобразование.
- []
-
-
-Overfull \hbox (2.43846pt too wide) in paragraph at lines 642--649
-\T2A/cmr/m/up/10 пер-цеп-тив-ная ре-гу-ля-ри-за-ция, по-ком-по-нент-ная по-те-ря в Хаар-базисе, об-рат-ное Хаар-преобразование
- []
-
-[61]
-
-Package fancyhdr Warning: \headheight is too small (12.0pt): 
-(fancyhdr)                Make it at least 24.51453pt, for example:
-(fancyhdr)                \setlength{\headheight}{24.51453pt}.
-(fancyhdr)                You might also make \topmargin smaller:
-(fancyhdr)                \addtolength{\topmargin}{-12.51453pt}.
-
-[62]) (./parts/Chapter6.tex
+[62]
+<./images/llwt/output/cmp_00_sample1542_dLPIPS0.191.png, id=2688, 1139.80115pt x 314.89072pt>
+File: ./images/llwt/output/cmp_00_sample1542_dLPIPS0.191.png Graphic file (type png)
+<use ./images/llwt/output/cmp_00_sample1542_dLPIPS0.191.png>
+Package pdftex.def Info: ./images/llwt/output/cmp_00_sample1542_dLPIPS0.191.png  used on input line 301.
+(pdftex.def)             Requested size: 472.03123pt x 130.40813pt.
+<./images/llwt/output/cmp_05_sample0874_dLPIPS0.103.png, id=2689, 1139.80115pt x 314.89072pt>
+File: ./images/llwt/output/cmp_05_sample0874_dLPIPS0.103.png Graphic file (type png)
+<use ./images/llwt/output/cmp_05_sample0874_dLPIPS0.103.png>
+Package pdftex.def Info: ./images/llwt/output/cmp_05_sample0874_dLPIPS0.103.png  used on input line 302.
+(pdftex.def)             Requested size: 472.03123pt x 130.40813pt.
+ [63] [64 <./images/llwt/output/cmp_00_sample1542_dLPIPS0.191.png> <./images/llwt/output/cmp_05_sample0874_dLPIPS0.103.png>] [65] [66]) (./parts/Chapter6.tex
 {\cyrillictext \CYRG \cyrl \cyra \cyrv \cyra } 7.
-[63
 
-]) (./main.bbl
+Overfull \hbox (3.82259pt too wide) in paragraph at lines 11--16
+\T2A/cmr/m/up/10 CycleGAN) и вейвлет-ориентированных ар-хи-тек-тур (CFRWD-GAN) до ги-брид-ных CNN--Transformer
+ []
+
+[67
+
+] [68]) (./main.bbl
 Underfull \hbox (badness 1005) in paragraph at lines 12--15
 []\T2A/cmr/m/up/10 Image-to-image translation with conditional adversarial networks / Phillip Isola, Jun-Yan Zhu,
  []
 
-[64
+[69
 
 ]
-Underfull \hbox (badness 2772) in paragraph at lines 88--91
-[]\T2A/cmr/m/up/10 3D U-Net: learning dense volumetric segmentation from sparse annotation / []Ozg^^Dun []icek,
+Underfull \hbox (badness 10000) in paragraph at lines 101--104
+[]\T2A/cmr/m/it/10 Ronneberger, Olaf\T2A/cmr/m/up/10 . U-Net: Convolutional networks for biomedical image segmentation /
  []
 
-) [65] (./parts/Appendix.tex
-Overfull \hbox (28.69966pt too wide) in paragraph at lines 5--5
-[][]\T2A/cmr/bx/n/14.4 Дополнительные ре-зуль-та-ты ра-бо-ты мо-де-ли, вдох-нов-лен-ной CFRWD-
+
+Underfull \hbox (badness 1189) in paragraph at lines 133--136
+[]\T2A/cmr/m/up/10 SAR-to-EO image translation with multi-conditional adversarial networks / Armando Cabrera,
  []
 
-<images/cfrwd/output/val/val_figures_1-3.png, id=1409, 1372.12625pt x 1541.76pt>
+
+Underfull \hbox (badness 1173) in paragraph at lines 157--161
+[]\T2A/cmr/m/up/10 SAR-to-optical image translation via an interpretable network / Mingjin Zhang, Peng Zhang,
+ []
+
+[70]
+Underfull \hbox (badness 4279) in paragraph at lines 221--225
+[]\T2A/cmr/m/it/10 Wang, Zhou\T2A/cmr/m/up/10 . Multiscale structural similarity for image quality assessment / Zhou Wang,
+ []
+
+
+Underfull \hbox (badness 1082) in paragraph at lines 234--237
+[]\T2A/cmr/m/up/10 Contrastive learning for unpaired image-to-image translation / Taesung Park, Alexei A Efros,
+ []
+
+) [71] (./parts/Appendix.tex
+<images/cfrwd/output/val/val_figures_1-3.png, id=2751, 1372.12625pt x 1541.76pt>
 File: images/cfrwd/output/val/val_figures_1-3.png Graphic file (type png)
 <use images/cfrwd/output/val/val_figures_1-3.png>
 Package pdftex.def Info: images/cfrwd/output/val/val_figures_1-3.png  used on input line 9.
 (pdftex.def)             Requested size: 448.42822pt x 503.86559pt.
-<images/cfrwd/output/val/val_figures_4-7.png, id=1410, 1372.12625pt x 2056.68375pt>
+<images/cfrwd/output/val/val_figures_4-7.png, id=2752, 1372.12625pt x 2056.68375pt>
 File: images/cfrwd/output/val/val_figures_4-7.png Graphic file (type png)
 <use images/cfrwd/output/val/val_figures_4-7.png>
 Package pdftex.def Info: images/cfrwd/output/val/val_figures_4-7.png  used on input line 16.
 (pdftex.def)             Requested size: 448.42822pt x 672.14882pt.
+
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+ [72 <./images/cfrwd/output/val/val_figures_1-3.png>]
+Overfull \vbox (15.98984pt too high) has occurred while \output is active []
+
+ [73 <./images/cfrwd/output/val/val_figures_4-7.png>]
+<images/llwt/output/llw_scene_5.pdf, id=2766, 1768.6075pt x 1830.84pt>
+File: images/llwt/output/llw_scene_5.pdf Graphic file (type pdf)
+<use images/llwt/output/llw_scene_5.pdf>
+Package pdftex.def Info: images/llwt/output/llw_scene_5.pdf  used on input line 40.
+(pdftex.def)             Requested size: 226.57297pt x 234.52551pt.
+<images/llwt/output/llw_scene_52.pdf, id=2767, 1768.6075pt x 1830.84pt>
+File: images/llwt/output/llw_scene_52.pdf Graphic file (type pdf)
+<use images/llwt/output/llw_scene_52.pdf>
+Package pdftex.def Info: images/llwt/output/llw_scene_52.pdf  used on input line 40.
+(pdftex.def)             Requested size: 226.57297pt x 234.52551pt.
+<images/llwt/output/llw_scene_84.pdf, id=2768, 1768.6075pt x 1830.84pt>
+File: images/llwt/output/llw_scene_84.pdf Graphic file (type pdf)
+<use images/llwt/output/llw_scene_84.pdf>
+Package pdftex.def Info: images/llwt/output/llw_scene_84.pdf  used on input line 41.
+(pdftex.def)             Requested size: 226.57297pt x 234.52551pt.
+<images/llwt/output/llw_scene_100.pdf, id=2769, 1768.6075pt x 1830.84pt>
+File: images/llwt/output/llw_scene_100.pdf Graphic file (type pdf)
+<use images/llwt/output/llw_scene_100.pdf>
+Package pdftex.def Info: images/llwt/output/llw_scene_100.pdf  used on input line 41.
+(pdftex.def)             Requested size: 226.57297pt x 234.52551pt.
+<images/llwt/output/bad_llw_mountains.pdf, id=2770, 1768.6075pt x 1830.84pt>
+File: images/llwt/output/bad_llw_mountains.pdf Graphic file (type pdf)
+<use images/llwt/output/bad_llw_mountains.pdf>
+Package pdftex.def Info: images/llwt/output/bad_llw_mountains.pdf  used on input line 42.
+(pdftex.def)             Requested size: 226.57297pt x 234.52551pt.
+<images/llwt/output/bad_llw_urban.pdf, id=2771, 1768.6075pt x 1830.84pt>
+File: images/llwt/output/bad_llw_urban.pdf Graphic file (type pdf)
+<use images/llwt/output/bad_llw_urban.pdf>
+Package pdftex.def Info: images/llwt/output/bad_llw_urban.pdf  used on input line 42.
+(pdftex.def)             Requested size: 226.57297pt x 234.52551pt.
 )
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
- [66 <./images/cfrwd/output/val/val_figures_1-3.png>]
-Overfull \vbox (15.98984pt too high) has occurred while \output is active []
-
- [67 <./images/cfrwd/output/val/val_figures_4-7.png>] (./main.aux)
+ [74 <./images/llwt/output/llw_scene_5.pdf> <./images/llwt/output/llw_scene_52.pdf> <./images/llwt/output/llw_scene_84.pdf> <./images/llwt/output/llw_scene_100.pdf>] [75 <./images/llwt/output/bad_llw_mountains.pdf> <./images/llwt/output/bad_llw_urban.pdf>] (./main.aux)
  ***********
 LaTeX2e <2025-11-01>
 L3 programming layer <2026-01-19>
@@ -1955,25 +1942,22 @@ L3 programming layer <2026-01-19>
 
 LaTeX Font Warning: Some font shapes were not available, defaults substituted.
 
-
-LaTeX Warning: There were undefined references.
-
 Package rerunfilecheck Info: File `main.out' has not changed.
-(rerunfilecheck)             Checksum: 8C538006B51CF420DC1B0EA2EE911E95;19855.
+(rerunfilecheck)             Checksum: F64BDD6A70A527EDA39A785F291D616F;23815.
  ) 
 Here is how much of TeX's memory you used:
- 28520 strings out of 468477
- 529664 string characters out of 5445368
- 927806 words of memory out of 5000000
- 56319 multiletter control sequences out of 15000+600000
- 660172 words of font info for 123 fonts, out of 8000000 for 9000
+ 28989 strings out of 468477
+ 543711 string characters out of 5445368
+ 936255 words of memory out of 5000000
+ 56741 multiletter control sequences out of 15000+600000
+ 661798 words of font info for 130 fonts, out of 8000000 for 9000
  735 hyphenation exceptions out of 8191
- 89i,13n,107p,2523b,666s stack positions out of 10000i,1000n,20000p,200000b,200000s
- </Users/timur/Library/texlive/2026basic/texmf-var/fonts/pk/ljfour/lhcyr/lh-t2a/lati0900.600pk> </Users/timur/Library/texlive/2026basic/texmf-var/fonts/pk/ljfour/lhcyr/lh-t2a/labx0900.600pk> </Users/timur/Library/texlive/2026basic/texmf-var/fonts/pk/ljfour/lh/lh-t2a/larm0500.600pk> </Users/timur/Library/texlive/2026basic/texmf-var/fonts/pk/ljfour/lhcyr/lh-t2a/latt1000.600pk> </Users/timur/Library/texlive/2026basic/texmf-var/fonts/pk/ljfour/jknappen/ec/tcrm1000.600pk> </Users/timur/Library/texlive/2026basic/texmf-var/fonts/pk/ljfour/lh/lh-t2a/larm0900.600pk> </Users/timur/Library/texlive/2026basic/texmf-var/fonts/pk/ljfour/lh/lh-t2a/larm0700.600pk> </Users/timur/Library/texlive/2026basic/texmf-var/fonts/pk/ljfour/lh/lh-t2a/lati1000.600pk> </Users/timur/Library/texlive/2026basic/texmf-var/fonts/pk/ljfour/lh/lh-t2a/labx1440.600pk> </Users/timur/Library/texlive/2026basic/texmf-var/fonts/pk/ljfour/lh/lh-t2a/labx2074.600pk> </Users/timur/Library/texlive/2026basic/texmf-var/fonts/pk/ljfour/lh/lh-t2a/lasl1000.600pk> </Users/timur/Library/texlive/2026basic/texmf-var/fonts/pk/ljfour/lh/lh-t2a/labx2488.600pk> </usr/local/texlive/2026basic/texmf-dist/fonts/pk/ljfour/lh/lh-t2a/lati1200.600pk> </Users/timur/Library/texlive/2026basic/texmf-var/fonts/pk/ljfour/lh/lh-t2a/larm1000.600pk> </Users/timur/Library/texlive/2026basic/texmf-var/fonts/pk/ljfour/lh/lh-t2a/labx1000.600pk> </usr/local/texlive/2026basic/texmf-dist/fonts/pk/ljfour/lh/lh-t2a/larm1728.600pk> </usr/local/texlive/2026basic/texmf-dist/fonts/pk/ljfour/lh/lh-t2a/larm1200.600pk> </usr/local/texlive/2026basic/texmf-dist/fonts/pk/ljfour/lh/lh-t2a/labx1200.600pk></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx10.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx7.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi5.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi7.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi9.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmr5.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmr6.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmr7.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmr9.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy7.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy9.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/symbols/msbm10.pfb>
-Output written on main.pdf (69 pages, 57085848 bytes).
+ 89i,13n,107p,1113b,666s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ </Users/timur/Library/texlive/2026basic/texmf-var/fonts/pk/ljfour/lhcyr/lh-t2a/labx0900.600pk> </Users/timur/Library/texlive/2026basic/texmf-var/fonts/pk/ljfour/lhcyr/lh-t2a/latt0800.600pk> </usr/local/texlive/2026basic/texmf-dist/fonts/pk/ljfour/lh/lh-t2a/larm0800.600pk> </usr/local/texlive/2026basic/texmf-dist/fonts/pk/ljfour/lh/lh-t2a/larm0600.600pk> </Users/timur/Library/texlive/2026basic/texmf-var/fonts/pk/ljfour/lh/lh-t2a/larm0500.600pk> </Users/timur/Library/texlive/2026basic/texmf-var/fonts/pk/ljfour/lhcyr/lh-t2a/latt1000.600pk> </Users/timur/Library/texlive/2026basic/texmf-var/fonts/pk/ljfour/jknappen/ec/tcrm1000.600pk> </Users/timur/Library/texlive/2026basic/texmf-var/fonts/pk/ljfour/lh/lh-t2a/larm0900.600pk> </Users/timur/Library/texlive/2026basic/texmf-var/fonts/pk/ljfour/lh/lh-t2a/larm0700.600pk> </Users/timur/Library/texlive/2026basic/texmf-var/fonts/pk/ljfour/lh/lh-t2a/lati1000.600pk> </Users/timur/Library/texlive/2026basic/texmf-var/fonts/pk/ljfour/lh/lh-t2a/labx1440.600pk> </Users/timur/Library/texlive/2026basic/texmf-var/fonts/pk/ljfour/lh/lh-t2a/labx2074.600pk> </Users/timur/Library/texlive/2026basic/texmf-var/fonts/pk/ljfour/lh/lh-t2a/lasl1000.600pk> </Users/timur/Library/texlive/2026basic/texmf-var/fonts/pk/ljfour/lh/lh-t2a/labx2488.600pk> </usr/local/texlive/2026basic/texmf-dist/fonts/pk/ljfour/lh/lh-t2a/lati1200.600pk> </Users/timur/Library/texlive/2026basic/texmf-var/fonts/pk/ljfour/lh/lh-t2a/larm1000.600pk> </Users/timur/Library/texlive/2026basic/texmf-var/fonts/pk/ljfour/lh/lh-t2a/labx1000.600pk> </usr/local/texlive/2026basic/texmf-dist/fonts/pk/ljfour/lh/lh-t2a/larm1728.600pk> </usr/local/texlive/2026basic/texmf-dist/fonts/pk/ljfour/lh/lh-t2a/larm1200.600pk> </usr/local/texlive/2026basic/texmf-dist/fonts/pk/ljfour/lh/lh-t2a/labx1200.600pk></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx10.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx7.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi5.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi7.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi8.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi9.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmr5.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmr6.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmr7.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmr8.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmr9.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy5.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy6.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy7.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy9.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/symbols/msam10.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/symbols/msbm10.pfb>
+Output written on main.pdf (77 pages, 72699876 bytes).
 PDF statistics:
- 2655 PDF objects out of 2984 (max. 8388607)
- 1238 compressed objects within 13 object streams
- 334 named destinations out of 1000 (max. 500000)
- 606 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 4063 PDF objects out of 4296 (max. 8388607)
+ 1937 compressed objects within 20 object streams
+ 372 named destinations out of 1000 (max. 500000)
+ 776 words of extra memory for PDF output out of 10000 (max. 10000000)
 

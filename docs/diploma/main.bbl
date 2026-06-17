@@ -13,10 +13,11 @@ Image-to-image translation with conditional adversarial networks~/ Phillip~Isola
 \newblock 2017. ---
 \newblock Pp.~1125--1134.
 
-\bibitem{chu2017cyclegan}
+\bibitem{zhu2017unpaired}
 \selectlanguageifdefined{english}
-\BibEmph{Chu,~Casey}. Cyclegan, a master of steganography~/ Casey~Chu, Andrey~Zhmoginov, Mark~Sandler~// \BibEmph{arXiv preprint arXiv:1712.02950}. ---
-\newblock 2017.
+Unpaired image-to-image translation using cycle-consistent adversarial networks~/ Jun-Yan~Zhu, Taesung~Park, Phillip~Isola, Alexei~A~Efros~// Proceedings of the IEEE international conference on computer vision. ---
+\newblock 2017. ---
+\newblock Pp.~2223--2232.
 
 \bibitem{wei2023cfrwd}
 \selectlanguageifdefined{english}
@@ -29,6 +30,13 @@ CFRWD-GAN for SAR-to-optical image translation~/ Juan~Wei, Huanxin~Zou, Li~Sun e
 \selectlanguageifdefined{english}
 \BibEmph{Schmitt,~Michael}. The SEN1-2 dataset for deep learning in SAR-optical data fusion~/ Michael~Schmitt, Lloyd~Haydn~Hughes, Xiao~Xiang~Zhu~// \BibEmph{arXiv preprint arXiv:1807.01569}. ---
 \newblock 2018.
+
+\bibitem{goodfellow2020generative}
+\selectlanguageifdefined{english}
+Generative adversarial networks~/ Ian~Goodfellow, Jean~Pouget-Abadie, Mehdi~Mirza et~al.~// \BibEmph{Communications of the ACM}. ---
+\newblock 2020. ---
+\newblock Vol.~63, no.~11. ---
+\newblock Pp.~139--144.
 
 \bibitem{wang2004image}
 \selectlanguageifdefined{english}
@@ -83,17 +91,112 @@ Dinov2: Learning robust visual features without supervision~/ Maxime~Oquab, Timo
 The QXS-SAROPT dataset for deep learning in SAR-optical data fusion~/ Meiyu~Huang, Yao~Xu, Lixin~Qian et~al.~// \BibEmph{arXiv preprint arXiv:2103.08259}. ---
 \newblock 2021.
 
-\bibitem{cciccek20163d}
+\bibitem{mirza2014conditional}
 \selectlanguageifdefined{english}
-3D U-Net: learning dense volumetric segmentation from sparse annotation~/ {\"O}zg{\"u}n~{\c{C}}i{\c{c}}ek, Ahmed~Abdulkadir, Soeren~S~Lienkamp et~al.~// International conference on medical image computing and computer-assisted intervention~/ Springer. ---
-\newblock 2016. ---
-\newblock Pp.~424--432.
+\BibEmph{Mirza,~Mehdi}. Conditional generative adversarial nets~/ Mehdi~Mirza, Simon~Osindero~// \BibEmph{arXiv preprint arXiv:1411.1784}. ---
+\newblock 2014.
 
-\bibitem{zhu2017unpaired}
+\bibitem{ronneberger2015unet}
 \selectlanguageifdefined{english}
-Unpaired image-to-image translation using cycle-consistent adversarial networks~/ Jun-Yan~Zhu, Taesung~Park, Phillip~Isola, Alexei~A~Efros~// Proceedings of the IEEE international conference on computer vision. ---
-\newblock 2017. ---
-\newblock Pp.~2223--2232.
+\BibEmph{Ronneberger,~Olaf}. U-Net: Convolutional networks for biomedical image segmentation~/ Olaf~Ronneberger, Philipp~Fischer, Thomas~Brox~// International conference on medical image computing and computer-assisted intervention~/ Springer. ---
+\newblock 2015. ---
+\newblock Pp.~234--241.
+
+\bibitem{zhao2022comparative}
+\selectlanguageifdefined{english}
+A Comparative Analysis of GAN-based Methods for SAR-to-Optical Image Translation~/ Yitao~Zhao, Turgay~Celik, Nanqing~Liu, Heng-Chao~Li~// \BibEmph{IEEE Geoscience and Remote Sensing Letters}. ---
+\newblock 2022.
+
+\bibitem{guo2022sar2color}
+\selectlanguageifdefined{english}
+Sar2color: Learning imaging characteristics of SAR images for SAR-to-optical transformation~/ Zhe~Guo, Haojie~Guo, Xuewen~Liu et~al.~// \BibEmph{Remote Sensing}. ---
+\newblock 2022. ---
+\newblock Vol.~14, no.~15. ---
+\newblock P.~3740.
+
+\bibitem{li2022wflmgan}
+\selectlanguageifdefined{english}
+Multiscale generative adversarial network based on wavelet feature learning for SAR-to-optical image translation~/ Huihui~Li, Cang~Gu, Dongqing~Wu et~al.~// \BibEmph{IEEE Transactions on Geoscience and Remote Sensing}. ---
+\newblock 2022. ---
+\newblock Vol.~60. ---
+\newblock Pp.~1--15.
+
+\bibitem{wang2025generative}
+\selectlanguageifdefined{english}
+Generative models for SAR--optical image translation: A systematic review~/ Zhao~Wang, Zheng~Zhang, Xiaojun~Shan et~al.~// \BibEmph{International Journal of Applied Earth Observation and Geoinformation}. ---
+\newblock 2025. ---
+\newblock Vol. 146. ---
+\newblock P.~105009.
+
+\bibitem{cabrera2021sar}
+\selectlanguageifdefined{english}
+SAR-to-EO image translation with multi-conditional adversarial networks~/ Armando~Cabrera, Miriam~Cha, Prafull~Sharma, Michael~Newey~// 2021 55th Asilomar Conference on Signals, Systems, and Computers~/ IEEE. ---
+\newblock 2021. ---
+\newblock Pp.~1710--1714.
+
+\bibitem{fu2024advanced}
+\selectlanguageifdefined{english}
+Advanced SAR-to-optical image translation techniques using JAXA's high-resolution land-use and land-cover map~/ Xuanchao~Fu, Toru~Kouyama, Suomi~Seki et~al.~// IGARSS 2024 -- 2024 IEEE International Geoscience and Remote Sensing Symposium~/ IEEE. ---
+\newblock 2024.
+
+\bibitem{guo2024scene}
+\selectlanguageifdefined{english}
+MS-GAN: Learn to memorize scene for unpaired SAR-to-optical image translation~/ Zhe~Guo, Zhibo~Zhang, Qinglin~Cai et~al.~// \BibEmph{IEEE Journal of Selected Topics in Applied Earth Observations and Remote Sensing}. ---
+\newblock 2024. ---
+\newblock Vol.~17. ---
+\newblock Pp.~11467--11484.
+
+\bibitem{bralet2024dem}
+\selectlanguageifdefined{english}
+DEM-assisted neural network for SAR-to-optical image translation~/ Antoine~Bralet, Trong~Nghia~Ngo, Emmanuel~Trouv{\'e} et~al.~// IGARSS 2024 -- 2024 IEEE International Geoscience and Remote Sensing Symposium~/ IEEE. ---
+\newblock 2024. ---
+\newblock Pp.~7649--7652.
+
+\bibitem{zhang2024interpretable}
+\selectlanguageifdefined{english}
+SAR-to-optical image translation via an interpretable network~/ Mingjin~Zhang, Peng~Zhang, Yuhan~Zhang et~al.~// \BibEmph{Remote Sensing}. ---
+\newblock 2024. ---
+\newblock Vol.~16, no.~2. ---
+\newblock P.~242.
+
+\bibitem{kwak2024assessing}
+\selectlanguageifdefined{english}
+\BibEmph{Kwak,~Geun-Ho}. Assessing the potential of multi-temporal conditional generative adversarial networks in SAR-to-optical image translation for early-stage crop monitoring~/ Geun-Ho~Kwak, No-Wook~Park~// \BibEmph{Remote Sensing}. ---
+\newblock 2024. ---
+\newblock Vol.~16, no.~7. ---
+\newblock P.~1199.
+
+\bibitem{liu2022modality}
+\selectlanguageifdefined{english}
+Modality translation in remote sensing time series~/ Xun~Liu, Danfeng~Hong, Jocelyn~Chanussot et~al.~// \BibEmph{IEEE Transactions on Geoscience and Remote Sensing}. ---
+\newblock 2022. ---
+\newblock Vol.~60. ---
+\newblock Pp.~1--14.
+
+\bibitem{zhang2024seg}
+\selectlanguageifdefined{english}
+Seg-CycleGAN: SAR-to-optical image translation guided by a downstream task~/ Hannuo~Zhang, Huihui~Li, Jiarui~Lin et~al.~// \BibEmph{arXiv preprint arXiv:2408.05777}. ---
+\newblock 2024.
+
+\bibitem{kong2022multi}
+\selectlanguageifdefined{english}
+\BibEmph{Kong,~Yingying}. Multi-scale translation method from SAR to optical remote sensing images based on conditional generative adversarial network~/ Yingying~Kong, Siyuan~Liu, Xiangyang~Peng~// \BibEmph{International Journal of Remote Sensing}. ---
+\newblock 2022. ---
+\newblock Vol.~43, no.~8. ---
+\newblock Pp.~2837--2860.
+
+\bibitem{luo2024contextual}
+\selectlanguageifdefined{english}
+Contextual inference feature extraction approach based on generative adversarial network for SAR-to-optical image translation~/ Jinjin~Luo, Xuezhi~Yang, Hongbo~Liang, Guan~Wu~// IGARSS 2024 -- 2024 IEEE International Geoscience and Remote Sensing Symposium~/ IEEE. ---
+\newblock 2024. ---
+\newblock Pp.~7334--7337.
+
+\bibitem{zhao2025hvt}
+\selectlanguageifdefined{english}
+HVT-cGAN: Hybrid vision transformer cGAN for SAR-to-optical image translation~/ Wenbo~Zhao, Nana~Jiang, Xiaoxin~Liao, Jubo~Zhu~// \BibEmph{IEEE Transactions on Geoscience and Remote Sensing}. ---
+\newblock 2025. ---
+\newblock Vol.~63. ---
+\newblock Pp.~1--17.
 
 \bibitem{woo2018cbam}
 \selectlanguageifdefined{english}
@@ -101,71 +204,35 @@ Cbam: Convolutional block attention module~/ Sanghyun~Woo, Jongchan~Park, Joon-Y
 \newblock 2018. ---
 \newblock Pp.~3--19.
 
-\bibitem{kendall2018multi}
-\selectlanguageifdefined{english}
-\BibEmph{Kendall,~Alex}. Multi-task learning using uncertainty to weigh losses for scene geometry and semantics~/ Alex~Kendall, Yarin~Gal, Roberto~Cipolla~// Proceedings of the IEEE conference on computer vision and pattern recognition. ---
-\newblock 2018. ---
-\newblock Pp.~7482--7491.
-
-\bibitem{Schmitt2019}
-\selectlanguageifdefined{english}
-SEN12MS -- a curated dataset of georeferenced multi-spectral Sentinel-1/2 imagery for deep learning and data fusion~/ Michael~Schmitt, Lloyd~Haydn~Hughes, Chunping~Qiu, Xiao~Xiang~Zhu~// ISPRS Annals of the Photogrammetry, Remote Sensing and Spatial Information Sciences. ---
-\newblock Vol.~IV-2/W7. ---
-\newblock 2019. ---
-\newblock Pp.~153--160.
-
-\bibitem{goodfellow2020generative}
-\selectlanguageifdefined{english}
-Generative adversarial networks~/ Ian~Goodfellow, Jean~Pouget-Abadie, Mehdi~Mirza et~al.~// \BibEmph{Communications of the ACM}. ---
-\newblock 2020. ---
-\newblock Vol.~63, no.~11. ---
-\newblock Pp.~139--144.
-
-\bibitem{wang2025construction}
-\selectlanguageifdefined{english}
-Construction of a neural network model for small-scale shaded relief maps constrained by topographic feature lines~/ Yue~Wang, Wenping~Jiang, Han~Jiang et~al.~// \BibEmph{Geocarto International}. ---
-\newblock 2025. ---
-\newblock Vol.~40, no.~1. ---
-\newblock P.~2459099.
-
-\bibitem{mirza2014conditional}
-\selectlanguageifdefined{english}
-\BibEmph{Mirza,~Mehdi}. Conditional generative adversarial nets~/ Mehdi~Mirza, Simon~Osindero~// \BibEmph{arXiv preprint arXiv:1411.1784}. ---
-\newblock 2014.
-
 \bibitem{woo2023convnext}
 \selectlanguageifdefined{english}
 ConvNeXt V2: Co-designing and scaling ConvNets with masked autoencoders~/ Sanghyun~Woo, Shoubhik~Debnath, Ronghang~Hu et~al.~// Proceedings of the IEEE/CVF conference on computer vision and pattern recognition. ---
 \newblock 2023. ---
 \newblock Pp.~16133--16142.
 
-\bibitem{ho2020denoising}
-\selectlanguageifdefined{english}
-\BibEmph{Ho,~Jonathan}. Denoising diffusion probabilistic models~/ Jonathan~Ho, Ajay~Jain, Pieter~Abbeel~// \BibEmph{Advances in neural information processing systems}. ---
-\newblock 2020. ---
-\newblock Vol.~33. ---
-\newblock Pp.~6840--6851.
-
-\bibitem{rombach2022high}
-\selectlanguageifdefined{english}
-High-resolution image synthesis with latent diffusion models~/ Robin~Rombach, Andreas~Blattmann, Dominik~Lorenz et~al.~// Proceedings of the IEEE/CVF conference on computer vision and pattern recognition. ---
-\newblock 2022. ---
-\newblock Pp.~10684--10695.
-
-\bibitem{song2020score}
-\selectlanguageifdefined{english}
-Score-based generative modeling through stochastic differential equations~/ Yang~Song, Jascha~Sohl-Dickstein, Diederik~P~Kingma et~al.~// \BibEmph{arXiv preprint arXiv:2011.13456}. ---
-\newblock 2020.
-
-\bibitem{ho2022classifier}
-\selectlanguageifdefined{english}
-\BibEmph{Ho,~Jonathan}. Classifier-free diffusion guidance~/ Jonathan~Ho, Tim~Salimans~// \BibEmph{arXiv preprint arXiv:2207.12598}. ---
-\newblock 2022.
-
 \bibitem{liu2022convnet}
 \selectlanguageifdefined{english}
 A ConvNet for the 2020s~/ Zhuang~Liu, Hanzi~Mao, Chao-Yuan~Wu et~al.~// Proceedings of the IEEE/CVF conference on computer vision and pattern recognition. ---
 \newblock 2022. ---
 \newblock Pp.~11976--11986.
+
+\bibitem{wang2003msssim}
+\selectlanguageifdefined{english}
+\BibEmph{Wang,~Zhou}. Multiscale structural similarity for image quality assessment~/ Zhou~Wang, Eero~P~Simoncelli, Alan~C~Bovik~// The Thirty-Seventh Asilomar Conference on Signals, Systems \& Computers, 2003~/ IEEE. ---
+\newblock Vol.~2. ---
+\newblock 2003. ---
+\newblock Pp.~1398--1402.
+
+\bibitem{jiang2021ffl}
+\selectlanguageifdefined{english}
+Focal frequency loss for image reconstruction and synthesis~/ Liming~Jiang, Bo~Dai, Wayne~Wu, Chen~Change~Loy~// Proceedings of the IEEE/CVF International Conference on Computer Vision. ---
+\newblock 2021. ---
+\newblock Pp.~13919--13929.
+
+\bibitem{park2020cut}
+\selectlanguageifdefined{english}
+Contrastive learning for unpaired image-to-image translation~/ Taesung~Park, Alexei~A~Efros, Richard~Zhang, Jun-Yan~Zhu~// European Conference on Computer Vision (ECCV)~/ Springer. ---
+\newblock 2020. ---
+\newblock Pp.~319--345.
 
 \end{thebibliography}
