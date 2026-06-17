@@ -8,6 +8,8 @@ never touch other models.  Drop-in compatible with v0.4.x checkpoint keys
 """
 from __future__ import annotations
 
+import math
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -37,7 +39,15 @@ def lee_despeckle(x: torch.Tensor, win: int = 5, q: float = 0.05) -> torch.Tenso
     mean_sq = F.avg_pool2d(xp * xp, win, stride=1)
     var = (mean_sq - mean * mean).clamp_min(1e-6)
     b = var.shape[0]
-    sigma_n2 = torch.quantile(var.reshape(b, -1), q, dim=1).view(b, 1, 1, 1)
+    # q-quantile of the per-image variance map, via sort + linear interpolation.
+    # Exact match to torch.quantile(..., interpolation='linear') but ONNX-exportable
+    # (aten::quantile has no ONNX op). N=H*W is static so lo/hi/frac are trace-time constants.
+    flat = var.reshape(b, -1)
+    n = flat.shape[1]
+    pos = float(q) * (n - 1)
+    lo = int(math.floor(pos)); hi = min(lo + 1, n - 1); frac = pos - lo
+    s, _ = torch.sort(flat, dim=1)
+    sigma_n2 = (s[:, lo] * (1.0 - frac) + s[:, hi] * frac).view(b, 1, 1, 1)
     w = (1.0 - sigma_n2 / var).clamp(0.0, 1.0)
     return mean + w * (x - mean)
 
