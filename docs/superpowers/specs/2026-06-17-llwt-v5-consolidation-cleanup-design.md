@@ -69,8 +69,9 @@ that is:
 - Dead model dirs: `cfrwd, huggingface_gan, llwt, llwt_v3, llwt_v4, llwt_v45,
   llwt_v45_base, sar2opt_v1, sarformer_wb`, and legacy `pix2pix`.
 - Research scaffolding in `llwt_v5/`: `proof_*.py, diag_*.py, overfit_*.py,
-  compare_v45_v5.py, smoke_*.py, thesis_hfd_section.tex, _*.log, img_to_find/,
-  config_smoke*.yaml`. (Keep `viz_*.py`.)
+  compare_v45_v5.py, thesis_hfd_section.tex, _*.log, img_to_find/,
+  config_smoke_off.yaml`. (Keep `viz_*.py`, **and keep `smoke_train_step.py` +
+  `config_smoke.yaml`** as the ongoing smoke-test harness.)
 - Tests for deleted modules: `tests/test_hfgan_*, tests/test_llwt_*,
   tests/test_sarformer_*, tests/models/cfrwd/`.
 - Top-level junk: `dynamo_log.txt, diagnose_g.py, LLWT_V4_REPORT.md, _ablation_eval.py,
@@ -112,9 +113,12 @@ that is:
 ## Phase F — Verification
 
 - `python -m src.models.llwt_v5.gen` (generator smoke, base backbone).
+- **Smoke train** — `python -m src.models.llwt_v5.smoke_train_step` (or `train.py` with
+  `config_smoke.yaml`): one full D+G step on base backbone with HF-D on, no crash,
+  finite losses.
+- **Smoke inference** — `python -m src.models.llwt_v5.inference` loads the base
+  checkpoint and produces output without error.
 - `pytest` — surviving tests green, collection has no import errors from deleted dirs.
-- `python -m src.models.llwt_v5.inference` (or eval) loads the base checkpoint and
-  produces output without error.
 - `git status` clean and scoped to intended deletions; archive tag resolves.
 
 ## Out of scope
