@@ -9,7 +9,7 @@ data:
   # production run: ["5","10","25","35","45","47","52","84","100"].
   # NOTE: ignored when dataset=='qxs_saropt' (QXS layout has no scene partition).
   scenes:                ["5", "45", "52", "84", "100"]
-  batch_size:            8                          # train @ 256 full-res (tiny backbone)
+  batch_size:            6                          # base backbone @ 256 full-res (tiny backbone -> 8)
   val_batch_size:        4                          # val @ 256 full-res
   image_size:            256                        # train + val same resolution — back to full-res training
   train_crop_size:       null                       # patch-train disabled; null means no RandomCrop in the train pipeline
@@ -24,10 +24,11 @@ data:
 
 model:
   gen:
-    # HuggingFace AutoBackbone name. Tiny = 28.6 M params, hidden_sizes=(96,192,384,768).
-    # gen.py reads hidden_sizes from the encoder config so dims auto-adapt. The base
-    # (88M) variant lives in the separate src/models/llwt_v45_base module.
-    backbone:         "facebook/convnextv2-tiny-22k-224"
+    # HuggingFace AutoBackbone name. gen.py reads hidden_sizes from the encoder
+    # config so stage dims auto-adapt — capacity is a pure config switch:
+    #   base : facebook/convnextv2-base-22k-224  (~88M, hidden=(128,256,512,1024), data.batch_size=6)
+    #   tiny : facebook/convnextv2-tiny-22k-224  (~29M, hidden=(96,192,384,768),  data.batch_size=8)
+    backbone:         "facebook/convnextv2-base-22k-224"
     out_indices:      [1, 2, 3, 4]                  # HF ConvNeXt V2 stage_names = stem + stage1..4; want the 4 stages
     use_sar_physics:  true                          # SARAdapter (raw / channel2 / Sobel-grad) before Haar-Stem
     sar_channel2:     despeckle                     # v0.4.5: log-domain adaptive Lee — A/B WINNER (FID -10%, KID -29%, LPIPS -3% vs log|x|; PSNR flat). 'log' = v4 fallback.
@@ -125,7 +126,7 @@ loss:
   # highpass(real) vs highpass(fake.detach()), and the G-phase adds
   # hfd_weight * gan_loss(HF_D(highpass(fake)), real=True). Additive to the
   # main D. ~1.0 matches gan_main_weight scale. Default 0.0 = OFF.
-  hfd_weight:             1.0                       # VERIFIED winning lever — adversarial high-freq detail sharpening (held-out A/B beat baseline + the rejected SWD/aligner). Matches gan_main scale.
+  hfd_weight:             1.0                       # HF-D headline lever. SET 0 to disable HF-D (reproduces plain baseline / ablation arm). VERIFIED winning lever — adversarial high-freq detail sharpening (held-out A/B beat baseline + the rejected SWD/aligner). Matches gan_main scale.
   lpips_weight:           2.0                       # v0.4.5: AlexNet perceptual anchor (~0.9 contribution; main photorealism driver)
   # v0.4.5 Focal Frequency Loss (Jiang ICCV 2021) — global FFT-domain sharpener.
   # Complementary to per_band (local Haar subbands); needs `focal-frequency-loss`.
@@ -186,8 +187,8 @@ system:
   use_kid:        false                              # KID val metric. false drops the 23.9M InceptionV3 (VRAM + per-step EMA-floor savings; skips val KID compute). FID still reported. NOTE: toggling changes module state_dict — break strict resume_ckpt; use weights_ckpt (strict=False) across the switch.
   empty_cache_each_epoch: false                      # OFF: the per-epoch ramp was a torchmetrics-LPIPS-as-loss tensor leak (fixed in losses.py), NOT allocator fragmentation. empty_cache() here was proven ineffective (ON==OFF in A/B) and only adds cudaFree+malloc cost per epoch. Mem probes in main.py stay on to confirm train_epoch_sec is flat post-fix.
 
-  tb_version:    "llwt-v0.5.1-hfd"                   # HF-D headline: high-frequency discriminator for coherent detail (aligner/FFS rejected). Warm from align ep199.
-  weights_ckpt:  "checkpoints/llwt_v45/llwt-v0.4.6-align-ws/last.ckpt"   # warm-start G+D (strict=False)
+  tb_version:    "llwt-v0.6.0-base-hfd"              # consolidated default: base backbone + HF-D. Warm-start the base generator (trained without HF-D); HF-D engages from step 0.
+  weights_ckpt:  "checkpoints/llwt_v45_base/llwt-v0.4.6-base/epoch=199-psnr=18.5361.ckpt"   # warm-start G (strict=False); base generator. For tiny: checkpoints/llwt_v45/llwt-v0.4.6-align-ws/last.ckpt
   resume_ckpt:   null
   debug:         false
   checkpoints_dir: "checkpoints/llwt_v45"
