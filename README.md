@@ -1,38 +1,42 @@
-# SAR2OPT Light
+# WaveNeXt — SAR → Optical
 
-## Статус проекта
+Перевод одноканального радиолокационного изображения (**SAR**, Sentinel-1) в
+трёхканальную оптику (**Sentinel-2-like**). Магистерская ВКР.
 
-Проект в активной разработке только по направлению **CFRWD**.
+**WaveNeXt** = *Wavelet + ConvNeXt*. Имя точное:
 
-- Все новые эксперименты, изменения архитектуры и оптимизации делаются в CFRWD-пайплайне.
-- `pix2pix` сохранен как исторический артефакт для воспроизводимости и сравнений.
-- Новая функциональность в `pix2pix` не разрабатывается (кроме редких правок совместимости).
+- **Вейвлет** — фиксированный двухуровневый Хаар-стем (вместо patch-embed) и
+  обратный Хаар на голове (`register_buffer`, **не** обучаемый лифтинг).
+- **ConvNeXt V2** — свёрточный бэкбон (**не** трансформер).
+- Состязательное обучение GAN; главная новизна — **высокочастотный дискриминатор
+  HF-D** (судит остаток `x − gaussian_blur(x)`, только на обучении, нулевая
+  стоимость на инференсе).
 
-## TL;DR
+Полное устройство с картой `файл:строка` — `src/models/wavenext/ARCHITECTURE.md`.
 
-1. Рабочее направление: `src/models/cfrwd`.
-2. Базовый запуск обучения: `python -m src.models.cfrwd.train`.
-3. Логи и артефакты: `output/cfrwd` и `checkpoints/cfrwd` (через значения из конфига).
-4. `pix2pix` считается legacy-слоем и не является текущей целевой веткой исследований.
+## Результаты (SEN1-2 held-out val)
 
-## Что в репозитории
+| Вариант | PSNR↑ | SSIM↑ | FID↓ | LPIPS↓ |
+|--|--|--|--|--|
+| **WaveNeXt Base** | **18.54** | **0.432** | **58.5** | **0.241** |
+| WaveNeXt Tiny | 17.28 | 0.369 | 73.0 | 0.311 |
 
-Ключевые каталоги:
+Веса (Base) + ONNX + model card: **[umpaoflumpia/LLW-Former](https://huggingface.co/umpaoflumpia/LLW-Former)** на Hugging Face.
 
-- `src/models/cfrwd` - активная модель и тренировочный цикл.
-- `src/data/sen12` - датасет и datamodule для SEN12.
-- `docs/cfrwd` - материалы по архитектуре CFRWD.
-- `output/cfrwd` - TensorBoard/CSV/изображения/профилирование.
-- `checkpoints/cfrwd` - чекпоинты активных запусков.
-- `src/models/pix2pix`, `docs/pix2pix`, `output/pix2pix`, `checkpoints/pix2pix` - архивный legacy-контур.
+## Структура репозитория
 
-## Требования окружения
+- `src/models/wavenext/` — единственная модель: генератор, дискриминаторы (Main + HF-D),
+  лоссы, тренировочный цикл, инференс, экспорт. `ARCHITECTURE.md` — референс.
+- `src/data/sen12_full/`, `src/data/sen12_full_align/` — датамодули SEN1-2 (raw / ECC-выровненный).
+- `src/utils/` — логгер, EMA-коллбек, очистка памяти, нотификации.
+- `scripts/` — вспомогательные скрипты (выравнивание пар и т.п.).
+- `docs/diploma/` — текст ВКР.
 
-- Python (рекомендуется 3.10+).
-- Установленные зависимости из `requirements.txt`.
-- GPU с CUDA для полноценного обучения (CPU-режим возможен, но медленный).
+> Полное наследие экспериментов (cfrwd, llwt v3/v4/v45, sarformer и др.) удалено из
+> рабочего дерева и сохранено в git-теге **`archive/full-lineage-v1`** — оттуда
+> воспроизводится абляционная таблица диплома.
 
-Пример установки:
+## Установка
 
 ```powershell
 python -m venv .venv
@@ -40,105 +44,66 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-## Быстрый старт (CFRWD)
+GPU с CUDA нужен для обучения (RTX-класс, ~18.5 ГБ VRAM для Base @ bf16).
 
-1. Подготовьте окружение и зависимости.
-2. Проверьте структуру данных в `data/sen12`.
-3. Убедитесь, что конфиг доступен по пути `src/models/cfrwd/config.yaml`.
-4. Запустите обучение.
-
-Команда запуска:
+## Быстрый старт
 
 ```powershell
-python -m src.models.cfrwd.train
+# обучение (config.yaml = Base backbone + HF-D, тёплый старт)
+python -m src.models.wavenext.train
+
+# одношаговый смоук (быстрый, config_smoke.yaml)
+python -m src.models.wavenext.smoke_train_step
+
+# инференс (грузит Base-чекпоинт через load_generator)
+python -m src.models.wavenext.inference
+
+# экспорт весов для Hugging Face (ckpt -> safetensors + config.json)
+python -m src.models.wavenext.export_hf  --ckpt <path/to.ckpt> --out output/hf_export
+
+# экспорт в ONNX (fp32, opset 17, с parity-проверкой)
+python -m src.models.wavenext.export_onnx --ckpt <path/to.ckpt> --out output/hf_export
+
+# TensorBoard
+tensorboard --logdir output/llwt_v45/tb_logs
 ```
 
-## Важный момент по конфигу
+## Конфиг — переключатели (без правки кода)
 
-Код CFRWD ожидает конфиг в фиксированном пути:
+`src/models/wavenext/config.yaml` (путь захардкожен в `train.py`/`main.py`/`factory.py`):
 
-- `src/models/cfrwd/config.yaml`
+- **Ёмкость** — `model.gen.backbone`: `facebook/convnextv2-base-22k-224` (Base, дефолт,
+  `data.batch_size: 6`) или `...-tiny-22k-224` (Tiny, `batch_size: 8`). Каналы стадий
+  авто-выводятся из бэкбона.
+- **HF-D** (новизна) — `loss.hfd_weight`: `1.0` (вкл) или `0` (выкл → чистый baseline / абляция).
+- `system.tb_version` — имя для всех артефактов; меняй на каждый эксперимент.
+- `system.weights_ckpt` — тёплый старт G/D (`strict=False`); `system.resume_ckpt` — полное возобновление или `null`.
 
-Этот путь используется в нескольких местах (`train.py`, `main.py`, `factory.py`, `logger.py`, `clean_csv_logs.py`).
-Если файла нет, запуск обучения и часть утилит не стартуют.
+## Данные (SEN1-2)
 
-Рекомендуемая практика:
-
-1. Держать один канонический конфиг в `src/models/cfrwd/config.yaml`.
-2. Менять `tb_version` для каждого нового эксперимента.
-3. Для возобновления обучения задавать `system.resume_ckpt`.
-
-## Ожидаемая структура данных SEN12
-
-Минимально ожидаемая структура (`src/data/sen12/dataset.py`):
+`data.dataset` выбирает датамодуль: `sen12_full` (raw) или `sen12_full_align`
+(градиентный ECC-выровненный зеркальный набор; SAR байт-в-байт, оптика деформирована).
 
 ```text
-data/sen12/
-	agri/
-		s1/
-		s2/
-	barrenland/
-		s1/
-		s2/
-	grassland/
-		s1/
-		s2/
-	urban/
-		s1/
-		s2/
+data/sen12_full/<scene>/s1/<file>   # SAR
+data/sen12_full/<scene>/s2/<file>   # optical
 ```
+Пары сопоставляются по имени (`_s1_` → `_s2_`). [SEN1-2](https://mediatum.ub.tum.de/1436631), research-only.
 
-Примечания:
+## Артефакты
 
-- Датасет сопоставляет пары SAR/Optical по имени файла (например, `_s1_` -> `_s2_`).
-- Поддерживаются основные форматы изображений: `.png`, `.jpg`, `.jpeg`, `.tif`, `.tiff`, `.bmp`.
+По `cfg.system.tb_version` (префикс путей `llwt_v45` — легаси от тёплого старта):
 
-## Артефакты и мониторинг
+- чекпоинты: `checkpoints/llwt_v45/<tb_version>/` (top-k по `val/psnr` + `last`)
+- TensorBoard: `output/llwt_v45/tb_logs/<tb_version>/`
+- изображения эпох: `output/llwt_v45/images/<tb_version>/`
 
-Во время обучения сохраняются:
+## Прочее
 
-- чекпоинты (`save_top_k=3` + `last`) в `checkpoints/cfrwd/<tb_version>`;
-- TensorBoard-логи в `output/cfrwd/tb_logs/<tb_version>`;
-- CSV-логи в `output/cfrwd/csv_logs/<tb_version>`;
-- профилировщик в директорию `cfg.system.profiler_dir`;
-- визуализации эпох в `cfg.system.images_dir/<tb_version>` при `system.image_freq != 0`.
+- **Telegram** (опц.): `.env` ключи `TELEGRAM_BOT_TOKEN` / `TELEGRAM_RECIEVER_USER_ID`. Нет ключей — молча выкл.
+- **Журнал экспериментов**: `changelog.md` (run id, изменения, результат; версии `vX.Y.Z`).
 
-Запуск TensorBoard:
+## Лицензия
 
-```powershell
-tensorboard --logdir output/cfrwd/tb_logs
-```
-
-Очистка и агрегация CSV-логов:
-
-```powershell
-python src/utils/clean_csv_logs.py
-```
-
-## Уведомления в Telegram (опционально)
-
-Поддерживаются уведомления через `.env`:
-
-- `TELEGRAM_BOT_TOKEN`
-- `TELEGRAM_RECIEVER_USER_ID`
-
-Если переменные не заданы, уведомления будут неактивны.
-
-## Статус инференса
-
-Файл `src/models/cfrwd/inference.py` присутствует, но на текущий момент не содержит рабочего CLI-пайплайна.
-Текущий фокус репозитория - обучение/валидация и исследовательские итерации CFRWD.
-
-## Политика вклада
-
-1. Все новые эксперименты и улучшения направлять в CFRWD.
-2. Изменения в `pix2pix` делать только при необходимости совместимости или воспроизводимости.
-3. Для каждого нового запуска фиксировать цель, изменения и результат в журнале экспериментов (`changelog.md`).
-
-## Legacy-зона: pix2pix
-
-`pix2pix` оставлен как исторический артефакт:
-
-- для ретроспективных сравнений;
-- для воспроизводимости старых результатов;
-- без активного feature-development.
+**CC-BY-NC-4.0** (non-commercial). Веса производны от ConvNeXt V2 (Meta, CC-BY-NC-4.0)
+и обучены на SEN1-2 (research-only) — non-commercial-условия наследуются.
