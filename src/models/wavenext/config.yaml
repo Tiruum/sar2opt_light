@@ -187,9 +187,9 @@ system:
   use_kid:        false                              # KID val metric. false drops the 23.9M InceptionV3 (VRAM + per-step EMA-floor savings; skips val KID compute). FID still reported. NOTE: toggling changes module state_dict — break strict resume_ckpt; use weights_ckpt (strict=False) across the switch.
   empty_cache_each_epoch: false                      # OFF: the per-epoch ramp was a torchmetrics-LPIPS-as-loss tensor leak (fixed in losses.py), NOT allocator fragmentation. empty_cache() here was proven ineffective (ON==OFF in A/B) and only adds cudaFree+malloc cost per epoch. Mem probes in main.py stay on to confirm train_epoch_sec is flat post-fix.
 
-  tb_version:    "llwt-v0.6.0-base-hfd"              # consolidated default: base backbone + HF-D. Warm-start the base generator (trained without HF-D); HF-D engages from step 0.
-  weights_ckpt:  "checkpoints/llwt_v45_base/llwt-v0.4.6-base/epoch=199-psnr=18.5361.ckpt"   # warm-start G (strict=False); base generator. For tiny: checkpoints/llwt_v45/llwt-v0.4.6-align-ws/last.ckpt
-  resume_ckpt:   null
+  tb_version:    "wavenext-base-hfd-scratch"         # from-scratch default: base backbone + HF-D, NO warm-start (weights_ckpt=null). HF-D engages from step 0. For a warm-start run set weights_ckpt to the base ckpt and rename this.
+  weights_ckpt:  null                                # null = train from scratch. To warm-start G/D (strict=False): "checkpoints/llwt_v45_base/llwt-v0.4.6-base/epoch=199-psnr=18.5361.ckpt" (base) or "checkpoints/llwt_v45/llwt-v0.4.6-align-ws/last.ckpt" (tiny).
+  resume_ckpt:   null                                # null = no full resume. Set to a last.ckpt to resume optimizer+epoch state (strict).
   debug:         false
   checkpoints_dir: "checkpoints/llwt_v45"
   output_dir:      "./output/llwt_v45"
