@@ -9,6 +9,8 @@ experimental lineage (cfrwd, huggingface_gan, llwt, llwt_v3/v4/v45, llwt_v45_bas
 sar2opt_v1, sarformer_wb, pix2pix) was removed during consolidation and lives in git
 tag `archive/full-lineage-v1` — restore from there to reproduce the diploma ablation
 table. `src/models/wavenext/ARCHITECTURE.md` is the authoritative architecture reference (RU).
+`RESUME.md` (repo root) is the come-back-after-a-break map: status, artifact locations
+(local vs git vs HF), and a "do not break" gotchas list.
 
 Capacity (tiny/base) and the HF-D novelty are pure config switches — see Configuration below.
 
